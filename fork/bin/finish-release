@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+version="$1"
+keep_count="$2"
+
+close_conflict_issues() {
+  gh issue list --label fork-conflict --state open --json number --jq '.[].number' \
+    | while read -r issue_number; do
+        gh issue close "$issue_number" --comment "Resolved in v${version}."
+      done
+}
+
+prune_old_releases() {
+  gh release list --exclude-drafts --limit 200 --json tagName,createdAt \
+    --jq "sort_by(.createdAt) | reverse | .[${keep_count}:] | .[].tagName" \
+    | while read -r old_tag; do
+        gh release delete "$old_tag" --yes --cleanup-tag
+      done
+}
+
+close_conflict_issues
+prune_old_releases
