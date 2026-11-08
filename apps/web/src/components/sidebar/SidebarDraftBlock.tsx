@@ -11,7 +11,8 @@ import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import { useShallow } from "zustand/react/shallow";
 import { cn } from "~/lib/utils";
 import { resolveSidebarRowAccessibility } from "../Sidebar.logic";
-import { ProjectFavicon, type ProjectFaviconProject } from "../ProjectFavicon";
+import type { ProjectFaviconProject } from "../ProjectFavicon";
+import { TitleFirstProjectLabel } from "~/fork/TitleFirstProjectLabel";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
   composerDraftHasUserContent,
@@ -97,14 +98,14 @@ const SidebarDraftRow = memo(function SidebarDraftRow(props: {
         onKeyDown={handleKeyDown}
       >
         <span className="sr-only">{preview}</span>
-        <div className="relative z-10 h-[4.875rem] px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)">
+        <div className="relative z-10 h-14 px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)">
           <div className="flex h-5 min-w-0 items-center gap-1.5">
             <SquarePenIcon aria-hidden className={draftPenClassName} />
-            {props.project ? (
-              <ProjectFavicon project={props.project} className="size-4 shrink-0" />
-            ) : null}
-            <span className="min-w-0 flex-1 truncate text-xs font-medium text-secondary-label">
-              {props.projectDisplayName}
+            <span
+              aria-hidden
+              className="min-w-0 flex-1 truncate text-sm font-medium text-foreground/90"
+            >
+              {preview}
             </span>
             <span className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-end">
               <Tooltip>
@@ -124,8 +125,12 @@ const SidebarDraftRow = memo(function SidebarDraftRow(props: {
               </Tooltip>
             </span>
           </div>
-          <div aria-hidden className="mt-0.5 truncate text-sm font-medium text-foreground/90">
-            {preview}
+          <div className="mt-1 flex h-4 min-w-0 items-center gap-1.5 text-xs text-secondary-label">
+            <TitleFirstProjectLabel
+              project={props.project}
+              projectDisplayName={props.projectDisplayName}
+              separated={false}
+            />
           </div>
         </div>
       </div>
