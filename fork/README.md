@@ -24,14 +24,23 @@ Fork-owned files: `.github/workflows/fork-release.yml` and `fork/`. Everything e
 
 ## Install and update
 
-| Target | First install | Updates |
-| --- | --- | --- |
-| Mac app | `fork/bin/install-mac [tag]` | Update button in the app |
-| Homelab server | `ssh homelab 'bash -s' -- <version> < fork/bin/install-server` | Update everything in the Mac app |
+```sh
+fork/bin/use fork
+fork/bin/use official
+```
 
-`install-server` sets `T3CODE_RELEASE_BASE_URL` in `~/.t3/service.env`, so the server downloads updates from this fork.
+`use` moves the server on the `homelab` SSH host first, then the Mac app, to the latest release of the fork or of upstream. Options: `--only mac`, `--only server`, and an exact tag such as `v0.1.8-nightly.20261108.4367001`.
+
+- The Mac app restarts, and the restart interrupts running threads.
+- `install-mac` checks the signature of the new app before the swap: the fork certificate for `fork`, the T3 Tools Developer ID for `official`.
+- `install-server` runs on the server. For `fork`, it sets `T3CODE_RELEASE_BASE_URL` in `~/.t3/service.env`, so the server downloads updates from this fork. For `official`, it removes that line. When the update fails, it restores the previous `service.env`.
+- Threads, settings, and data stay, because both apps use the same folders.
+
+After the first install, use the update button in the Mac app. It updates the Mac app and the server.
 
 Do not use **Settings → About → Update track**. It reads upstream npm versions.
+
+Keep fork changes free of database migrations. An upstream build cannot open a database that has a migration it does not know, so `use official` would fail.
 
 ## Rebase conflicts
 
