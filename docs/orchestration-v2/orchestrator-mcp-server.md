@@ -245,8 +245,12 @@ type DelegateTaskInput = {
   clientRequestId?: string;
   runtimeMode?: "inherit" | "approval-required" | "auto-accept-edits" | "full-access";
   interactionMode?: "inherit" | "plan" | "default";
+  listed?: boolean;
 };
 ```
+
+`listed: true` gives the child a sidebar row under its parent. Children are
+hidden by default.
 
 Provider, model, runtime mode, and interaction mode inherit from the parent
 when omitted. A driver-only target inherits the parent's provider instance
@@ -446,10 +450,11 @@ often leave a dev server running.
 ### `t3_thread_update`
 
 Updates metadata for the calling thread or any other thread in the environment.
-The typed actions are `rename`, which requires `title`, and `regenerate_title`,
-which rejects one. Pull request links go through the separate
-`link_pull_request` and `unlink_pull_request` tools. Branch and workspace
-changes are outside this tool.
+The typed actions are `rename`, which requires `title`, `regenerate_title`,
+which rejects one, and `set_listed`. `set_listed` shows or hides a child thread
+in the sidebar; a thread without a parent is always listed. Pull request links
+go through the separate `link_pull_request` and `unlink_pull_request` tools.
+Branch and workspace changes are outside this tool.
 
 The result includes the command ID and durable event sequence together with the
 resultant title, title-regeneration marker, and linked pull request. Reusing a
