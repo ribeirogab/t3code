@@ -2534,6 +2534,7 @@ const make = Effect.gen(function* () {
           // delegations deliver through the blocking tool call until `awaitTask`
           // gives up the wait (timeout, cancelled call) and upgrades the wake.
           completionWake: input.mode === "wait" ? "settled_only" : "always",
+          ...(input.listed === undefined ? {} : { listed: input.listed }),
         })
         .pipe(
           Effect.mapError((error) =>

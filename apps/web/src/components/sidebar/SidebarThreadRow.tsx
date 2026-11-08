@@ -68,6 +68,14 @@ import {
 import { useRightPanelStore } from "../../rightPanelStore";
 import { useOpenPrLink } from "../../lib/openPullRequestLink";
 import { useUiStateStore } from "../../uiStateStore";
+import {
+  NestedDisclosure,
+  NestedRowGuides,
+  nestedListItemClassName,
+  nestedRowClassName,
+  nestedRowStyle,
+  type SidebarRowNesting,
+} from "../../fork/NestedThreadRowParts";
 import { useThreadSelectionStore } from "../../threadSelectionStore";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import { useNowSecond } from "../../hooks/useNowSecond";
@@ -544,12 +552,13 @@ function TopStatusIcon(props: { icon: keyof typeof TOP_STATUS_ICONS; className: 
   return <Icon aria-hidden className={cn("shrink-0", props.className)} />;
 }
 
-type SidebarThreadRowProps = {
+export type SidebarThreadRowProps = {
   thread: SidebarThreadSummary;
   // "folder" is a one-line row inside a boring sidebar project folder;
   // "folder-multiline" adds the card's branch and PR line under it.
   variant: "card" | "slim" | "folder" | "folder-multiline";
   navigationParent?: string | undefined;
+  nesting?: SidebarRowNesting | undefined;
   variantAction: SidebarSweepAction;
   settlementSupported: boolean;
   snoozeSupported: boolean;
@@ -641,7 +650,7 @@ function ThreadRenameInput(props: {
   );
 }
 
-const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowProps) {
+export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowProps) {
   const {
     isRenaming,
     onCancelRename,
@@ -1179,7 +1188,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       />
     ) : null;
   // Only the trailing icons would remain, so the row moves them to the title line instead.
+  const disclosureInMetaLine = variant === "card" && (props.nesting?.descendantCount ?? 0) > 0;
   const metaLineEmpty =
+    !disclosureInMetaLine &&
     cardProjectLabel === null &&
     !showsBranch &&
     !showsMachineLabel &&
@@ -1228,6 +1239,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
         {remoteMachineIcon}
         {providerStack}
       </span>
+      {disclosureInMetaLine ? <NestedDisclosure nesting={props.nesting} /> : null}
     </div>
   );
   const titleLineIcons =
@@ -1249,6 +1261,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
         className={cn(
           "list-none [content-visibility:auto] [contain-intrinsic-size:auto_--spacing(9)]",
           metaLine !== null && multiline && "[contain-intrinsic-size:auto_--spacing(13.5)]",
+          props.nesting && nestedListItemClassName,
           sortable?.isDragging && "relative z-20",
         )}
       >
@@ -1272,7 +1285,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                     : "flex h-9 items-center gap-2.5 px-2.5",
                   // Lines titles up with the folder name, past its chevron and icon.
                   inFolder && "ps-9",
+                  nestedRowClassName(props.nesting),
                 )}
+                style={nestedRowStyle(props.nesting)}
                 onClick={handleClick}
                 onDoubleClick={handleDoubleClick}
                 onKeyDown={handleKeyDown}
@@ -1427,12 +1442,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                   {jumpHintLabel ? <JumpHintBadge label={jumpHintLabel} /> : null}
                 </span>
               )}
+              <NestedDisclosure nesting={props.nesting} />
               {props.sweepAction !== null ? dragDestination : null}
             </div>
             {multiline ? metaLine : null}
           </TooltipTrigger>
           {detailsTooltip}
         </Tooltip>
+        {props.nesting ? <NestedRowGuides nesting={props.nesting} card={false} /> : null}
       </li>
     );
   }
@@ -1445,6 +1462,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       className={cn(
         "list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_60px]",
         metaLineEmpty && "[contain-intrinsic-size:auto_40px]",
+        props.nesting && nestedListItemClassName,
         sortable?.isDragging && "relative z-20",
       )}
     >
@@ -1621,6 +1639,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
         </TooltipTrigger>
         {detailsTooltip}
       </Tooltip>
+      {props.nesting ? <NestedRowGuides nesting={props.nesting} card /> : null}
     </li>
   );
 });
