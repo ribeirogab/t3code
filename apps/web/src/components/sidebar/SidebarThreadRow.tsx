@@ -117,6 +117,7 @@ import { Menu, MenuItem, MenuItemDetail, MenuPopup, MenuSeparator, MenuTrigger }
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { MiddleTruncate } from "../ui/middle-truncate";
 import { useThreadHasUnsentDraft } from "../../composerDraftStore";
+import { hasTitleFirstProjectLabel, TitleFirstProjectLabel } from "~/fork/TitleFirstProjectLabel";
 
 // The fields thread rows show. Provider status pushes refresh `checkedAt`,
 // status and auth on every provider; leaving those out keeps each
@@ -1135,15 +1136,30 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       </span>
     ) : null;
   const diff = latestRunDiff(thread);
+  const cardProjectLabel =
+    variant === "card" && hasTitleFirstProjectLabel(props.project, props.projectDisplayName) ? (
+      <TitleFirstProjectLabel
+        project={props.project}
+        projectDisplayName={props.projectDisplayName}
+        separated={Boolean(thread.branch) || showsScratchMachine}
+      />
+    ) : null;
   // Only the trailing icons would remain, so the row moves them to the title line instead.
   const metaLineEmpty =
+    cardProjectLabel === null &&
     !thread.branch &&
     !showsScratchMachine &&
     prBadge === null &&
     diff === null &&
     runningTerminalIds.length === 0;
   const metaLine = metaLineEmpty ? null : (
-    <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-secondary-label text-xs">
+    <div
+      className={cn(
+        "flex min-w-0 items-center gap-1.5 text-secondary-label text-xs",
+        variant === "card" ? "mt-1" : "mt-0.5",
+      )}
+    >
+      {cardProjectLabel}
       {thread.branch ? (
         <>
           <ThreadWorktreeIndicator thread={thread} />
@@ -1398,8 +1414,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       {...sortableRootProps}
       {...(fileDropHandlers ?? {})}
       className={cn(
-        "list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_78px]",
-        metaLineEmpty && "[contain-intrinsic-size:auto_58px]",
+        "list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_60px]",
+        metaLineEmpty && "[contain-intrinsic-size:auto_40px]",
         sortable?.isDragging && "relative z-20",
       )}
     >
@@ -1427,27 +1443,22 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
           {accessibleTitle}
           <div
             className={cn(
-              "relative z-10 h-[4.875rem] px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)",
+              "relative z-10 h-14 px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)",
               metaLineEmpty && "h-auto",
             )}
           >
             <div className="flex h-5 min-w-0 items-center gap-1.5">
               {draftIndicator}
-              {props.project ? (
-                <ProjectFavicon project={props.project} className="size-4 shrink-0" />
-              ) : null}
               {/* Left of the status slot, the pin would slide when hover swaps the
                 label for the wider row controls. */}
               {pinIndicator}
-              {props.projectDisplayName ? (
-                <span
-                  className={cn("min-w-0 flex-1 truncate font-normal text-secondary-label text-xs")}
-                >
-                  {props.projectDisplayName}
+              {title}
+              {isRegeneratingTitle ? (
+                <span role="status" className="sr-only">
+                  Regenerating title
                 </span>
-              ) : (
-                <span className="flex-1" />
-              )}
+              ) : null}
+              {titleLineIcons}
               {sortable?.isDragging ? (
                 dragDestination
               ) : (
@@ -1575,15 +1586,6 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                 </span>
               )}
               {props.sweepAction !== null ? dragDestination : null}
-            </div>
-            <div className="mt-1 flex min-w-0 items-center gap-1.5">
-              {title}
-              {isRegeneratingTitle ? (
-                <span role="status" className="sr-only">
-                  Regenerating title
-                </span>
-              ) : null}
-              {titleLineIcons}
             </div>
             {metaLine}
           </div>
