@@ -1,23 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-fork_repository="ribeirogab/t3code"
+repository="$1"
+tag="$2"
+requirement="$3"
 app_name="T3 Code (Nightly)"
 app_path="/Applications/${app_name}.app"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-latest_fork_tag() {
-  gh release list --repo "$fork_repository" --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName'
-}
-
-tag="${1:-$(latest_fork_tag)}"
-staging_dir="$(mktemp -d "${TMPDIR:-/tmp}/t3code-fork-install.XXXXXX")"
+staging_dir="$(mktemp -d "${TMPDIR:-/tmp}/t3code-install.XXXXXX")"
 log_path="${staging_dir}/swap.log"
 
-gh release download "$tag" --repo "$fork_repository" --pattern '*-arm64.zip' --dir "$staging_dir"
-ditto -x -k "$staging_dir"/*-arm64.zip "$staging_dir/app"
+gh release download "$tag" --repo "$repository" --pattern 'T3-Code-*-arm64.zip' --dir "$staging_dir"
+ditto -x -k "$staging_dir"/T3-Code-*-arm64.zip "$staging_dir/app"
 new_app="${staging_dir}/app/${app_name}.app"
-codesign --verify --deep --strict "$new_app"
+codesign --verify --deep --strict -R="$requirement" "$new_app"
 xattr -dr com.apple.quarantine "$new_app" 2> /dev/null || true
 
 cp "$script_dir/swap-mac-app" "$staging_dir/swap-mac-app"
@@ -27,4 +23,4 @@ cp "$script_dir/swap-mac-app" "$staging_dir/swap-mac-app"
     < /dev/null > "$log_path" 2>&1 &
 )
 
-echo "Installing ${tag}. ${app_name} restarts in a few seconds. Log: ${log_path}"
+echo "Installing ${tag} from ${repository}. ${app_name} restarts in a few seconds. Log: ${log_path}"
