@@ -1,0 +1,326 @@
+name: Fork release
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  push:
+    branches:
+      - custom
+  workflow_dispatch:
+    inputs:
+      rebuild:
+        description: Build a new release even when the branch head already has one
+        type: boolean
+        default: false
+
+concurrency:
+  group: fork-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+  actions: write
+
+env:
+  FORK_BRANCH: custom
+  UPSTREAM_REPOSITORY: pingdotgg/t3code
+  RELEASE_KEEP_COUNT: "20"
+  MAC_RUNNER: macos-26
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      action: ${{ steps.result.outputs.action }}
+      version: ${{ steps.result.outputs.version }}
+      ref: ${{ steps.plan.outputs.branch_sha }}
+      base_tag: ${{ steps.plan.outputs.base_tag }}
+      base_sha: ${{ steps.plan.outputs.base_sha }}
+      mac_runner: ${{ env.MAC_RUNNER }}
+      clerk_publishable_key: ${{ steps.result.outputs.clerk_publishable_key }}
+      clerk_jwt_template: ${{ steps.result.outputs.clerk_jwt_template }}
+      clerk_cli_oauth_client_id: ${{ steps.result.outputs.clerk_cli_oauth_client_id }}
+      relay_url: ${{ steps.result.outputs.relay_url }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Checkout fork scripts
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.FORK_BRANCH }}
+          sparse-checkout: |
+            /fork/
+            /.env.example
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Disable upstream workflows
+        run: |
+          gh workflow list --all --json path,state \
+            --jq '.[] | select(.state == "active") | .path | select(startswith(".github/workflows/"))' \
+            | while read -r workflow_path; do
+                case "$workflow_path" in
+                  .github/workflows/fork-release.yml | .github/workflows/release-desktop.yml) ;;
+                  *) gh workflow disable "$(basename "$workflow_path")" ;;
+                esac
+              done
+
+      - name: Plan
+        id: plan
+        run: fork/bin/plan "$GITHUB_REPOSITORY" "$FORK_BRANCH" "${{ inputs.rebuild || 'false' }}" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Checkout full history
+        if: steps.plan.outputs.action == 'rebase'
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.plan.outputs.branch_sha }}
+          path: fork-repo
+          fetch-depth: 0
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Rebase onto the upstream nightly
+        id: rebase
+        if: steps.plan.outputs.action == 'rebase'
+        working-directory: fork-repo
+        env:
+          FORK_DEPLOY_KEY: ${{ secrets.FORK_DEPLOY_KEY }}
+        run: |
+          "$GITHUB_WORKSPACE/fork/bin/ci-rebase" \
+            "${{ steps.plan.outputs.base_tag }}" \
+            "${{ steps.plan.outputs.branch_sha }}" \
+            "$GITHUB_REPOSITORY" \
+            "$FORK_BRANCH" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Report rebase conflict
+        if: steps.rebase.outputs.result == 'conflict'
+        run: fork/bin/report-conflict "${{ steps.plan.outputs.base_tag }}" "${{ steps.rebase.outputs.conflicts }}"
+
+      - name: Resolve build
+        id: result
+        env:
+          PLAN_ACTION: ${{ steps.plan.outputs.action }}
+          BASE_TAG: ${{ steps.plan.outputs.base_tag }}
+        run: |
+          set -euo pipefail
+          if [[ "$PLAN_ACTION" != "build" ]]; then
+            echo "action=skip" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          read_public_config() {
+            sed -n "s/^$1=//p" .env.example
+          }
+          {
+            echo "action=build"
+            echo "version=$(fork/bin/next-version "$BASE_TAG" "https://github.com/${GITHUB_REPOSITORY}.git")"
+            echo "clerk_publishable_key=$(read_public_config T3CODE_CLERK_PUBLISHABLE_KEY)"
+            echo "clerk_jwt_template=$(read_public_config T3CODE_CLERK_JWT_TEMPLATE)"
+            echo "clerk_cli_oauth_client_id=$(read_public_config T3CODE_CLERK_CLI_OAUTH_CLIENT_ID)"
+            echo "relay_url=$(read_public_config T3CODE_RELAY_URL)"
+          } | tee -a "$GITHUB_OUTPUT"
+
+  bundle:
+    name: Build JS bundle
+    needs: plan
+    if: needs.plan.outputs.action == 'build'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      T3CODE_CLERK_PUBLISHABLE_KEY: ${{ needs.plan.outputs.clerk_publishable_key }}
+      T3CODE_CLERK_JWT_TEMPLATE: ${{ needs.plan.outputs.clerk_jwt_template }}
+      T3CODE_CLERK_CLI_OAUTH_CLIENT_ID: ${{ needs.plan.outputs.clerk_cli_oauth_client_id }}
+      T3CODE_RELAY_URL: ${{ needs.plan.outputs.relay_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Setup dependencies
+        uses: ./.github/actions/setup-ci-deps
+        with:
+          install-args: --filter=t3... --filter=@t3tools/web... --filter=@t3tools/desktop... --filter=@t3tools/scripts...
+
+      - name: Align package versions to release version
+        run: node scripts/update-release-package-versions.ts "${{ needs.plan.outputs.version }}"
+
+      - name: Build JS bundle
+        env:
+          T3CODE_TELEMETRY_CHANNEL: dev
+        run: vp run build:desktop:bundle
+
+      - name: Upload JS bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: js-bundle
+          path: |
+            apps/server/dist
+            apps/desktop/dist-electron
+          if-no-files-found: error
+          retention-days: 1
+
+  desktop_mac:
+    name: Desktop macOS arm64
+    needs: [plan, bundle]
+    if: needs.plan.outputs.action == 'build'
+    uses: ./.github/workflows/release-desktop.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+      ref: ${{ needs.plan.outputs.ref }}
+      release_channel: nightly
+      relay_client_tracing: false
+      clerk_publishable_key: ${{ needs.plan.outputs.clerk_publishable_key }}
+      clerk_jwt_template: ${{ needs.plan.outputs.clerk_jwt_template }}
+      clerk_cli_oauth_client_id: ${{ needs.plan.outputs.clerk_cli_oauth_client_id }}
+      relay_url: ${{ needs.plan.outputs.relay_url }}
+      label: macOS arm64
+      runner: ${{ needs.plan.outputs.mac_runner }}
+      platform: mac
+      target: dmg
+      arch: arm64
+      rust_target: aarch64-apple-darwin
+      resource_key: darwin-arm64
+      cli_archive: false
+      launch_check: false
+
+  desktop_linux:
+    name: Desktop Linux x64
+    needs: [plan, bundle]
+    if: needs.plan.outputs.action == 'build'
+    uses: ./.github/workflows/release-desktop.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+      ref: ${{ needs.plan.outputs.ref }}
+      release_channel: nightly
+      relay_client_tracing: false
+      clerk_publishable_key: ${{ needs.plan.outputs.clerk_publishable_key }}
+      clerk_jwt_template: ${{ needs.plan.outputs.clerk_jwt_template }}
+      clerk_cli_oauth_client_id: ${{ needs.plan.outputs.clerk_cli_oauth_client_id }}
+      relay_url: ${{ needs.plan.outputs.relay_url }}
+      label: Linux x64
+      runner: ubuntu-24.04
+      platform: linux
+      target: AppImage
+      arch: x64
+      rust_target: x86_64-unknown-linux-gnu
+      resource_key: linux-x64
+      cli_archive: true
+      launch_check: false
+
+  sign_mac:
+    name: Sign macOS app
+    needs: [plan, desktop_mac]
+    runs-on: ${{ needs.plan.outputs.mac_runner }}
+    timeout-minutes: 30
+    steps:
+      - name: Checkout fork scripts
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          sparse-checkout: |
+            /fork/
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Download macOS build
+        uses: actions/download-artifact@v8
+        with:
+          name: desktop-mac-arm64
+          path: mac-artifacts
+
+      - name: Import signing certificate
+        env:
+          FORK_MAC_CERT_P12: ${{ secrets.FORK_MAC_CERT_P12 }}
+          FORK_MAC_CERT_PASSWORD: ${{ secrets.FORK_MAC_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/fork-signing.keychain-db"
+          keychain_password="$(openssl rand -hex 16)"
+          cert_path="$RUNNER_TEMP/fork-signing.p12"
+          echo "::add-mask::$keychain_password"
+          printf '%s' "$FORK_MAC_CERT_P12" | base64 --decode > "$cert_path"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$cert_path" -k "$keychain" -P "$FORK_MAC_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          rm -f "$cert_path"
+          identity="$(security find-identity -p codesigning "$keychain" | sed -n 's/^ *[0-9]*) \([0-9A-F]\{40\}\) .*/\1/p' | head -n 1)"
+          if [[ -z "$identity" ]]; then
+            echo "No signing identity found in FORK_MAC_CERT_P12." >&2
+            exit 1
+          fi
+          echo "FORK_SIGNING_IDENTITY=$identity" >> "$GITHUB_ENV"
+
+      - name: Sign app
+        run: fork/bin/resign-mac mac-artifacts "$FORK_SIGNING_IDENTITY"
+
+      - name: Upload signed macOS build
+        uses: actions/upload-artifact@v7
+        with:
+          name: fork-desktop-mac-arm64
+          path: |
+            mac-artifacts/*.zip
+            mac-artifacts/*.dmg
+            mac-artifacts/nightly-mac.yml
+          if-no-files-found: error
+          compression-level: 0
+
+  release:
+    name: Publish release
+    needs: [plan, sign_mac, desktop_linux]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Checkout fork scripts
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          sparse-checkout: |
+            /fork/
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Download signed macOS build
+        uses: actions/download-artifact@v8
+        with:
+          name: fork-desktop-mac-arm64
+          path: release-assets
+
+      - name: Download Linux CLI archive
+        uses: actions/download-artifact@v8
+        with:
+          name: cli-linux-x64
+          path: release-assets
+
+      - name: Write checksums
+        working-directory: release-assets
+        run: sha256sum t3-*.tar.gz > SHA256SUMS
+
+      - name: Publish release
+        run: |
+          fork/bin/publish-release \
+            "${{ needs.plan.outputs.version }}" \
+            "${{ needs.plan.outputs.ref }}" \
+            "${{ needs.plan.outputs.base_tag }}" \
+            "${{ needs.plan.outputs.base_sha }}" \
+            release-assets
+
+      - name: Close conflicts and prune old releases
+        run: fork/bin/finish-release "${{ needs.plan.outputs.version }}" "$RELEASE_KEEP_COUNT"
