@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+version="$1"
+ref="$2"
+base_tag="$3"
+base_sha="$4"
+asset_dir="$5"
+
+upstream_repository="${UPSTREAM_REPOSITORY:-pingdotgg/t3code}"
+tag="v${version}"
+
+fork_commits() {
+  gh api "repos/${GH_REPO}/compare/${base_sha}...${ref}" \
+    --jq '.commits[] | "- " + (.commit.message | split("\n")[0])'
+}
+
+release_notes() {
+  printf 'Fork build of [`%s`](https://github.com/%s/releases/tag/%s).\n\n' "$base_tag" "$upstream_repository" "$base_tag"
+  printf 'Fork commits:\n\n%s\n' "$(fork_commits)"
+}
+
+delete_stale_drafts() {
+  gh release list --limit 100 --json tagName,isDraft \
+    --jq ".[] | select(.isDraft and .tagName == \"${tag}\") | .tagName" \
+    | while read -r draft_tag; do
+        gh release delete "$draft_tag" --yes
+      done
+}
+
+delete_stale_drafts
+gh release create "$tag" \
+  --draft \
+  --prerelease \
+  --target "$ref" \
+  --title "T3 Code ${version}" \
+  --notes "$(release_notes)" \
+  "$asset_dir"/*
+gh release edit "$tag" --draft=false --prerelease

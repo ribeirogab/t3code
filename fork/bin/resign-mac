@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+artifact_dir="$1"
+signing_identity="$2"
+
+manifest_path="$artifact_dir/nightly-mac.yml"
+zip_path="$(find "$artifact_dir" -maxdepth 1 -name '*-arm64.zip' -print -quit)"
+dmg_path="${zip_path%.zip}.dmg"
+work_dir="$(mktemp -d "${TMPDIR:-/tmp}/t3code-resign.XXXXXX")"
+trap 'rm -rf "$work_dir"' EXIT
+
+if [[ -z "$zip_path" || ! -f "$manifest_path" ]]; then
+  echo "Expected an arm64 zip and nightly-mac.yml in ${artifact_dir}." >&2
+  exit 1
+fi
+
+is_mach_o() {
+  file -b "$1" | grep -q 'Mach-O'
+}
+
+sign_path() {
+  codesign --force --sign "$signing_identity" --timestamp=none "$1"
+}
+
+sign_loose_binaries() {
+  local app_path="$1"
+  while IFS= read -r -d '' candidate; do
+    if is_mach_o "$candidate"; then
+      sign_path "$candidate"
+    fi
+  done < <(find "$app_path/Contents" -type f \( -perm -u+x -o -name '*.node' -o -name '*.dylib' -o -name '*.so' \) -print0)
+}
+
+sign_nested_bundles() {
+  local app_path="$1"
+  while IFS= read -r -d '' bundle; do
+    sign_path "$bundle"
+  done < <(find "$app_path/Contents" -depth -type d \( -name '*.framework' -o -name '*.app' -o -name '*.xpc' -o -name '*.appex' \) -print0)
+}
+
+sha512_base64() {
+  openssl dgst -sha512 -binary "$1" | base64 | tr -d '\n'
+}
+
+file_size() {
+  stat -f%z "$1"
+}
+
+create_dmg() {
+  local app_path="$1"
+  local volume_name="$2"
+  local dmg_root="$work_dir/dmg"
+  mkdir -p "$dmg_root"
+  ditto "$app_path" "$dmg_root/$(basename "$app_path")"
+  ln -s /Applications "$dmg_root/Applications"
+  for attempt in 1 2 3; do
+    if hdiutil create -volname "$volume_name" -srcfolder "$dmg_root" -ov -format UDZO "$dmg_path"; then
+      return 0
+    fi
+    echo "hdiutil failed on attempt ${attempt}; retrying." >&2
+    sleep 5
+  done
+  return 1
+}
+
+write_manifest() {
+  local version="$1"
+  local release_date="$2"
+  local zip_name dmg_name zip_sha512
+  zip_name="$(basename "$zip_path")"
+  dmg_name="$(basename "$dmg_path")"
+  zip_sha512="$(sha512_base64 "$zip_path")"
+  cat > "$manifest_path" <<MANIFEST
+version: '${version}'
+files:
+  - url: ${zip_name}
+    sha512: ${zip_sha512}
+    size: $(file_size "$zip_path")
+  - url: ${dmg_name}
+    sha512: $(sha512_base64 "$dmg_path")
+    size: $(file_size "$dmg_path")
+path: ${zip_name}
+sha512: ${zip_sha512}
+releaseDate: ${release_date}
+MANIFEST
+}
+
+version="$(sed -n "s/^version: '*\([^']*\)'*$/\1/p" "$manifest_path")"
+release_date="$(sed -n 's/^releaseDate: //p' "$manifest_path")"
+
+ditto -x -k "$zip_path" "$work_dir/unpacked"
+app_path="$(find "$work_dir/unpacked" -maxdepth 1 -name '*.app' -print -quit)"
+app_name="$(basename "$app_path" .app)"
+
+rm -f "$app_path/Contents/embedded.provisionprofile"
+sign_loose_binaries "$app_path"
+sign_nested_bundles "$app_path"
+sign_path "$app_path"
+codesign --verify --deep --strict --verbose=2 "$app_path"
+
+rm -f "$zip_path" "$dmg_path" "$artifact_dir"/*.blockmap
+ditto -c -k --sequesterRsrc --keepParent "$app_path" "$zip_path"
+create_dmg "$app_path" "${app_name} ${version}"
+write_manifest "$version" "$release_date"
+
+codesign -d -r- "$app_path" 2>&1 | sed -n 's/^designated => //p'
