@@ -2506,6 +2506,7 @@ const make = Effect.gen(function* () {
           // delegations deliver through the blocking tool call, so a wake is
           // only needed if the parent settled first (timeout, disconnect).
           completionWake: input.mode === "wait" ? "settled_only" : "always",
+          ...(input.listed === undefined ? {} : { listed: input.listed }),
         })
         .pipe(
           Effect.mapError((error) =>

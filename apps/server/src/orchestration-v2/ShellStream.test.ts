@@ -178,6 +178,14 @@ describe("omitIdleSubagentShells", () => {
       row("background", "root", {
         pendingBackgroundTasks: [{ kind: "subagent" } as never],
       }),
+      row("listed", "root", {
+        lineage: {
+          parentThreadId: ThreadId.make("root"),
+          relationshipToParent: "subagent",
+          rootThreadId: ThreadId.make("root"),
+          listed: true,
+        },
+      }),
       // Idle, but a woken grandchild walks through it to reach the root's badge.
       row("middle", "root"),
       row("grandchild", "middle"),
@@ -188,6 +196,7 @@ describe("omitIdleSubagentShells", () => {
       "queued",
       "asking",
       "background",
+      "listed",
       "middle",
     ]);
   });

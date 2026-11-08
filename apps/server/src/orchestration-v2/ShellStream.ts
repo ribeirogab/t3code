@@ -33,6 +33,7 @@ import * as Stream from "effect/Stream";
 
 import { bufferLatestLiveStream } from "./LiveStreamBudget.ts";
 import type { ActiveShellIndexEntry } from "./ProjectionStore.ts";
+import { isUnlistedSubagentLineage } from "../fork/threadNesting.ts";
 
 type ShellDelta = Extract<OrchestrationV2ShellStreamItem, { readonly sequence: number }>;
 
@@ -96,9 +97,11 @@ function shellTrimFacts(rows: ReadonlyArray<ShellTrimRow>): ShellTrimFacts {
   const subagentThreadIds = new Set<string>();
   const settledTimes: Array<number> = [];
   for (const row of rows) {
-    if (row.lineage.relationshipToParent === "subagent") {
+    if (row.lineage.relationshipToParent === "subagent" && row.lineage.parentThreadId) {
+      subagentParentIds.add(row.lineage.parentThreadId);
+    }
+    if (isUnlistedSubagentLineage(row.lineage)) {
       subagentThreadIds.add(row.id);
-      if (row.lineage.parentThreadId) subagentParentIds.add(row.lineage.parentThreadId);
     } else if (
       isListedThreadLineage(row.lineage) &&
       row.settledOverride === "settled" &&
@@ -131,8 +134,8 @@ function hiddenChildAncestorIds(
 ) {
   const ancestorIds = new Set<string>();
   for (const thread of threads) {
-    if (isListedThreadLineage(thread.lineage)) continue;
-    if (thread.lineage.parentThreadId !== null) ancestorIds.add(thread.lineage.parentThreadId);
+    if (thread.lineage.parentThreadId === null) continue;
+    ancestorIds.add(thread.lineage.parentThreadId);
     ancestorIds.add(thread.lineage.rootThreadId);
   }
   return ancestorIds;
@@ -144,7 +147,7 @@ function omitIdleSubagentShellsWith(
 ): ReadonlyArray<OrchestrationV2ThreadShell> {
   return threads.filter(
     (thread) =>
-      thread.lineage.relationshipToParent !== "subagent" ||
+      !isUnlistedSubagentLineage(thread.lineage) ||
       isLiveSubagentShell(thread) ||
       facts.subagentParentIds.has(thread.id),
   );
@@ -260,17 +263,21 @@ function shellSubscriberThreadIds(
   const facts = shellTrimFacts(index);
   const subagents = index.filter(
     (entry) =>
-      entry.lineage.relationshipToParent === "subagent" &&
+      isUnlistedSubagentLineage(entry.lineage) &&
       (!options.omitIdleSubagents || entry.mayBeLive || facts.subagentParentIds.has(entry.id)),
   );
   const ancestorIds = hiddenChildAncestorIds([
     ...subagents,
-    ...index.filter((entry) => entry.lineage.sideChat === true),
+    ...index.filter(
+      (entry) =>
+        entry.lineage.sideChat === true ||
+        (entry.lineage.parentThreadId !== null && !isUnlistedSubagentLineage(entry.lineage)),
+    ),
   ]);
   const keptSubagentIds = new Set(subagents.map((entry) => entry.id));
   const beforeMs = facts.olderSettledBeforeMs;
   return index.flatMap((entry) =>
-    entry.lineage.relationshipToParent === "subagent"
+    isUnlistedSubagentLineage(entry.lineage)
       ? keptSubagentIds.has(entry.id)
         ? [entry.id]
         : []

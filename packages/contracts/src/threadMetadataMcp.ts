@@ -40,19 +40,34 @@ const ThreadMetadataClientRequestId = TrimmedNonEmptyString.check(Schema.isMaxLe
   )
   .annotate({ description: "Stable idempotency key to reuse when retrying this mutation." });
 
-export const ThreadMetadataMcpAction = Schema.Literals(["rename", "regenerate_title"]);
+export const ThreadMetadataMcpAction = Schema.Literals([
+  "rename",
+  "regenerate_title",
+  "set_listed",
+]);
 export type ThreadMetadataMcpAction = typeof ThreadMetadataMcpAction.Type;
 
 export const ThreadMetadataMcpUpdateInput = Schema.Struct({
   threadId: Schema.optional(ThreadId),
   action: ThreadMetadataMcpAction,
   title: Schema.optional(ThreadMetadataTitle),
+  listed: Schema.optional(
+    Schema.Boolean.annotate({
+      description:
+        "Required only when action is set_listed. true shows a child thread in the sidebar under its parent; false hides it there.",
+    }),
+  ),
   clientRequestId: Schema.optional(ThreadMetadataClientRequestId),
 }).check(
   Schema.makeFilter((input) =>
     (input.action === "rename") === (input.title !== undefined)
       ? true
-      : "rename requires title; regenerate_title does not accept one.",
+      : "rename requires title; regenerate_title and set_listed do not accept one.",
+  ),
+  Schema.makeFilter((input) =>
+    (input.action === "set_listed") === (input.listed !== undefined)
+      ? true
+      : "set_listed requires listed; rename and regenerate_title do not accept it.",
   ),
 );
 export type ThreadMetadataMcpUpdateInput = typeof ThreadMetadataMcpUpdateInput.Type;

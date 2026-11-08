@@ -192,6 +192,7 @@ import {
 import { planThreadDeletion } from "./ThreadDeletion.ts";
 import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import * as ServerSettings from "../serverSettings.ts";
+import { canSetListed, listedPatch, withListed } from "../fork/threadNesting.ts";
 
 const isMessageQuestionAnswer = Schema.is(
   Schema.Union([TrimmedNonEmptyString, Schema.NonEmptyArray(TrimmedNonEmptyString)]),
@@ -3366,6 +3367,17 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           cause: `Thread ${command.threadId} is no longer empty.`,
         });
     }
+    if (
+      command.type === "thread.metadata.update" &&
+      command.listed !== undefined &&
+      !canSetListed(thread)
+    ) {
+      return yield* new OrchestratorDispatchError({
+        commandId: command.commandId,
+        commandType: command.type,
+        cause: `Thread ${command.threadId} has no parent, so it cannot be hidden from or shown in the sidebar.`,
+      });
+    }
     if (command.type === "thread.archive" && thread.archivedAt !== null) {
       return yield* new OrchestratorDispatchError({
         commandId: command.commandId,
@@ -3689,13 +3701,14 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           return {
             ...thread,
             archivedAt: now,
+            archiveBatchId: command.archiveBatchId ?? null,
             titleRegeneration: null,
             guestShare: null,
             pullRequests: thread.pullRequests?.map((link) => withPullRequestWatch(link, undefined)),
             updatedAt: now,
           };
         case "thread.unarchive":
-          return { ...thread, archivedAt: null, updatedAt: now };
+          return { ...thread, archivedAt: null, archiveBatchId: null, updatedAt: now };
         case "thread.settle": {
           const wasPinned = thread.pinnedAt != null;
           const alreadySettled =
@@ -3842,6 +3855,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
                   };
           return {
             ...thread,
+            ...listedPatch(thread, command.listed),
             ...(command.title === undefined ? {} : { title: command.title }),
             ...(command.limitRecovery === undefined ? {} : { limitRecovery }),
             ...(command.limitRecovery !== undefined &&
@@ -8100,7 +8114,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         driver: targetAdapter.driver,
         providerInstanceId: command.modelSelection.instanceId,
         occurredAt: now,
-        payload: childThread,
+        payload: withListed(childThread, command.listed),
       });
       yield* emitEvent({
         type: "node.updated",

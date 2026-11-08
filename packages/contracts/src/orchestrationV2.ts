@@ -156,12 +156,13 @@ export const OrchestrationV2AppThreadLineage = Schema.Struct({
   relationshipToParent: Schema.NullOr(Schema.Literals(["fork", "subagent"])),
   rootThreadId: ThreadId,
   sideChat: Schema.optional(Schema.Boolean),
+  listed: Schema.optional(Schema.Boolean),
 });
 export type OrchestrationV2AppThreadLineage = typeof OrchestrationV2AppThreadLineage.Type;
 
-/** Subagents and side chats live inside their parent's view, never in thread lists. */
+/** Side chats, and children with `listed` off, live inside their parent's view, never in thread lists. Subagents default to off. */
 export const isListedThreadLineage = (lineage: OrchestrationV2AppThreadLineage): boolean =>
-  lineage.relationshipToParent !== "subagent" && lineage.sideChat !== true;
+  lineage.sideChat !== true && (lineage.listed ?? lineage.relationshipToParent !== "subagent");
 
 export const OrchestrationV2ContextTransferType = Schema.Literals([
   "fork",
@@ -474,6 +475,7 @@ export const OrchestrationV2AppThread = Schema.Struct({
   createdAt: Schema.DateTimeUtc,
   updatedAt: Schema.DateTimeUtc,
   archivedAt: Schema.NullOr(Schema.DateTimeUtc),
+  archiveBatchId: Schema.optional(Schema.NullOr(CommandId)),
   settledOverride: Schema.NullOr(Schema.Literals(["settled", "active"])).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
@@ -2137,6 +2139,7 @@ export const OrchestrationV2ThreadShell = Schema.Struct({
   createdAt: Schema.DateTimeUtc,
   updatedAt: Schema.DateTimeUtc,
   archivedAt: Schema.NullOr(Schema.DateTimeUtc),
+  archiveBatchId: Schema.optional(Schema.NullOr(CommandId)),
   settledOverride: Schema.NullOr(Schema.Literals(["settled", "active"])),
   settledAt: Schema.NullOr(Schema.DateTimeUtc),
   unsettledAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtc)),
@@ -2948,6 +2951,7 @@ export const OrchestrationV2Command = Schema.Union([
     type: Schema.Literal("thread.archive"),
     commandId: CommandId,
     threadId: ThreadId,
+    archiveBatchId: Schema.optional(CommandId),
   }),
   Schema.Struct({
     type: Schema.Literal("thread.guest-share.close"),
@@ -3071,6 +3075,7 @@ export const OrchestrationV2Command = Schema.Union([
     limitRecovery: Schema.optional(Schema.NullOr(OrchestrationV2LimitRecoveryUpdate)),
     /** Link (object) or unlink (null) a pull request; absent leaves it unchanged. */
     linkedPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
+    listed: Schema.optional(Schema.Boolean),
   }),
   Schema.Struct({
     type: Schema.Literal("thread.pull-request.link"),
@@ -3348,6 +3353,7 @@ export const OrchestrationV2Command = Schema.Union([
     // Defaults to settled_only; fire-and-forget wakes require always.
     completionWake: Schema.optional(Schema.Literals(["always", "settled_only"])),
     createdAt: Schema.optional(Schema.DateTimeUtc),
+    listed: Schema.optional(Schema.Boolean),
   }),
   Schema.Struct({
     type: Schema.Literal("delegated_task.wake-policy"),
