@@ -2,14 +2,27 @@
 
 Personal fork of [pingdotgg/t3code](https://github.com/pingdotgg/t3code). The `custom` branch is the latest upstream nightly tag plus the fork commits on top.
 
-Fork-owned files: `.github/workflows/fork-release.yml` and `fork/`. Everything else is upstream.
+Fork-owned files: `.github/workflows/fork-release.yml`, `.claude/rules/fork.md`, `fork/`, and `apps/web/src/fork/`. Everything else is upstream.
 
 ## Add a change
 
-1. `git switch custom && git pull --rebase origin custom`
+Every change goes through a pull request into `custom`. Do not commit or push to `custom` directly.
+
+1. `git fetch origin && git switch -c fork/<change> origin/custom`
 2. Put new code in new files. In upstream files, change as few lines as possible, for example one import and one call. Each changed upstream line can conflict on a rebase.
-3. Make one commit per change, with the message `fork: <change>`.
-4. `git push origin custom`. The workflow builds and publishes a release.
+3. Run the typecheck, the lint, the format check, and the tests of the area you changed.
+4. Push the branch and open a pull request into `custom` with the title `fork: <change>`.
+5. Wait for the owner to approve.
+6. Rebase the branch onto the latest `custom` and squash merge it:
+
+   ```sh
+   git fetch origin && git rebase origin/custom && git push --force-with-lease
+   gh pr merge <number> --squash --delete-branch
+   ```
+
+   The hourly rebase rewrites `custom`, so rebase the branch right before the merge. Git drops the old copies of the fork commits. The squash keeps one `fork: <change>` commit per change.
+
+7. The merge pushes to `custom`, and the workflow builds and publishes a release.
 
 ## Release flow
 
@@ -56,9 +69,9 @@ git push --force-with-lease origin custom
 
 ## Secrets
 
-| Secret | Use |
-| --- | --- |
-| `FORK_DEPLOY_KEY` | Deploy key with write access. It pushes the rebased branch, because `GITHUB_TOKEN` cannot push workflow file changes. |
-| `FORK_MAC_CERT_P12`, `FORK_MAC_CERT_PASSWORD` | Self-signed code signing certificate `T3 Code Fork (ribeirogab)`. A copy is in the login keychain of the Mac. |
+| Secret                                        | Use                                                                                                                   |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `FORK_DEPLOY_KEY`                             | Deploy key with write access. It pushes the rebased branch, because `GITHUB_TOKEN` cannot push workflow file changes. |
+| `FORK_MAC_CERT_P12`, `FORK_MAC_CERT_PASSWORD` | Self-signed code signing certificate `T3 Code Fork (ribeirogab)`. A copy is in the login keychain of the Mac.         |
 
 Keep the same certificate. macOS keeps app permissions, and the app accepts an update, only while the signing certificate stays the same.
