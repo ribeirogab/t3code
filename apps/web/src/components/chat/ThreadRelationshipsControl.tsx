@@ -62,6 +62,7 @@ import { useRef, useState, type ReactNode } from "react";
 import type { MessageResolver } from "~/i18n/messages";
 
 import { useArchivedThreadSnapshots } from "../../lib/archivedThreadsState";
+import { withoutArchivedAgentRows } from "~/fork/archivedAgentRows";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import type { SideThreadOpenIntent } from "@t3tools/client-runtime/side-thread";
 import { useLinkedThreadOpener } from "../../state/linkedThreadView";
@@ -621,13 +622,14 @@ export function ThreadRelationshipsPanel(props: {
       Object.hasOwn(resolvedThreadTitles, threadId),
   );
   const canDetach = projection ? canDetachThreadProviderSession(projection) : false;
+  const liveRelationships = withoutArchivedAgentRows(visibleRelationships, graph, props.threadId);
 
   const {
     related = [],
     active = [],
     previous = [],
     sideChats = [],
-  } = groupBy(visibleRelationships, ({ threadId, edge }) => {
+  } = groupBy(liveRelationships, ({ threadId, edge }) => {
     const isParent = isParentThreadRelationship(edge, props.threadId);
     if (!isParent && graph.nodes.get(threadId)?.thread?.lineage.sideChat === true)
       return "sideChats";
