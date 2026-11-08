@@ -245,8 +245,12 @@ type DelegateTaskInput = {
   clientRequestId?: string;
   runtimeMode?: "inherit" | "approval-required" | "auto-accept-edits" | "full-access";
   interactionMode?: "inherit" | "plan" | "default";
+  listed?: boolean;
 };
 ```
+
+`listed: true` gives the child a sidebar row under its parent. Children are
+hidden by default.
 
 Provider, model, runtime mode, and interaction mode inherit from the parent
 when omitted. A driver-only target inherits the parent's provider instance
@@ -425,8 +429,9 @@ runs, background wakes, and delegated completions keep it snoozed.
 ### `t3_thread_update`
 
 Updates metadata for the calling thread or any other thread in the environment.
-The typed actions are `rename`, `regenerate_title`, `link_pull_request`, and
-`unlink_pull_request`. A link input supplies the repository, number, and URL;
+The typed actions are `rename`, `regenerate_title`, `set_listed`,
+`link_pull_request`, and `unlink_pull_request`. `set_listed` shows or hides a
+child thread in the sidebar; a thread without a parent is always listed. A link input supplies the repository, number, and URL;
 the server records the target thread's project ID. Branch and workspace changes
 are outside this tool.
 
