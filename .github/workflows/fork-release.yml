@@ -56,7 +56,6 @@ jobs:
             /fork/
             /.env.example
           sparse-checkout-cone-mode: false
-          persist-credentials: false
 
       - name: Disable upstream workflows
         run: |
@@ -84,7 +83,6 @@ jobs:
             /*
             !/.repos/
           sparse-checkout-cone-mode: false
-          persist-credentials: false
 
       - name: Rebase onto the upstream nightly
         id: rebase
@@ -146,7 +144,6 @@ jobs:
             /*
             !/.repos/
           sparse-checkout-cone-mode: false
-          persist-credentials: false
 
       - name: Setup dependencies
         uses: ./.github/actions/setup-ci-deps
@@ -232,7 +229,6 @@ jobs:
           sparse-checkout: |
             /fork/
           sparse-checkout-cone-mode: false
-          persist-credentials: false
 
       - name: Download macOS build
         uses: actions/download-artifact@v8
@@ -295,7 +291,6 @@ jobs:
           sparse-checkout: |
             /fork/
           sparse-checkout-cone-mode: false
-          persist-credentials: false
 
       - name: Download signed macOS build
         uses: actions/download-artifact@v8
