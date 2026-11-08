@@ -59,6 +59,7 @@ import {
 import { useRef, useState, type ReactNode } from "react";
 
 import { useArchivedThreadSnapshots } from "../../lib/archivedThreadsState";
+import { withoutArchivedAgentRows } from "~/fork/archivedAgentRows";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import {
   useProjects,
@@ -538,13 +539,14 @@ export function ThreadRelationshipsPanel(props: {
       Object.hasOwn(resolvedThreadTitles, threadId),
   );
   const canDetach = projection ? canDetachThreadProviderSession(projection) : false;
+  const liveRelationships = withoutArchivedAgentRows(visibleRelationships, graph, props.threadId);
 
   const {
     related = [],
     active = [],
     previous = [],
     sideChats = [],
-  } = groupBy(visibleRelationships, ({ threadId, edge }) => {
+  } = groupBy(liveRelationships, ({ threadId, edge }) => {
     const isParent = isParentThreadRelationship(edge, props.threadId);
     if (!isParent && graph.nodes.get(threadId)?.thread?.lineage.sideChat === true)
       return "sideChats";
