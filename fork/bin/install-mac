@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+fork_repository="ribeirogab/t3code"
+app_name="T3 Code (Nightly)"
+app_path="/Applications/${app_name}.app"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+latest_fork_tag() {
+  gh release list --repo "$fork_repository" --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName'
+}
+
+tag="${1:-$(latest_fork_tag)}"
+staging_dir="$(mktemp -d "${TMPDIR:-/tmp}/t3code-fork-install.XXXXXX")"
+log_path="${staging_dir}/swap.log"
+
+gh release download "$tag" --repo "$fork_repository" --pattern '*-arm64.zip' --dir "$staging_dir"
+ditto -x -k "$staging_dir"/*-arm64.zip "$staging_dir/app"
+new_app="${staging_dir}/app/${app_name}.app"
+codesign --verify --deep --strict "$new_app"
+xattr -dr com.apple.quarantine "$new_app" 2> /dev/null || true
+
+cp "$script_dir/swap-mac-app" "$staging_dir/swap-mac-app"
+(
+  perl -MPOSIX -e 'POSIX::setsid() or die "setsid: $!"; exec @ARGV or die "exec: $!"' \
+    /bin/bash "$staging_dir/swap-mac-app" "$app_name" "$new_app" "$app_path" "$staging_dir" \
+    < /dev/null > "$log_path" 2>&1 &
+)
+
+echo "Installing ${tag}. ${app_name} restarts in a few seconds. Log: ${log_path}"
