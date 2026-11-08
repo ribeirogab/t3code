@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+base_tag="$1"
+branch_sha="$2"
+fork_repository="$3"
+fork_branch="$4"
+
+upstream_repository="${UPSTREAM_REPOSITORY:-pingdotgg/t3code}"
+rebase_log="${RUNNER_TEMP:-/tmp}/fork-rebase.log"
+
+push_branch() {
+  local key_path="${RUNNER_TEMP:-/tmp}/fork_deploy_key"
+  install -m 600 /dev/null "$key_path"
+  printf '%s\n' "$FORK_DEPLOY_KEY" > "$key_path"
+  GIT_SSH_COMMAND="ssh -i ${key_path} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+    git push \
+      --force-with-lease="refs/heads/${fork_branch}:${branch_sha}" \
+      "git@github.com:${fork_repository}.git" \
+      "HEAD:refs/heads/${fork_branch}" >&2
+  rm -f "$key_path"
+}
+
+git config user.name "github-actions[bot]"
+git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+git fetch --no-tags "https://github.com/${upstream_repository}.git" "+refs/tags/${base_tag}:refs/tags/${base_tag}" >&2
+
+if ! git rebase "$base_tag" > "$rebase_log" 2>&1; then
+  cat "$rebase_log" >&2
+  conflicts="$(git diff --name-only --diff-filter=U | paste -sd, -)"
+  git rebase --abort
+  printf 'result=conflict\n'
+  printf 'conflicts=%s\n' "$conflicts"
+  exit 0
+fi
+
+push_branch
+printf 'result=rebased\n'
+printf 'ref=%s\n' "$(git rev-parse HEAD)"
