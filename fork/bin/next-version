@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+base_tag="$1"
+fork_remote="${2:-origin}"
+
+escaped_base_tag="${base_tag//./\\.}"
+
+last_revision="$(
+  git ls-remote --tags --refs "$fork_remote" "${base_tag}*" \
+    | sed -n "s#.*refs/tags/${escaped_base_tag}\([0-9]\{3\}\)\$#\1#p" \
+    | sort -n \
+    | tail -n 1
+)"
+
+next_revision=$((10#${last_revision:-000} + 1))
+
+if ((next_revision > 999)); then
+  echo "No fork revision left for ${base_tag}." >&2
+  exit 1
+fi
+
+printf '%s%03d\n' "${base_tag#v}" "$next_revision"

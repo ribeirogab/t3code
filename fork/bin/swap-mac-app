@@ -1,0 +1,47 @@
+#!/bin/bash
+set -euo pipefail
+
+app_name="$1"
+new_app="$2"
+app_path="$3"
+staging_dir="$4"
+
+quit_timeout_seconds=180
+previous_app="${app_path%.app}.previous.app"
+
+app_is_running() {
+  [[ "$(osascript -e "application \"${app_name}\" is running")" == "true" ]]
+}
+
+notify() {
+  osascript -e "display notification \"$1\" with title \"T3 Code fork\"" || true
+}
+
+wait_for_quit() {
+  local waited=0
+  while app_is_running; do
+    if ((waited >= quit_timeout_seconds)); then
+      return 1
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+}
+
+sleep 2
+osascript -e "tell application \"${app_name}\" to quit" || true
+
+if ! wait_for_quit; then
+  notify "Install stopped: ${app_name} did not quit."
+  exit 1
+fi
+
+rm -rf "$previous_app"
+if [[ -d "$app_path" ]]; then
+  mv "$app_path" "$previous_app"
+fi
+mv "$new_app" "$app_path"
+open "$app_path"
+rm -rf "$previous_app"
+rm -rf "$staging_dir/app" "$staging_dir"/*.zip
+echo "Installed $(defaults read "${app_path}/Contents/Info.plist" CFBundleShortVersionString)."

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+fork_branch="custom"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+  echo "Commit or stash your changes first." >&2
+  exit 1
+fi
+
+base_tag="${1:-$("$script_dir/latest-upstream-nightly")}"
+
+git fetch origin "$fork_branch"
+git fetch --no-tags upstream "+refs/tags/${base_tag}:refs/tags/${base_tag}"
+git switch "$fork_branch"
+git pull --rebase origin "$fork_branch"
+
+if ! git rebase "$base_tag"; then
+  echo >&2
+  echo "Resolve the conflicts, then run:" >&2
+  echo "  git rebase --continue && git push --force-with-lease origin ${fork_branch}" >&2
+  exit 1
+fi
+
+git push --force-with-lease origin "$fork_branch"
