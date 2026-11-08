@@ -1,20 +1,52 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-version="${1#v}"
-release_base_url="https://github.com/ribeirogab/t3code/releases/download"
+source_name="${1:-}"
+version="${2:-}"
+version="${version#v}"
+fork_release_base_url="https://github.com/ribeirogab/t3code/releases/download"
 service_env="${T3CODE_HOME:-$HOME/.t3}/service.env"
 t3_bin="$HOME/.local/bin/t3"
+previous_service_env="$(mktemp)"
+trap 'rm -f "$previous_service_env"' EXIT
 
-set_release_base_url() {
-  touch "$service_env"
-  if grep -q '^T3CODE_RELEASE_BASE_URL=' "$service_env"; then
-    sed -i.bak "s#^T3CODE_RELEASE_BASE_URL=.*#T3CODE_RELEASE_BASE_URL=${release_base_url}#" "$service_env"
-    rm -f "${service_env}.bak"
-  else
-    printf 'T3CODE_RELEASE_BASE_URL=%s\n' "$release_base_url" >> "$service_env"
-  fi
+remove_release_base_url() {
+  sed -i.bak '/^T3CODE_RELEASE_BASE_URL=/d' "$service_env"
+  rm -f "${service_env}.bak"
 }
 
-set_release_base_url
-T3CODE_RELEASE_BASE_URL="$release_base_url" "$t3_bin" update "$version" --yes
+use_fork_releases() {
+  remove_release_base_url
+  printf 'T3CODE_RELEASE_BASE_URL=%s\n' "$fork_release_base_url" >> "$service_env"
+}
+
+update_to_fork() {
+  T3CODE_RELEASE_BASE_URL="$fork_release_base_url" "$t3_bin" update "$version" --yes --allow-downgrade < /dev/null
+}
+
+update_to_official() {
+  env -u T3CODE_RELEASE_BASE_URL "$t3_bin" update "$version" --yes --allow-downgrade < /dev/null
+}
+
+restore_service_env() {
+  cp "$previous_service_env" "$service_env"
+  echo "Update failed. ${service_env} is back to its previous content." >&2
+  exit 1
+}
+
+if [[ "$source_name" != "fork" && "$source_name" != "official" ]] || [[ -z "$version" ]]; then
+  echo "Usage: install-server <fork|official> <version>" >&2
+  exit 2
+fi
+
+mkdir -p "$(dirname "$service_env")"
+touch "$service_env"
+cp "$service_env" "$previous_service_env"
+
+if [[ "$source_name" == "fork" ]]; then
+  use_fork_releases
+  update_to_fork || restore_service_env
+else
+  remove_release_base_url
+  update_to_official || restore_service_env
+fi
