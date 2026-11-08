@@ -118,6 +118,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { MiddleTruncate } from "../ui/middle-truncate";
 import { useThreadHasUnsentDraft } from "../../composerDraftStore";
 import { hasTitleFirstProjectLabel, TitleFirstProjectLabel } from "~/fork/TitleFirstProjectLabel";
+import { useSidebarCardDisplay } from "~/fork/sidebarCardDisplay";
 
 // The fields thread rows show. Provider status pushes refresh `checkedAt`,
 // status and auth on every provider; leaving those out keeps each
@@ -806,6 +807,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
 
   const isRemote = thread.environmentId !== props.currentEnvironmentId;
   const showsScratchMachine = !thread.branch && props.scratchMachineLabel !== null;
+  const cardDisplay = useSidebarCardDisplay();
+  const showsBranch = Boolean(thread.branch) && cardDisplay.branch;
+  const showsMachineLabel = showsScratchMachine && cardDisplay.machine;
 
   const detailsTooltip = (
     <SidebarThreadTooltip
@@ -1058,7 +1062,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
     if (!props.isRouteThread) onThreadActivate(threadRef);
   };
   const prBadge =
-    prBadgeShape?.kind === "stack" || pr || currentLinkedPr ? (
+    cardDisplay.pullRequest && (prBadgeShape?.kind === "stack" || pr || currentLinkedPr) ? (
       <ThreadPullRequestBadgeControl
         render={<InlineButton />}
         badge={prBadgeShape}
@@ -1070,13 +1074,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
         onOpenPullRequest={handlePrClick}
       />
     ) : null;
-  const terminalStatusIcon = (
+  const terminalStatusIcon = cardDisplay.terminal ? (
     <ThreadTerminalStatusButton
       threadRef={threadRef}
       terminalIds={runningTerminalIds}
       onThreadActivate={onThreadActivate}
     />
-  );
+  ) : null;
   const draftIndicator = hasUnsentDraft ? (
     <Tooltip>
       <TooltipTrigger
@@ -1130,28 +1134,36 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
   ) : null;
 
   const remoteMachineIcon =
-    isRemote && !showsScratchMachine ? (
+    isRemote && !showsScratchMachine && cardDisplay.machine ? (
       <span className="inline-flex shrink-0 items-center text-sidebar-muted-foreground/70">
         <EnvironmentMachineIcon aria-hidden kind={props.environmentMachine} className="size-3.5" />
       </span>
     ) : null;
-  const diff = latestRunDiff(thread);
+  const providerStack = cardDisplay.model ? (
+    <SidebarProviderStack
+      thread={thread}
+      providerEntryByInstanceId={props.providerEntryByInstanceId}
+    />
+  ) : null;
+  const diff = cardDisplay.diff ? latestRunDiff(thread) : null;
   const cardProjectLabel =
-    variant === "card" && hasTitleFirstProjectLabel(props.project, props.projectDisplayName) ? (
+    variant === "card" &&
+    cardDisplay.project &&
+    hasTitleFirstProjectLabel(props.project, props.projectDisplayName) ? (
       <TitleFirstProjectLabel
         project={props.project}
         projectDisplayName={props.projectDisplayName}
-        separated={Boolean(thread.branch) || showsScratchMachine}
+        separated={showsBranch || showsMachineLabel}
       />
     ) : null;
   // Only the trailing icons would remain, so the row moves them to the title line instead.
   const metaLineEmpty =
     cardProjectLabel === null &&
-    !thread.branch &&
-    !showsScratchMachine &&
+    !showsBranch &&
+    !showsMachineLabel &&
     prBadge === null &&
     diff === null &&
-    runningTerminalIds.length === 0;
+    (terminalStatusIcon === null || runningTerminalIds.length === 0);
   const metaLine = metaLineEmpty ? null : (
     <div
       className={cn(
@@ -1160,14 +1172,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       )}
     >
       {cardProjectLabel}
-      {thread.branch ? (
+      {showsBranch && thread.branch ? (
         <>
           <ThreadWorktreeIndicator thread={thread} />
           <span className="flex min-w-0 flex-1">
             <MiddleTruncate value={thread.branch} showTitle={false} />
           </span>
         </>
-      ) : showsScratchMachine ? (
+      ) : showsMachineLabel ? (
         <>
           <EnvironmentMachineIcon
             aria-hidden
@@ -1192,22 +1204,17 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
         className="pointer-events-none ml-auto inline-flex shrink-0 items-center gap-1"
       >
         {remoteMachineIcon}
-        <SidebarProviderStack
-          thread={thread}
-          providerEntryByInstanceId={props.providerEntryByInstanceId}
-        />
+        {providerStack}
       </span>
     </div>
   );
-  const titleLineIcons = metaLineEmpty ? (
-    <span aria-hidden className="inline-flex shrink-0 items-center gap-1">
-      {remoteMachineIcon}
-      <SidebarProviderStack
-        thread={thread}
-        providerEntryByInstanceId={props.providerEntryByInstanceId}
-      />
-    </span>
-  ) : null;
+  const titleLineIcons =
+    metaLineEmpty && (remoteMachineIcon !== null || providerStack !== null) ? (
+      <span aria-hidden className="inline-flex shrink-0 items-center gap-1">
+        {remoteMachineIcon}
+        {providerStack}
+      </span>
+    ) : null;
 
   if (variant !== "card") {
     const multiline = variant === "folder-multiline";
