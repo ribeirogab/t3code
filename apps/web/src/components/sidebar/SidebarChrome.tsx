@@ -41,6 +41,7 @@ import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { observeResize } from "~/lib/observeResize";
+import { FORK_PILL_VARIANT, forkPillLabel } from "~/fork/forkPill";
 
 export const SidebarChromeHeader = memo(function SidebarChromeHeader({
   isElectron,
@@ -85,8 +86,8 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
         </div>
         {pillLabel ? (
           <div className="ml-1 flex h-7 items-center">
-            <Badge data-environment-identification="pill" size="sm" variant="secondary">
-              {pillLabel}
+            <Badge data-environment-identification="pill" size="sm" variant={FORK_PILL_VARIANT}>
+              {forkPillLabel(pillLabel)}
             </Badge>
           </div>
         ) : null}
