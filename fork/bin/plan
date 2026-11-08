@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+fork_repository="$1"
+fork_branch="$2"
+force_rebuild="${3:-false}"
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+upstream_repository="${UPSTREAM_REPOSITORY:-pingdotgg/t3code}"
+
+base_tag="$("$script_dir/latest-upstream-nightly")"
+base_sha="$(gh api "repos/${upstream_repository}/commits/${base_tag}" --jq '.sha')"
+branch_sha="$(gh api "repos/${fork_repository}/commits/${fork_branch}" --jq '.sha')"
+comparison="$(gh api "repos/${fork_repository}/compare/${base_sha}...${branch_sha}" --jq '.status')"
+
+released_tag="$(
+  git ls-remote --tags --refs "https://github.com/${fork_repository}.git" \
+    | awk -v sha="$branch_sha" '$1 == sha { sub("refs/tags/", "", $2); print $2 }' \
+    | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-nightly\.[0-9]{8}\.[0-9]+$' \
+    | head -n 1 \
+    || true
+)"
+
+action="build"
+if [[ "$comparison" != "ahead" && "$comparison" != "identical" ]]; then
+  action="rebase"
+elif [[ -n "$released_tag" && "$force_rebuild" != "true" ]]; then
+  action="skip"
+fi
+
+printf 'action=%s\n' "$action"
+printf 'base_tag=%s\n' "$base_tag"
+printf 'base_sha=%s\n' "$base_sha"
+printf 'branch_sha=%s\n' "$branch_sha"
+printf 'released_tag=%s\n' "$released_tag"
