@@ -76,6 +76,7 @@ The server automatically links open PRs matching an unsettled thread's branch. O
 - **Subagents**: Follow delegated work from the conversation card or **Agents**. Stopping a parent thread also stops its delegated subagents. Subagents started internally by the provider are read-only; message the parent thread instead.
 - **Running dev servers** (web/desktop): The thread details card lists local servers started by the thread's terminals or Claude agent with their ports. Click one to open it in the browser panel, or **Stop** to end it (macOS/Linux only).
 - **Customize thread details**: Right-click the thread details card or open **Settings → Appearance → Thread details** to show/hide rows.
+- **Nested threads**: Forks, and subagents you ask the agent to run apart, show nested under their parent. The count next to a parent minimizes or shows its branch. Hide a nested thread from its menu; show or hide a child from the thread details card. Archiving or deleting a parent asks whether to include its nested threads; unarchive brings the whole batch back.
 
 ## Open a thread beside the one you are in
 

@@ -2047,6 +2047,9 @@ export function threadShellFromProjection(
     createdAt: projection.thread.createdAt,
     updatedAt: projection.thread.updatedAt,
     archivedAt: projection.thread.archivedAt,
+    ...(projection.thread.archiveBatchId == null
+      ? {}
+      : { archiveBatchId: projection.thread.archiveBatchId }),
     settledOverride: projection.thread.settledOverride,
     settledAt: projection.thread.settledAt,
     unsettledAt: projection.thread.unsettledAt ?? null,
@@ -2352,6 +2355,9 @@ function shellFromState(input: {
     createdAt: input.state.thread.createdAt,
     updatedAt: input.state.updatedAt,
     archivedAt: input.state.thread.archivedAt,
+    ...(input.state.thread.archiveBatchId == null
+      ? {}
+      : { archiveBatchId: input.state.thread.archiveBatchId }),
     settledOverride: input.state.thread.settledOverride,
     settledAt: input.state.thread.settledAt,
     unsettledAt: input.state.thread.unsettledAt ?? null,
@@ -8716,8 +8722,11 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, ProjectionStoreService
             ) AND blocked.status = 'failed'
             WHERE ${includeDeleted ? sql`1 = 1` : sql`t.deleted_at IS NULL`}${
               listedOnly
-                ? sql` AND json_extract(t.payload_json, '$.lineage.relationshipToParent') IS NOT 'subagent'
-                    AND json_extract(t.payload_json, '$.lineage.sideChat') IS NOT 1`
+                ? sql` AND json_extract(t.payload_json, '$.lineage.sideChat') IS NOT 1
+                    AND COALESCE(
+                      json_extract(t.payload_json, '$.lineage.listed'),
+                      json_extract(t.payload_json, '$.lineage.relationshipToParent') IS NOT 'subagent'
+                    ) = 1`
                 : sql``
             }${threadId === undefined ? sql`` : sql` AND t.thread_id = ${threadId}`}${
               projectId === undefined ? sql`` : sql` AND t.project_id = ${projectId}`
@@ -9757,6 +9766,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, ProjectionStoreService
         readonly parent_thread_id: string | null;
         readonly root_thread_id: string;
         readonly side_chat: number | null;
+        readonly listed: number | null;
         readonly settled_override: string | null;
         readonly settled_at: string | null;
         readonly pinned_at: string | null;
@@ -9772,6 +9782,8 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, ProjectionStoreService
           ${indexedField("$.lineage.parentThreadId")} AS parent_thread_id,
           ${indexedField("$.lineage.rootThreadId")} AS root_thread_id,
           ${indexedField("$.lineage.sideChat")} AS side_chat,
+          CASE WHEN ${indexedField("$.lineage.parentThreadId")} IS NOT NULL
+            THEN ${indexedField("$.lineage.listed")} END AS listed,
           ${indexedField("$.settledOverride")} AS settled_override,
           ${indexedField("$.settledAt")} AS settled_at,
           ${indexedField("$.pinnedAt")} AS pinned_at,
@@ -9832,7 +9844,10 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, ProjectionStoreService
       return rows.map((row): ActiveShellIndexEntry => ({
         id: ThreadId.make(row.thread_id),
         projectId: ProjectId.make(row.project_id),
-        lineage: shellIndexLineage(row),
+        lineage: {
+          ...shellIndexLineage(row),
+          ...(row.listed === null ? {} : { listed: row.listed === 1 }),
+        },
         settledOverride:
           row.settled_override === "settled" || row.settled_override === "active"
             ? row.settled_override
@@ -9965,8 +9980,11 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, ProjectionStoreService
         FROM orchestration_v2_projection_threads t
         WHERE t.deleted_at IS NULL
           AND t.archived_at IS NULL
-          AND json_extract(t.payload_json, '$.lineage.relationshipToParent') IS NOT 'subagent'
           AND json_extract(t.payload_json, '$.lineage.sideChat') IS NOT 1
+          AND COALESCE(
+            json_extract(t.payload_json, '$.lineage.listed'),
+            json_extract(t.payload_json, '$.lineage.relationshipToParent') IS NOT 'subagent'
+          ) = 1
           AND json_extract(t.payload_json, '$.settledOverride') = 'settled'
           AND json_extract(t.payload_json, '$.settledAt') IS NOT NULL${
             projectIds === undefined ? sql`` : sql` AND t.project_id IN ${sql.in(projectIds)}`
