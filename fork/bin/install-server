@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+version="${1#v}"
+release_base_url="https://github.com/ribeirogab/t3code/releases/download"
+service_env="${T3CODE_HOME:-$HOME/.t3}/service.env"
+t3_bin="$HOME/.local/bin/t3"
+
+set_release_base_url() {
+  touch "$service_env"
+  if grep -q '^T3CODE_RELEASE_BASE_URL=' "$service_env"; then
+    sed -i.bak "s#^T3CODE_RELEASE_BASE_URL=.*#T3CODE_RELEASE_BASE_URL=${release_base_url}#" "$service_env"
+    rm -f "${service_env}.bak"
+  else
+    printf 'T3CODE_RELEASE_BASE_URL=%s\n' "$release_base_url" >> "$service_env"
+  fi
+}
+
+set_release_base_url
+T3CODE_RELEASE_BASE_URL="$release_base_url" "$t3_bin" update "$version" --yes
