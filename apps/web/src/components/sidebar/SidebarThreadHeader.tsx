@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import { cn } from "~/lib/utils";
+import { SIDEBAR_CARD_DISPLAY_LABEL, SidebarCardDisplayMenu } from "~/fork/SidebarCardDisplayMenu";
 import { Button } from "../ui/button";
 import { SidebarInput, SidebarMenuButton } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -97,6 +98,9 @@ export function SidebarThreadHeader({
         ) : null}
       </div>
       <div className="flex shrink-0 items-center">
+        <SidebarCardDisplayMenu
+          trigger={<SidebarHeaderIconButton label={SIDEBAR_CARD_DISPLAY_LABEL} />}
+        />
         {hasProjects ? (
           <>
             {projectScope}
