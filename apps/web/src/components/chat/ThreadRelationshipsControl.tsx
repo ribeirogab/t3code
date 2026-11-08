@@ -93,6 +93,7 @@ import { openSideThread, resolveThreadOpenRoute } from "../../lib/sideChatPane";
 
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { canToggleThreadListed, ThreadListedToggle } from "../../fork/ThreadListedToggle";
 import { toastManager } from "../ui/toast";
 import { Spinner } from "../ui/spinner";
 import { cn } from "~/lib/utils";
@@ -847,7 +848,9 @@ export function ThreadRelationshipsPanel(props: {
       workflowGroup?.workflow.status === "running" &&
       agent?.origin === "provider_native" &&
       providerDriver === "claudeAgent";
-    const trailingVisibilityClass = (workflowGroup ? canStopWorkflow : canStop)
+    const canToggleListed =
+      !canStop && !isMergeTarget && canToggleThreadListed(node?.thread, isParent);
+    const trailingVisibilityClass = (workflowGroup ? canStopWorkflow : canStop || canToggleListed)
       ? "group-hover:opacity-0 group-focus-within:opacity-0 pointer-coarse:opacity-0 [@media(hover:none)]:opacity-0"
       : "";
     const project = projects.find((project) => project.id === node?.thread?.projectId);
@@ -1041,6 +1044,13 @@ export function ThreadRelationshipsPanel(props: {
               </TooltipPopup>
             </Tooltip>
           </div>
+        ) : null}
+        {canToggleListed && node?.thread ? (
+          <ThreadListedToggle
+            environmentId={props.environmentId}
+            thread={node.thread}
+            threadTitle={threadTitle}
+          />
         ) : null}
       </li>
     );

@@ -23,6 +23,7 @@ export type ThreadActionMenuId =
   | "rename"
   | "regenerate-title"
   | "mark-unread"
+  | "hide-from-sidebar"
   | "share-guest"
   | "copy"
   | "copy-path"
@@ -125,6 +126,7 @@ export interface ThreadActionMenuState {
   readonly canShareWithGuest?: boolean;
   /** A No project thread with its own folder, on a server that can promote it. */
   readonly canTurnIntoProject?: boolean;
+  readonly canHideFromSidebar?: boolean;
 }
 
 /** Local navigation, read markers, and copying remain available to read-only clients. */
@@ -223,6 +225,9 @@ export function buildThreadActionMenuItems(
       : []),
     ...(state.hasCompletedRun && !state.isRunning
       ? [{ id: "mark-unread" as const, label: resolve(msg("Mark unread")), icon: "mail-open" }]
+      : []),
+    ...(state.canHideFromSidebar
+      ? [{ id: "hide-from-sidebar" as const, label: "Hide from sidebar" }]
       : []),
     ...(state.canShareWithGuest
       ? [{ id: "share-guest" as const, label: resolve(msg("Share with guest")), icon: "user-plus" }]

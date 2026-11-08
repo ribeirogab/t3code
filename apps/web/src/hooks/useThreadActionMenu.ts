@@ -51,6 +51,8 @@ import { useCopyToClipboard } from "./useCopyToClipboard";
 import { useNewThreadHandler } from "./useHandleNewThread";
 import { useClientSettings } from "./useSettings";
 import { canTurnThreadIntoProject, useThreadActions } from "./useThreadActions";
+import { chooseNestedRemoval } from "../fork/NestedThreadsDialog";
+import { removeWithNested } from "../fork/nestedThreadRemoval";
 
 function failureToast(title: string, error: unknown) {
   toastManager.add(
@@ -319,18 +321,27 @@ export function useThreadActionMenu(input: {
           copyThreadIdToClipboard(thread.id, { threadId: thread.id });
           return;
         case "archive": {
-          if (confirmThreadArchive) {
+          const nested = await chooseNestedRemoval({
+            action: "archive",
+            threadRef,
+            title: thread.title,
+          });
+          if (nested.choice === "cancel") return;
+          if (confirmThreadArchive && nested.choice === "none") {
             const confirmed = await settlePromise(() =>
               api.dialogs.confirm(m(msg('Archive thread "{title}"?', { title: thread.title }))),
             );
             if (confirmed._tag === "Failure" || !confirmed.value) return;
           }
           let didArchive = false;
-          const result = await archiveThread(threadRef, {
-            onArchived: () => {
-              didArchive = true;
-            },
-          });
+          const result = await removeWithNested(nested, threadRef, (ref, batch) =>
+            archiveThread(ref, {
+              ...batch,
+              onArchived: () => {
+                didArchive = true;
+              },
+            }),
+          );
           if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
             failureToast(
               didArchive
@@ -342,7 +353,13 @@ export function useThreadActionMenu(input: {
           return;
         }
         case "delete": {
-          if (confirmThreadDelete) {
+          const nested = await chooseNestedRemoval({
+            action: "delete",
+            threadRef,
+            title: thread.title,
+          });
+          if (nested.choice === "cancel") return;
+          if (confirmThreadDelete && nested.choice === "none") {
             const confirmed = await settlePromise(() =>
               api.dialogs.confirm(
                 [
@@ -354,7 +371,7 @@ export function useThreadActionMenu(input: {
             );
             if (confirmed._tag === "Failure" || !confirmed.value) return;
           }
-          const deleted = await deleteThread(threadRef);
+          const deleted = await removeWithNested(nested, threadRef, deleteThread);
           if (
             deleted._tag === "Failure" &&
             !isAtomCommandInterrupted(deleted) &&
