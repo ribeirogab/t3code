@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+fork_repository="ribeirogab/t3code"
+upstream_repository="pingdotgg/t3code"
+fork_requirement='identifier "com.t3tools.t3code" and certificate leaf = H"37b7864b156bda24f4129df9940fc512677b822b"'
+official_requirement='identifier "com.t3tools.t3code" and anchor apple generic and certificate leaf[subject.OU] = "ARK85ZXQ4Z"'
+server_host="homelab"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+usage() {
+  echo "Usage: fork/bin/use <fork|official> [--only mac|server] [tag]" >&2
+  exit 2
+}
+
+latest_fork_tag() {
+  gh release list --repo "$fork_repository" --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName'
+}
+
+latest_tag() {
+  if [[ "$source_name" == "fork" ]]; then
+    latest_fork_tag
+  else
+    "$script_dir/latest-upstream-nightly"
+  fi
+}
+
+(($# > 0)) || usage
+source_name="$1"
+shift
+
+case "$source_name" in
+  fork)
+    repository="$fork_repository"
+    requirement="$fork_requirement"
+    ;;
+  official)
+    repository="$upstream_repository"
+    requirement="$official_requirement"
+    ;;
+  *) usage ;;
+esac
+
+update_mac=true
+update_server=true
+tag=""
+while (($# > 0)); do
+  case "$1" in
+    --only)
+      case "${2:-}" in
+        mac) update_server=false ;;
+        server) update_mac=false ;;
+        *) usage ;;
+      esac
+      shift 2
+      ;;
+    v*)
+      tag="$1"
+      shift
+      ;;
+    *) usage ;;
+  esac
+done
+
+tag="${tag:-$(latest_tag)}"
+gh release view "$tag" --repo "$repository" --json tagName > /dev/null
+echo "Switching to ${source_name} ${tag}."
+
+if [[ "$update_server" == true ]]; then
+  ssh "$server_host" 'bash -s' -- "$source_name" "${tag#v}" < "$script_dir/install-server"
+fi
+
+if [[ "$update_mac" == true ]]; then
+  "$script_dir/install-mac" "$repository" "$tag" "$requirement"
+fi
