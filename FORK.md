@@ -2,17 +2,20 @@
 
 Personal fork of [pingdotgg/t3code](https://github.com/pingdotgg/t3code). The `custom` branch is the latest upstream nightly tag plus the fork commits on top.
 
-Fork-owned files: `.github/workflows/fork-release.yml`, `.claude/rules/fork.md`, `fork/`, and `apps/web/src/fork/`. Everything else is upstream.
+Fork-owned files: `FORK.md`, `.github/workflows/fork-release.yml`, `fork/`, `apps/web/src/fork/`, and `apps/server/src/fork/`. Everything else is upstream, including the line in `AGENTS.md` that points here.
 
 ## Add a change
 
 Every change goes through a pull request into `custom`. Do not commit or push to `custom` directly.
 
+- The repository is public. Keep private data out of every file, commit, and pull request: hostnames, addresses, IPs, personal paths, and emails.
+- Keep fork changes free of database migrations. An upstream build cannot open a database that has a migration it does not know, so `fork/bin/use official` would fail.
+
 1. `git fetch origin && git switch -c fork/<change> origin/custom`
-2. Put new code in new files. In upstream files, change as few lines as possible, for example one import and one call. Each changed upstream line can conflict on a rebase.
+2. Put new code in new files under `fork/`, `apps/web/src/fork/`, or `apps/server/src/fork/`. In upstream files, change as few lines as possible, for example one import and one call. Each changed upstream line can conflict on a rebase.
 3. Run the typecheck, the lint, the format check, and the tests of the area you changed.
 4. Push the branch and open a pull request into `custom` with the title `fork: <change>`.
-5. Wait for the owner to approve.
+5. Stop and ask the owner to approve. Merge only after the approval.
 6. Rebase the branch onto the latest `custom` and squash merge it:
 
    ```sh
@@ -52,8 +55,6 @@ fork/bin/use official
 After the first install, use the update button in the Mac app. It updates the Mac app and the server.
 
 Do not use **Settings → About → Update track**. It reads upstream npm versions.
-
-Keep fork changes free of database migrations. An upstream build cannot open a database that has a migration it does not know, so `use official` would fail.
 
 ## Rebase conflicts
 
