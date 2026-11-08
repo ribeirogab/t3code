@@ -1470,6 +1470,90 @@ it.effect("replays a thread.create receipt without changing the thread", () =>
   }).pipe(Effect.provide(layerTest)),
 );
 
+it.effect(
+  "shows a child in the sidebar on request and keeps its archive batch until unarchive",
+  () =>
+    Effect.gen(function* () {
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const projections = yield* ProjectionStore.ProjectionStoreV2;
+      const parentId = ThreadId.make("thread:listed-parent");
+      yield* orchestrator.dispatch({
+        type: "thread.create",
+        commandId: CommandId.make("create:listed-parent"),
+        threadId: parentId,
+        projectId: ProjectId.make("project:listed"),
+        title: "Parent",
+        modelSelection,
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        branch: null,
+        worktreePath: null,
+        createdBy: "user",
+        creationSource: "web",
+      });
+      const refused = yield* orchestrator
+        .dispatch({
+          type: "thread.metadata.update",
+          commandId: CommandId.make("hide-root"),
+          threadId: parentId,
+          listed: false,
+        })
+        .pipe(Effect.flip);
+      assert.equal(refused._tag, "OrchestratorDispatchError");
+      yield* orchestrator.dispatch({
+        type: "message.dispatch",
+        commandId: CommandId.make("start:listed-parent"),
+        threadId: parentId,
+        messageId: MessageId.make("message:listed-parent"),
+        text: "Run this apart",
+        attachments: [],
+        dispatchMode: { type: "start_immediately" },
+        createdBy: "user",
+        creationSource: "web",
+      });
+      const parentRun = (yield* projections.getThreadProjection(parentId)).runs[0]!;
+      yield* orchestrator.dispatch({
+        type: "delegated_task.request",
+        commandId: CommandId.make("delegate:listed"),
+        parentThreadId: parentId,
+        parentRunId: parentRun.id,
+        parentNodeId: parentRun.rootNodeId!,
+        task: "Run apart",
+        completionWake: "settled_only",
+        modelSelection,
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        listed: true,
+        createdBy: "agent",
+        creationSource: "mcp",
+      });
+      const childId = (yield* projections.getThreadProjection(parentId)).subagents[0]!
+        .childThreadId!;
+      assert.isTrue((yield* projections.getThreadShell(childId))?.lineage.listed);
+      yield* orchestrator.dispatch({
+        type: "thread.metadata.update",
+        commandId: CommandId.make("hide-child"),
+        threadId: childId,
+        listed: false,
+      });
+      assert.isFalse((yield* projections.getThreadShell(childId))?.lineage.listed);
+      const archiveBatchId = CommandId.make("archive-batch:listed");
+      yield* orchestrator.dispatch({
+        type: "thread.archive",
+        commandId: CommandId.make("archive:listed-child"),
+        threadId: childId,
+        archiveBatchId,
+      });
+      assert.equal((yield* projections.getThreadShell(childId))?.archiveBatchId, archiveBatchId);
+      yield* orchestrator.dispatch({
+        type: "thread.unarchive",
+        commandId: CommandId.make("unarchive:listed-child"),
+        threadId: childId,
+      });
+      assert.isUndefined((yield* projections.getThreadShell(childId))?.archiveBatchId);
+    }).pipe(Effect.provide(layerTest)),
+);
+
 it.effect("explicit settle clears snooze atomically and stays idempotent after re-snoozing", () =>
   Effect.gen(function* () {
     const orchestrator = yield* Orchestrator.OrchestratorV2;
