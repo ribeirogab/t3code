@@ -8,7 +8,7 @@ Fork-owned files: `FORK.md`, `.github/workflows/fork-release.yml`, `fork/`, `app
 
 Every change goes through a pull request into `custom`. Do not commit or push to `custom` directly.
 
-- The repository is public. Keep private data out of every file, commit, and pull request: hostnames, addresses, IPs, personal paths, and emails.
+- The repository is public. Keep private data out of every file, commit message, and pull request: hostnames, addresses, IPs, personal paths, and emails. The commit author name and email are fine.
 - Keep fork changes free of database migrations. An upstream build cannot open a database that has a migration it does not know, so `fork/bin/use official` would fail.
 
 1. `git fetch origin && git switch -c fork/<change> origin/custom`
@@ -33,7 +33,7 @@ Every change goes through a pull request into `custom`. Do not commit or push to
 
 1. It finds the latest published upstream nightly.
 2. When `custom` does not contain it, it rebases `custom` onto it and pushes. The push starts the build run.
-3. It builds the macOS arm64 app and the Linux x64 CLI archive with upstream's `release-desktop.yml`.
+3. It builds the macOS arm64 app, the Linux x64 AppImage, and the Linux x64 CLI archive with upstream's `release-desktop.yml`.
 4. It signs the macOS app with the fork certificate (`fork/bin/resign-mac`).
 5. It publishes the prerelease `vX.Y.Z-nightly.YYYYMMDD.<upstream run><fork revision>`, for example `v0.1.8-nightly.20261108.4367001`. The version keeps the upstream nightly format, so the app stays on the Nightly track and sorts after the upstream build it comes from.
 6. It keeps the last 20 releases.
@@ -45,14 +45,17 @@ fork/bin/use fork
 fork/bin/use official
 ```
 
-`use` moves the server on the `homelab` SSH host first, then the Mac app, to the latest release of the fork or of upstream. Options: `--only mac`, `--only server`, and an exact tag such as `v0.1.8-nightly.20261108.4367001`.
+`use` moves the desktop app on this machine to the latest release of the fork or of upstream: the app on macOS arm64, the AppImage on Linux x64. Options: `--only app`, `--only server`, `--server <ssh-host>`, and an exact tag such as `v0.1.8-nightly.20261108.4367001`.
+
+To also move a T3 server on another machine, pass `--server <ssh-host>` or set `T3CODE_FORK_SERVER=<ssh-host>` in your shell profile. `use` moves that server first, then the app. Without a server, it moves only the app.
 
 - The Mac app restarts, and the restart interrupts running threads.
 - `install-mac` checks the signature of the new app before the swap: the fork certificate for `fork`, the T3 Tools Developer ID for `official`.
+- `install-linux` checks the AppImage against the sha512 in `nightly-linux.yml` and installs it at `~/Applications/t3code-nightly.AppImage`, with a **T3 Code (Nightly)** entry in the app menu. Restart the app if it is running. AppImages need FUSE 2: on Ubuntu 24.04, `sudo apt install libfuse2t64`.
 - `install-server` runs on the server. For `fork`, it sets `T3CODE_RELEASE_BASE_URL` in `~/.t3/service.env`, so the server downloads updates from this fork. For `official`, it removes that line. When the update fails, it restores the previous `service.env`.
 - Threads, settings, and data stay, because both apps use the same folders.
 
-After the first install, use the update button in the Mac app. It updates the Mac app and the server.
+After the first install, use the update button in the app. It updates the app and the server.
 
 Do not use **Settings → About → Update track**. It reads upstream npm versions.
 
