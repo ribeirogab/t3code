@@ -304,6 +304,15 @@ jobs:
           name: cli-linux-x64
           path: release-assets
 
+      - name: Download Linux desktop build
+        uses: actions/download-artifact@v8
+        with:
+          name: desktop-linux-x64
+          path: linux-desktop
+
+      - name: Collect Linux desktop app
+        run: cp linux-desktop/*.AppImage linux-desktop/nightly-linux.yml release-assets/
+
       - name: Write checksums
         working-directory: release-assets
         run: sha256sum t3-*.tar.gz > SHA256SUMS
