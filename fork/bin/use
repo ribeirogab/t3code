@@ -5,11 +5,12 @@ fork_repository="ribeirogab/t3code"
 upstream_repository="pingdotgg/t3code"
 fork_requirement='identifier "com.t3tools.t3code" and certificate leaf = H"37b7864b156bda24f4129df9940fc512677b822b"'
 official_requirement='identifier "com.t3tools.t3code" and anchor apple generic and certificate leaf[subject.OU] = "ARK85ZXQ4Z"'
-server_host="homelab"
+server_host="${T3CODE_FORK_SERVER:-}"
+platform="$(uname -s)-$(uname -m)"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
-  echo "Usage: fork/bin/use <fork|official> [--only mac|server] [tag]" >&2
+  echo "Usage: fork/bin/use <fork|official> [--only app|server] [--server <ssh-host>] [tag]" >&2
   exit 2
 }
 
@@ -23,6 +24,13 @@ latest_tag() {
   else
     "$script_dir/latest-upstream-nightly"
   fi
+}
+
+install_app() {
+  case "$platform" in
+    Darwin-arm64) "$script_dir/install-mac" "$repository" "$tag" "$requirement" ;;
+    Linux-x86_64) "$script_dir/install-linux" "$repository" "$tag" ;;
+  esac
 }
 
 (($# > 0)) || usage
@@ -41,17 +49,22 @@ case "$source_name" in
   *) usage ;;
 esac
 
-update_mac=true
+update_app=true
 update_server=true
 tag=""
 while (($# > 0)); do
   case "$1" in
     --only)
       case "${2:-}" in
-        mac) update_server=false ;;
-        server) update_mac=false ;;
+        app | mac) update_server=false ;;
+        server) update_app=false ;;
         *) usage ;;
       esac
+      shift 2
+      ;;
+    --server)
+      [[ -n "${2:-}" ]] || usage
+      server_host="$2"
       shift 2
       ;;
     v*)
@@ -62,6 +75,20 @@ while (($# > 0)); do
   esac
 done
 
+if [[ "$update_app" == true && "$platform" != "Darwin-arm64" && "$platform" != "Linux-x86_64" ]]; then
+  echo "The desktop app installs on macOS arm64 and Linux x64 only, not ${platform}. Use --only server." >&2
+  exit 1
+fi
+
+if [[ "$update_server" == true && -z "$server_host" ]]; then
+  if [[ "$update_app" == false ]]; then
+    echo "--only server needs --server <ssh-host> or T3CODE_FORK_SERVER." >&2
+    exit 2
+  fi
+  echo "Skipping the server. Set T3CODE_FORK_SERVER or pass --server <ssh-host> to update one."
+  update_server=false
+fi
+
 tag="${tag:-$(latest_tag)}"
 gh release view "$tag" --repo "$repository" --json tagName > /dev/null
 echo "Switching to ${source_name} ${tag}."
@@ -70,6 +97,6 @@ if [[ "$update_server" == true ]]; then
   ssh "$server_host" 'bash -s' -- "$source_name" "${tag#v}" < "$script_dir/install-server"
 fi
 
-if [[ "$update_mac" == true ]]; then
-  "$script_dir/install-mac" "$repository" "$tag" "$requirement"
+if [[ "$update_app" == true ]]; then
+  install_app
 fi
