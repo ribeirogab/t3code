@@ -51,7 +51,7 @@ To also move a T3 server on another machine, pass `--server <ssh-host>` or set `
 
 - The Mac app restarts, and the restart interrupts running threads.
 - `install-mac` checks the signature of the new app before the swap: the fork certificate for `fork`, the T3 Tools Developer ID for `official`.
-- `install-linux` checks the AppImage against the sha512 in `nightly-linux.yml` and installs it at `~/Applications/t3code-nightly.AppImage`. Restart the app if it is running. Its first start adds it to the app menu. AppImages need FUSE 2: on Ubuntu 24.04, `sudo apt install libfuse2t64`.
+- `install-linux` checks the AppImage against the sha512 in `nightly-linux.yml` and installs it at `~/Applications/t3code-nightly.AppImage`, with a **T3 Code (Nightly)** entry in the app menu. Restart the app if it is running. AppImages need FUSE 2: on Ubuntu 24.04, `sudo apt install libfuse2t64`.
 - `install-server` runs on the server. For `fork`, it sets `T3CODE_RELEASE_BASE_URL` in `~/.t3/service.env`, so the server downloads updates from this fork. For `official`, it removes that line. When the update fails, it restores the previous `service.env`.
 - Threads, settings, and data stay, because both apps use the same folders.
 
