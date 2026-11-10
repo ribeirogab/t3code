@@ -170,6 +170,7 @@ export const OrchestrationV2AppThreadLineage = Schema.Struct({
   rootThreadId: ThreadId,
   sideChat: Schema.optional(Schema.Boolean),
   listed: Schema.optional(Schema.Boolean),
+  detached: Schema.optional(Schema.Boolean),
 });
 export type OrchestrationV2AppThreadLineage = typeof OrchestrationV2AppThreadLineage.Type;
 
@@ -3185,6 +3186,7 @@ export const OrchestrationV2Command = Schema.Union([
     /** Link (object) or unlink (null) a pull request; absent leaves it unchanged. */
     linkedPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
     listed: Schema.optional(Schema.Boolean),
+    detached: Schema.optional(Schema.Literal(true)),
   }),
   Schema.Struct({
     type: Schema.Literal("thread.pull-request.link"),

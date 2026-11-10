@@ -23,6 +23,8 @@ import {
   toolOutputIndicatesFailure,
 } from "@t3tools/shared/toolOutput";
 
+import { wireThread } from "../fork/wireLineage.ts";
+
 // A checkpoint over vendored or generated trees can list 15k+ files; the card needs a prefix.
 const MAX_WIRE_CHECKPOINT_FILES = 200;
 const MAX_DETAIL_STRING_BYTES = 32_768;
@@ -320,6 +322,7 @@ export function projectThreadProjectionForWire(
   };
   return {
     ...projection,
+    thread: wireThread(projection.thread),
     checkpoints: projection.checkpoints.map(capCheckpointFiles),
     contextHandoffs: projection.contextHandoffs.map(projectContextHandoffForWire),
     turnItems: projection.turnItems.map(project),

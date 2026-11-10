@@ -283,7 +283,12 @@ Forks, and subagents you ask the agent to run apart, show nested under their
 parent. The count next to a parent minimizes or shows its branch. Hide a nested
 thread from its menu; show or hide a child from the thread details card.
 Archiving or deleting a parent asks whether to include its nested threads;
-unarchive brings the whole batch back.
+unarchive brings the whole batch back. While a parent is archived, its nested
+threads show at the top level.
+
+**Detach to top level** in the menu of a nested thread makes it a normal
+thread for good: it leaves its parent in the sidebar and takes its own nested
+threads with it. The parent still gets its result. There is no way back.
 
 Expand a tool call in the conversation to see its full command and output.
 Summaries shorten shell wrappers and can still describe the latest call after it
