@@ -342,6 +342,7 @@ import {
 } from "./ChatView.logic";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { useComposerHandleContext } from "../composerHandleContext";
+import { activeParent, isSubagentLineage } from "../fork/parentLink";
 import { clampFileAttachmentUploadBytes } from "@t3tools/client-runtime/state/attachments";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { assetEnvironment } from "../state/assets";
@@ -815,7 +816,7 @@ export default function ChatView(props: ChatViewProps) {
       ? null
       : deriveResumableRunId(serverProjection, serverRuntime);
   const parentSubagentThreadId =
-    activeThread?.lineage.relationshipToParent === "subagent"
+    activeThread && isSubagentLineage(activeThread.lineage)
       ? activeThread.lineage.parentThreadId
       : null;
   const parentSubagentEnvironmentId = activeThread?.environmentId ?? null;
@@ -825,7 +826,7 @@ export default function ChatView(props: ChatViewProps) {
     }
     return scopeThreadRef(parentSubagentEnvironmentId, parentSubagentThreadId);
   })();
-  const parentSubagentThread = useQuietThreadShell(parentSubagentThreadRef);
+  const parentSubagentThread = activeParent(useQuietThreadShell(parentSubagentThreadRef));
   // Workflow threads open with a script; their replacement plan lives on the parent's coordinator row.
   const workflowOpeningParentId =
     serverProjection === null
@@ -877,9 +878,9 @@ export default function ChatView(props: ChatViewProps) {
         },
       };
     }
-    if (parentSubagentThreadRef !== null) {
+    if (parentSubagentThreadRef !== null && parentSubagentThread !== null) {
       return {
-        title: parentSubagentThread?.title ?? "Parent thread",
+        title: parentSubagentThread.title,
         open: (): void => {
           void navigate({
             to: "/$environmentId/$threadId",
@@ -908,11 +909,11 @@ export default function ChatView(props: ChatViewProps) {
   })();
   // The header's breadcrumb opens a parent in this environment only.
   const headerParentThreadLink =
-    parentSubagentThreadRef === null
+    parentSubagentThreadRef === null || parentSubagentThread === null
       ? null
       : {
           threadId: parentSubagentThreadRef.threadId,
-          title: parentSubagentThread?.title ?? "Parent thread",
+          title: parentSubagentThread.title,
         };
   const threadError = isServerThread
     ? (localServerError ?? serverRuntime?.lastError ?? null)
@@ -2747,7 +2748,7 @@ export default function ChatView(props: ChatViewProps) {
   usePasteToFocusComposer(embedded ? null : activeThreadId, composerRef);
   // A delegated task is a remote thread's subagent.
   const isSubagentThread =
-    activeThread?.lineage.relationshipToParent === "subagent" || delegatedFrom !== null;
+    (activeThread != null && isSubagentLineage(activeThread.lineage)) || delegatedFrom !== null;
   // Side chats do not nest or start from subagents, and older servers would fork a listed thread.
   const sideChatsOffered =
     !embedded &&
