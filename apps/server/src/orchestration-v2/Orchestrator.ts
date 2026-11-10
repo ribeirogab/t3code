@@ -193,7 +193,7 @@ import {
 import { planThreadDeletion } from "./ThreadDeletion.ts";
 import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import * as ServerSettings from "../serverSettings.ts";
-import { canSetListed, listedPatch, withListed } from "../fork/threadNesting.ts";
+import { nestingPatch, nestingRejection, withListed } from "../fork/threadNesting.ts";
 
 const isMessageQuestionAnswer = Schema.is(
   Schema.Union([TrimmedNonEmptyString, Schema.NonEmptyArray(TrimmedNonEmptyString)]),
@@ -3587,15 +3587,13 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           cause: `Thread ${command.threadId} is no longer empty.`,
         });
     }
-    if (
-      command.type === "thread.metadata.update" &&
-      command.listed !== undefined &&
-      !canSetListed(thread)
-    ) {
+    const nestingRejected =
+      command.type === "thread.metadata.update" ? nestingRejection(thread, command) : null;
+    if (nestingRejected !== null) {
       return yield* new OrchestratorDispatchError({
         commandId: command.commandId,
         commandType: command.type,
-        cause: `Thread ${command.threadId} has no parent, so it cannot be hidden from or shown in the sidebar.`,
+        cause: `Thread ${command.threadId} ${nestingRejected}`,
       });
     }
     if (command.type === "thread.archive" && thread.archivedAt !== null) {
@@ -4076,7 +4074,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
                   };
           return {
             ...thread,
-            ...listedPatch(thread, command.listed),
+            ...nestingPatch(thread, command),
             ...(command.title === undefined ? {} : { title: command.title }),
             ...(command.limitRecovery === undefined ? {} : { limitRecovery }),
             ...(command.limitRecovery !== undefined &&
