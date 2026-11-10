@@ -24,6 +24,7 @@ export type ThreadActionMenuId =
   | "regenerate-title"
   | "mark-unread"
   | "hide-from-sidebar"
+  | "detach-to-top-level"
   | "share-guest"
   | "copy"
   | "copy-path"
@@ -215,7 +216,10 @@ export function buildThreadActionMenuItems(
       : []),
     { id: "mark-unread", label: resolve(msg("Mark unread")), icon: "mail-open" },
     ...(state.canHideFromSidebar
-      ? [{ id: "hide-from-sidebar" as const, label: "Hide from sidebar" }]
+      ? [
+          { id: "hide-from-sidebar" as const, label: "Hide from sidebar" },
+          { id: "detach-to-top-level" as const, label: "Detach to top level" },
+        ]
       : []),
     ...(state.canShareWithGuest
       ? [{ id: "share-guest" as const, label: resolve(msg("Share with guest")), icon: "user-plus" }]
