@@ -277,6 +277,7 @@ import {
 import { useNestedCollapseStore, useNestedCollapsedKeys } from "../fork/nestedCollapse";
 import { chooseNestedRemoval } from "../fork/NestedThreadsDialog";
 import { removeWithNested } from "../fork/nestedThreadRemoval";
+import { useDetachThread } from "../fork/useDetachThread";
 import { useSetThreadListed } from "../fork/useSetThreadListed";
 import {
   renderNestedSidebarRows,
@@ -966,6 +967,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     reportFailure: false,
   });
   const setThreadListed = useSetThreadListed();
+  const detachThread = useDetachThread();
   const { copyToClipboard: copyPathToClipboard } = useCopyToClipboard<{ path: string }>({
     onError: (error) => {
       toastManager.add(
@@ -2823,6 +2825,9 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
             return;
           case "hide-from-sidebar":
             await setThreadListed(threadRef, false);
+            return;
+          case "detach-to-top-level":
+            await detachThread(threadRef);
             return;
           case "copy-path":
             if (!threadWorkspacePath) {
