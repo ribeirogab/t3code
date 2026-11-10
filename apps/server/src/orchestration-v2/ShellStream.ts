@@ -34,6 +34,7 @@ import * as Stream from "effect/Stream";
 import { bufferLatestLiveStream } from "./LiveStreamBudget.ts";
 import type { ActiveShellIndexEntry } from "./ProjectionStore.ts";
 import { isUnlistedSubagentLineage } from "../fork/threadNesting.ts";
+import { wireThread, wireThreadLists, wireThreads } from "../fork/wireLineage.ts";
 
 type ShellDelta = Extract<OrchestrationV2ShellStreamItem, { readonly sequence: number }>;
 
@@ -331,7 +332,9 @@ export const loadSubscriberShellSnapshot = Effect.fn("ShellStream.loadSubscriber
     });
     const facts = shellTrimFacts(read.index ?? base.threads);
     return {
-      snapshot: trimShellSnapshot(base, facts, { ...input.options, now: yield* DateTime.now }),
+      snapshot: wireThreadLists(
+        trimShellSnapshot(base, facts, { ...input.options, now: yield* DateTime.now }),
+      ),
       subagentThreadIds: facts.subagentThreadIds,
     };
   },
@@ -364,7 +367,7 @@ export const loadShellSnapshotParts = Effect.fn("ShellStream.loadShellSnapshotPa
     .pipe(NodeSqliteClient.readOnly);
   return {
     projects: read.projects,
-    threads: yield* read.decodeThreads,
+    threads: wireThreadLists(yield* read.decodeThreads),
     snapshotSequence: read.snapshotSequence,
   };
 });
@@ -398,7 +401,8 @@ export const loadOlderSettledThreadsPage = Effect.fn("ShellStream.loadOlderSettl
         }),
       )
       .pipe(NodeSqliteClient.readOnly);
-    const threads = read.decodeThreads === null ? [] : (yield* read.decodeThreads).threads;
+    const threads =
+      read.decodeThreads === null ? [] : wireThreads((yield* read.decodeThreads).threads);
     const order = new Map(read.listed.threadIds.map((threadId, index) => [threadId, index]));
     return {
       snapshotSequence: read.snapshotSequence,
@@ -692,7 +696,7 @@ export function shellStreamItemFromThreadShell(input: {
       kind: "thread.updated",
       sequence: input.stored.sequence,
       location: "active",
-      thread: input.shell,
+      thread: wireThread(input.shell),
     };
   }
 

@@ -1659,7 +1659,7 @@ it.effect("replays a thread.create receipt without changing the thread", () =>
 );
 
 it.effect(
-  "shows a child in the sidebar on request and keeps its archive batch until unarchive",
+  "shows a child in the sidebar on request, keeps its archive batch until unarchive, and detaches it with its stored parent intact",
   () =>
     Effect.gen(function* () {
       const orchestrator = yield* Orchestrator.OrchestratorV2;
@@ -1739,6 +1739,47 @@ it.effect(
         threadId: childId,
       });
       assert.isUndefined((yield* projections.getThreadShell(childId))?.archiveBatchId);
+      const detach = (commandId: string, threadId: ThreadId) =>
+        orchestrator.dispatch({
+          type: "thread.metadata.update",
+          commandId: CommandId.make(commandId),
+          threadId,
+          detached: true,
+        });
+      assert.equal(
+        (yield* detach("detach-root", parentId).pipe(Effect.flip))._tag,
+        "OrchestratorDispatchError",
+      );
+      assert.equal(
+        (yield* detach("detach-hidden-child", childId).pipe(Effect.flip))._tag,
+        "OrchestratorDispatchError",
+      );
+      yield* orchestrator.dispatch({
+        type: "thread.metadata.update",
+        commandId: CommandId.make("show-child"),
+        threadId: childId,
+        listed: true,
+      });
+      yield* detach("detach-child", childId);
+      assert.deepInclude((yield* projections.getThreadShell(childId))?.lineage, {
+        detached: true,
+        listed: true,
+        parentThreadId: parentId,
+        relationshipToParent: "subagent",
+      });
+      assert.equal(
+        (yield* detach("detach-child-again", childId).pipe(Effect.flip))._tag,
+        "OrchestratorDispatchError",
+      );
+      const hideDetached = yield* orchestrator
+        .dispatch({
+          type: "thread.metadata.update",
+          commandId: CommandId.make("hide-detached-child"),
+          threadId: childId,
+          listed: false,
+        })
+        .pipe(Effect.flip);
+      assert.equal(hideDetached._tag, "OrchestratorDispatchError");
     }).pipe(Effect.provide(layerTest)),
 );
 
