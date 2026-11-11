@@ -73,10 +73,12 @@ function hiddenByAncestor(thread: NestingThread, allByKey: ReadonlyMap<string, N
 }
 
 export function buildSidebarNesting<T extends NestingThread>(input: {
+  readonly enabled: boolean;
   readonly visible: readonly T[];
   readonly all: readonly NestingThread[];
   readonly sort: (threads: readonly T[]) => readonly T[];
 }): SidebarNesting<T> {
+  if (!input.enabled) return { roots: input.visible, childrenByKey: new Map() };
   const allByKey = new Map(input.all.map((thread) => [nestingThreadKey(thread), thread] as const));
   const inSidebar = input.visible.filter((thread) => !hiddenByAncestor(thread, allByKey));
   const inSidebarKeys = new Set(inSidebar.map(nestingThreadKey));
@@ -216,8 +218,9 @@ export function nestedRouteRowKey(
   routeRowKey: string | null,
   threads: readonly NestingThread[],
   collapsedKeys: ReadonlySet<string>,
+  enabled: boolean,
 ): string | null {
-  if (routeRowKey === null) return null;
+  if (routeRowKey === null || !enabled) return routeRowKey;
   const byKey = new Map(threads.map((thread) => [nestingThreadKey(thread), thread] as const));
   const chain: string[] = [];
   let key: string | null = routeRowKey;

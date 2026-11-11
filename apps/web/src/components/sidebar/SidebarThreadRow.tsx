@@ -131,6 +131,7 @@ import { MiddleTruncate } from "../ui/middle-truncate";
 import { useThreadHasUnsentDraft } from "../../composerDraftStore";
 import { hasTitleFirstProjectLabel, TitleFirstProjectLabel } from "~/fork/TitleFirstProjectLabel";
 import { useSidebarCardDisplay } from "~/fork/sidebarCardDisplay";
+import { useForkFeature } from "~/fork/forkFeatures";
 
 // The fields thread rows show. Provider status pushes refresh `checkedAt`,
 // status and auth on every provider; leaving those out keeps each
@@ -839,6 +840,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
   const isRemote = thread.environmentId !== props.currentEnvironmentId;
   const showsScratchMachine = !checkoutThread.branch && props.scratchMachineLabel !== null;
   const cardDisplay = useSidebarCardDisplay();
+  const titleFirst = useForkFeature("titleFirstCards");
   const showsBranch = Boolean(checkoutThread.branch) && cardDisplay.branch;
   const showsMachineLabel = showsScratchMachine && cardDisplay.machine;
 
@@ -1179,6 +1181,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
   const diff = cardDisplay.diff ? latestRunDiff(thread) : null;
   const cardProjectLabel =
     variant === "card" &&
+    titleFirst &&
     cardDisplay.project &&
     hasTitleFirstProjectLabel(props.project, props.projectDisplayName) ? (
       <TitleFirstProjectLabel
@@ -1201,7 +1204,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
     <div
       className={cn(
         "flex min-w-0 items-center gap-1.5 text-secondary-label text-xs",
-        variant === "card" ? "mt-1" : "mt-0.5",
+        variant === "card" && titleFirst ? "mt-1" : "mt-0.5",
       )}
     >
       {cardProjectLabel}
@@ -1249,6 +1252,18 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
         {providerStack}
       </span>
     ) : null;
+
+  const cardTitle = (
+    <>
+      {title}
+      {isRegeneratingTitle ? (
+        <span role="status" className="sr-only">
+          Regenerating title
+        </span>
+      ) : null}
+      {titleLineIcons}
+    </>
+  );
 
   if (variant !== "card") {
     const multiline = variant === "folder-multiline";
@@ -1460,8 +1475,12 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
       {...sortableRootProps}
       {...(fileDropHandlers ?? {})}
       className={cn(
-        "list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_60px]",
-        metaLineEmpty && "[contain-intrinsic-size:auto_40px]",
+        "list-none py-0.5 [content-visibility:auto]",
+        titleFirst ? "[contain-intrinsic-size:auto_60px]" : "[contain-intrinsic-size:auto_78px]",
+        metaLineEmpty &&
+          (titleFirst
+            ? "[contain-intrinsic-size:auto_40px]"
+            : "[contain-intrinsic-size:auto_58px]"),
         props.nesting && nestedListItemClassName,
         sortable?.isDragging && "relative z-20",
       )}
@@ -1490,22 +1509,30 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
           {accessibleTitle}
           <div
             className={cn(
-              "relative z-10 h-14 px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)",
+              "relative z-10 px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)",
+              titleFirst ? "h-14" : "h-[4.875rem]",
               metaLineEmpty && "h-auto",
             )}
           >
             <div className="flex h-5 min-w-0 items-center gap-1.5">
               {draftIndicator}
+              {!titleFirst && cardDisplay.project && props.project ? (
+                <ProjectFavicon project={props.project} className="size-4 shrink-0" />
+              ) : null}
               {/* Left of the status slot, the pin would slide when hover swaps the
                 label for the wider row controls. */}
               {pinIndicator}
-              {title}
-              {isRegeneratingTitle ? (
-                <span role="status" className="sr-only">
-                  Regenerating title
+              {titleFirst ? (
+                cardTitle
+              ) : cardDisplay.project && props.projectDisplayName ? (
+                <span
+                  className={cn("min-w-0 flex-1 truncate font-normal text-secondary-label text-xs")}
+                >
+                  {props.projectDisplayName}
                 </span>
-              ) : null}
-              {titleLineIcons}
+              ) : (
+                <span className="flex-1" />
+              )}
               {sortable?.isDragging ? (
                 dragDestination
               ) : (
@@ -1634,6 +1661,9 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
               )}
               {props.sweepAction !== null ? dragDestination : null}
             </div>
+            {titleFirst ? null : (
+              <div className="mt-1 flex min-w-0 items-center gap-1.5">{cardTitle}</div>
+            )}
             {metaLine}
           </div>
         </TooltipTrigger>

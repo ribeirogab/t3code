@@ -278,6 +278,7 @@ import { useNestedCollapseStore, useNestedCollapsedKeys } from "../fork/nestedCo
 import { chooseNestedRemoval } from "../fork/NestedThreadsDialog";
 import { removeWithNested } from "../fork/nestedThreadRemoval";
 import { useDetachThread } from "../fork/useDetachThread";
+import { useForkFeature } from "../fork/forkFeatures";
 import { useSetThreadListed } from "../fork/useSetThreadListed";
 import {
   renderNestedSidebarRows,
@@ -378,6 +379,7 @@ interface SidebarThreadPartitionInput {
   // on the clock, so the minute tick, the precise snooze-wake tick and the inbox
   // tracker's expiry version are inputs: a new key repartitions.
   readonly clockKey: string;
+  readonly nestedThreads: boolean;
 }
 
 function scrollSidebarToTop(content: HTMLElement | null) {
@@ -495,9 +497,11 @@ function useSidebarThreads(input: {
     settledTail.scopeKey === projectScopeKey ? settledTail.count : SETTLED_TAIL_INITIAL_COUNT;
   const nestedCollapsedKeys = useNestedCollapsedKeys();
   const toggleNestedCollapsed = useNestedCollapseStore((store) => store.toggle);
+  const nestedThreadsEnabled = useForkFeature("nestedThreads");
 
   const partition = partitionSidebarThreads({
     threads,
+    nestedThreads: nestedThreadsEnabled,
     scopedProjectKeys,
     delegatedUnderParent,
     serverConfigs,
@@ -648,7 +652,12 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
   } = input;
   const preciseNow = new Date().toISOString();
   const visible = filterSidebarV2VisibleThreads(threads, scopedProjectKeys, delegatedUnderParent);
-  const nesting = buildSidebarNesting({ visible, all: threads, sort: sortThreadsForSidebar });
+  const nesting = buildSidebarNesting({
+    enabled: input.nestedThreads,
+    visible,
+    all: threads,
+    sort: sortThreadsForSidebar,
+  });
   const inboxObservation = inboxReturns.observe(workingShelfEnabled ? threads : null);
   const pinned: EnvironmentThreadShell[] = [];
   const active: EnvironmentThreadShell[] = [];
@@ -968,6 +977,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   });
   const setThreadListed = useSetThreadListed();
   const detachThread = useDetachThread();
+  const nestedThreadsEnabled = useForkFeature("nestedThreads");
   const { copyToClipboard: copyPathToClipboard } = useCopyToClipboard<{ path: string }>({
     onCopy: ({ path }) => {
       toastManager.add({
@@ -1169,6 +1179,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         ),
     threads,
     nestedCollapsedKeys,
+    nestedThreadsEnabled,
   );
   const isSearchingThreads = threadSearchQuery.trim().length > 0;
 
@@ -2702,7 +2713,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                 canShareWithGuestAtom(threadRef.environmentId),
               ),
               canTurnIntoProject: canTurnThreadIntoProject(threadRef),
-              canHideFromSidebar: thread.lineage.parentThreadId !== null,
+              canHideFromSidebar: nestedThreadsEnabled && thread.lineage.parentThreadId !== null,
               supports: {
                 settlement: configLoaded,
                 autoSettleOptOut: supportsAutoSettleOptOut,
