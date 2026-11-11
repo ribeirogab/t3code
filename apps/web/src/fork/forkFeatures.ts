@@ -39,6 +39,13 @@ export const FORK_FEATURES = [
     description: "Show forks and listed child threads under their parent in the sidebar.",
     searchTerms: ["fork nested child threads subagents tree parent detach hide listed"],
   },
+  {
+    key: "paceMarker",
+    searchId: "fork-pace-marker",
+    title: "Pace marker",
+    description: "Mark the even-use pace on the usage limit bars.",
+    searchTerms: ["fork pace marker usage limits weekly session bar tick"],
+  },
 ] as const;
 
 export type ForkFeature = (typeof FORK_FEATURES)[number]["key"];
