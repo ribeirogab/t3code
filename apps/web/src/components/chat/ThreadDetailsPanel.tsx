@@ -25,11 +25,8 @@ import { ThreadAutomationsPanel } from "./ThreadAutomationsPanel";
 import { ThreadRelationshipsPanel } from "./ThreadRelationshipsControl";
 import { ThreadRepositorySections } from "./ThreadRepositorySections";
 import { ThreadServersPanel } from "./ThreadServersPanel";
-import {
-  ThreadDetailsContext,
-  ThreadDetailsUsage,
-  type ThreadDetailsUsageInput,
-} from "./ThreadDetailsUsage";
+import { ThreadDetailsUsage, type ThreadDetailsUsageInput } from "./ThreadDetailsUsage";
+import { ForkThreadDetailsContext } from "../../fork/ThreadDetailsContextBreakdown";
 import { ThreadDetailsTasks } from "./ThreadDetailsTasks";
 import type { TaskListPlan } from "../../session-logic";
 import { ThreadDetailsItemsMenuItems } from "./ThreadDetailsItemsMenu";
@@ -331,7 +328,13 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
               {visible.usage ? <ThreadDetailsUsage {...props.usage} /> : null}
 
               {visible.context && props.usage.contextWindow ? (
-                <ThreadDetailsContext usage={props.usage.contextWindow} />
+                <ForkThreadDetailsContext
+                  contextWindow={props.usage.contextWindow}
+                  environmentId={props.environmentId}
+                  threadId={props.draftId ? null : props.threadId}
+                  providerInstanceId={props.usage.providerInstanceId}
+                  providers={props.usage.providers}
+                />
               ) : null}
 
               {/* Shown only when no section above has content, so an emptied card can be refilled. */}

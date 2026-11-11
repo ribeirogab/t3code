@@ -4,7 +4,7 @@ Personal fork of [pingdotgg/t3code](https://github.com/pingdotgg/t3code). The `c
 
 The fork is for the desktop app only. The desktop app renders `apps/web` and bundles `apps/server`, so fork code goes there. Do not change, build, or test the mobile app, the hosted web app, or any other app for the fork. In the surface checklist of `AGENTS.md`, only the desktop app applies.
 
-Fork-owned files: `FORK.md`, `.github/workflows/fork-release.yml`, `fork/`, `apps/web/src/fork/`, `apps/web/src/routes/_chat.settings.fork.tsx`, and `apps/server/src/fork/`. Everything else is upstream, including the line in `AGENTS.md` that points here.
+Fork-owned files: `FORK.md`, `.github/workflows/fork-release.yml`, `fork/`, `apps/web/src/fork/`, `apps/web/src/routes/_chat.settings.fork.tsx`, `apps/server/src/fork/`, and `packages/contracts/src/fork/`. Everything else is upstream, including the line in `AGENTS.md` that points here.
 
 ## Add a change
 
@@ -15,7 +15,7 @@ Every change goes through a pull request into `custom`. Do not commit or push to
 - Every feature that changes what the app shows or does gets a toggle in **Settings → Fork**. Add it to `FORK_FEATURES` in `apps/web/src/fork/forkFeatures.ts`, then read it with `useForkFeature` in components and with `isForkFeatureEnabled` in event handlers. With the toggle off, the app behaves like upstream. New features are on by default. The toggles live in the desktop app on each machine. The server cannot read them, so the server part of a feature stays on.
 
 1. `git fetch origin && git switch -c fork/<change> origin/custom`
-2. Put new code in new files under `fork/`, `apps/web/src/fork/`, or `apps/server/src/fork/`. In upstream files, change as few lines as possible, for example one import and one call. Each changed upstream line can conflict on a rebase.
+2. Put new code in new files under `fork/`, `apps/web/src/fork/`, `apps/server/src/fork/`, or `packages/contracts/src/fork/`. In upstream files, change as few lines as possible, for example one import and one call. Each changed upstream line can conflict on a rebase.
 3. Run the typecheck, the lint, the format check, and the tests of the area you changed.
 4. Push the branch and open a pull request into `custom` with the title `fork: <change>`.
 5. Stop and ask the owner to approve. Merge only after the approval.
