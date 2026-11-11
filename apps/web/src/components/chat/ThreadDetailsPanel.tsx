@@ -30,6 +30,7 @@ import { ThreadRepositorySections } from "./ThreadRepositorySections";
 import { ThreadServersPanel } from "./ThreadServersPanel";
 import { ThreadDetailsUsage, type ThreadDetailsUsageInput } from "./ThreadDetailsUsage";
 import { ForkThreadDetailsContext } from "../../fork/ThreadDetailsContextBreakdown";
+import { ForkThreadDetailsProviderUsage } from "../../fork/ThreadDetailsProviderUsage";
 import { ThreadDetailsItemsMenuItems } from "./ThreadDetailsItemsMenu";
 import { resolveThreadDetailsVisibility, THREAD_DETAILS_ITEMS } from "./threadDetailsItems";
 import { useClientSettings } from "../../hooks/useSettings";
@@ -324,6 +325,13 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
               ) : null}
 
               {visible.usage ? <ThreadDetailsUsage {...props.usage} /> : null}
+
+              {visible.providerUsage ? (
+                <ForkThreadDetailsProviderUsage
+                  providers={props.usage.providers}
+                  sources={props.usage.sources}
+                />
+              ) : null}
 
               {visible.context && props.usage.contextWindow ? (
                 <ForkThreadDetailsContext
