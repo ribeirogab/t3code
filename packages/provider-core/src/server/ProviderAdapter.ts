@@ -1,4 +1,4 @@
-import type { OrchestrationV2HistoricalMessage } from "@t3tools/contracts";
+import type { ForkContextUsage, OrchestrationV2HistoricalMessage } from "@t3tools/contracts";
 import {
   type AgentFeedbackMode,
   ChatAttachment,
@@ -869,6 +869,9 @@ export interface ProviderAdapterV2SessionRuntime {
   readonly mcpApps?: ProviderAdapterV2McpApps;
   /** Absent when the agent has no way to sign an MCP server in. */
   readonly mcpSignIn?: ProviderAdapterV2McpSignIn;
+  readonly readContextUsage?: (input: {
+    readonly providerThread: OrchestrationV2ProviderThread;
+  }) => Effect.Effect<ForkContextUsage, ProviderAdapterV2Error>;
   readonly rollbackThread: (
     input: ProviderAdapterV2RollbackThreadInput,
   ) => Effect.Effect<ProviderAdapterV2ThreadSnapshot, ProviderAdapterV2Error>;
