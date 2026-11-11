@@ -63,7 +63,7 @@ jobs:
             --jq '.[] | select(.state == "active") | .path | select(startswith(".github/workflows/"))' \
             | while read -r workflow_path; do
                 case "$workflow_path" in
-                  .github/workflows/fork-release.yml | .github/workflows/release-desktop.yml) ;;
+                  .github/workflows/fork-release.yml | .github/workflows/fork-ci.yml | .github/workflows/release-desktop.yml) ;;
                   *) gh workflow disable "$(basename "$workflow_path")" ;;
                 esac
               done
