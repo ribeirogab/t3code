@@ -5,9 +5,24 @@ import { toForkContextUsage } from "./claudeContextUsage.ts";
 
 const response: SDKControlGetContextUsageResponse = {
   categories: [
-    { id: "messages", name: "Messages", tokens: 39_300, color: "blue", kind: "used" },
     { name: "Legacy row", tokens: 120, color: "grey", kind: "used" },
     { id: "free_space", name: "Free space", tokens: 855_000, color: "grey", kind: "free" },
+    {
+      id: "system_tools_deferred",
+      name: "System tools (deferred)",
+      tokens: 4_200,
+      color: "grey",
+      isDeferred: true,
+      kind: "deferred",
+    },
+    {
+      id: "autocompact_buffer",
+      name: "Autocompact buffer",
+      tokens: 33_000,
+      color: "grey",
+      kind: "buffer",
+    },
+    { id: "messages", name: "Messages", tokens: 39_300, color: "blue", kind: "used" },
     {
       id: "mcp_tools_deferred",
       name: "MCP tools (deferred)",
@@ -39,12 +54,19 @@ const response: SDKControlGetContextUsageResponse = {
 };
 
 describe("toForkContextUsage", () => {
-  it("keeps the categories with their kind and falls back to the name for a missing id", () => {
+  it("orders the categories used, buffer, free, deferred, by tokens, with the name for a missing id", () => {
     expect(toForkContextUsage(response).categories).toEqual([
       { id: "messages", name: "Messages", tokens: 39_300, kind: "used" },
       { id: "Legacy row", name: "Legacy row", tokens: 120, kind: "used" },
+      { id: "autocompact_buffer", name: "Autocompact buffer", tokens: 33_000, kind: "buffer" },
       { id: "free_space", name: "Free space", tokens: 855_000, kind: "free" },
       { id: "mcp_tools_deferred", name: "MCP tools (deferred)", tokens: 971_600, kind: "deferred" },
+      {
+        id: "system_tools_deferred",
+        name: "System tools (deferred)",
+        tokens: 4_200,
+        kind: "deferred",
+      },
     ]);
   });
 
