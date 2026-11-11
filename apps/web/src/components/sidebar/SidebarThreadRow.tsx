@@ -144,6 +144,7 @@ import { IssueGlyph, issueStatePresentation } from "../issue/issuePresentation";
 import { hasTitleFirstProjectLabel, TitleFirstProjectLabel } from "~/fork/TitleFirstProjectLabel";
 import { useSidebarCardDisplay } from "~/fork/sidebarCardDisplay";
 import { useForkFeature } from "~/fork/forkFeatures";
+import { SidebarTitleProviderIcon } from "~/fork/SidebarTitleProviderIcon";
 
 // The fields thread rows show. Provider status pushes refresh `checkedAt`,
 // status and auth on every provider; leaving those out keeps each
@@ -883,6 +884,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
 
   const cardDisplay = useSidebarCardDisplay();
   const titleFirst = useForkFeature("titleFirstCards");
+  const modelIconInTitle = useForkFeature("modelIconInTitle") && cardDisplay.model;
   const showsBranch = Boolean(checkoutThread.branch) && cardDisplay.branch;
   const showsEnvironmentLabel = props.environmentLabel !== null && cardDisplay.machine;
 
@@ -1276,7 +1278,8 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
     )
   ) : null;
 
-  const providerStack = cardDisplay.model ? (
+  const trailingModelIcon = cardDisplay.model && !modelIconInTitle;
+  const providerStack = trailingModelIcon ? (
     <SidebarProviderStack
       thread={thread}
       providerEntryByInstanceId={props.providerEntryByInstanceId}
@@ -1360,6 +1363,12 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
 
   const cardTitle = (
     <>
+      {modelIconInTitle ? (
+        <SidebarTitleProviderIcon
+          thread={thread}
+          providerEntryByInstanceId={props.providerEntryByInstanceId}
+        />
+      ) : null}
       {title}
       {isRegeneratingTitle ? (
         <span role="status" className="sr-only">
