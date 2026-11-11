@@ -25,6 +25,8 @@ import { formatUpcomingTimestamp } from "../../timestampFormat";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { formatContextWindowCompactionMessage } from "./compaction.logic";
 import { ThreadDetailsSection } from "./ThreadDetailsSection";
+import { useForkFeature } from "../../fork/forkFeatures";
+import { paceMarkerPercent } from "../../fork/paceMarker";
 
 const PACE_LABEL: Record<LimitPace, string> = {
   ahead: msg("Ahead of pace"),
@@ -164,6 +166,7 @@ function LimitRow({
   const gt = useGT();
   const m = useMessages();
   const timestampFormat = usePrimarySettings((settings) => settings.timestampFormat);
+  const showPaceMarker = useForkFeature("paceMarker");
   const left = remainingPercent(window);
   const pace = paceOf(window, now);
   const timeLeft = paceRemainingPercent(window, now);
@@ -173,7 +176,7 @@ function LimitRow({
       label={window.label}
       fill={left}
       tone={left <= 10 ? "error" : left <= 20 ? "warning" : null}
-      tick={timeLeft}
+      tick={showPaceMarker ? paceMarkerPercent(window, now) : timeLeft}
       value={`${left}%`}
       ariaValue={gt("{left}% left", { left })}
       opensUsage
