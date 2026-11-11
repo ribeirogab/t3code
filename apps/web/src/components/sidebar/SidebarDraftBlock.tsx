@@ -11,8 +11,9 @@ import type { EnvironmentProject } from "@t3tools/client-runtime/state/shell";
 import { useShallow } from "zustand/react/shallow";
 import { cn } from "~/lib/utils";
 import { resolveSidebarRowAccessibility } from "../Sidebar.logic";
-import type { ProjectFaviconProject } from "../ProjectFavicon";
+import { ProjectFavicon, type ProjectFaviconProject } from "../ProjectFavicon";
 import { TitleFirstProjectLabel } from "~/fork/TitleFirstProjectLabel";
+import { useForkFeature } from "~/fork/forkFeatures";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import {
   composerDraftHasUserContent,
@@ -56,6 +57,7 @@ const SidebarDraftRow = memo(function SidebarDraftRow(props: {
     projectDisplayName: props.projectDisplayName,
     isActive: props.isActive,
   });
+  const titleFirst = useForkFeature("titleFirstCards");
   const handleActivate = () => onNavigate(draftId);
   const handleKeyDown = (event: ReactKeyboardEvent) => {
     // Keys targeting the nested discard button belong to the button:
@@ -98,15 +100,31 @@ const SidebarDraftRow = memo(function SidebarDraftRow(props: {
         onKeyDown={handleKeyDown}
       >
         <span className="sr-only">{preview}</span>
-        <div className="relative z-10 h-14 px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)">
+        <div
+          className={cn(
+            "relative z-10 px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)",
+            titleFirst ? "h-14" : "h-[4.875rem]",
+          )}
+        >
           <div className="flex h-5 min-w-0 items-center gap-1.5">
             <SquarePenIcon aria-hidden className={draftPenClassName} />
-            <span
-              aria-hidden
-              className="min-w-0 flex-1 truncate text-sm font-medium text-foreground/90"
-            >
-              {preview}
-            </span>
+            {titleFirst ? (
+              <span
+                aria-hidden
+                className="min-w-0 flex-1 truncate text-sm font-medium text-foreground/90"
+              >
+                {preview}
+              </span>
+            ) : (
+              <>
+                {props.project ? (
+                  <ProjectFavicon project={props.project} className="size-4 shrink-0" />
+                ) : null}
+                <span className="min-w-0 flex-1 truncate text-xs font-medium text-secondary-label">
+                  {props.projectDisplayName}
+                </span>
+              </>
+            )}
             <span className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-end">
               <Tooltip>
                 <TooltipTrigger
@@ -125,13 +143,19 @@ const SidebarDraftRow = memo(function SidebarDraftRow(props: {
               </Tooltip>
             </span>
           </div>
-          <div className="mt-1 flex h-4 min-w-0 items-center gap-1.5 text-xs text-secondary-label">
-            <TitleFirstProjectLabel
-              project={props.project}
-              projectDisplayName={props.projectDisplayName}
-              separated={false}
-            />
-          </div>
+          {titleFirst ? (
+            <div className="mt-1 flex h-4 min-w-0 items-center gap-1.5 text-xs text-secondary-label">
+              <TitleFirstProjectLabel
+                project={props.project}
+                projectDisplayName={props.projectDisplayName}
+                separated={false}
+              />
+            </div>
+          ) : (
+            <div aria-hidden className="mt-0.5 truncate text-sm font-medium text-foreground/90">
+              {preview}
+            </div>
+          )}
         </div>
       </div>
     </li>
