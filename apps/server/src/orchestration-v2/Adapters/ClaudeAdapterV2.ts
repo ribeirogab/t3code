@@ -225,6 +225,7 @@ import {
 import { turnScopedSelectionTransition } from "@t3tools/provider-core/server/selectionTransition";
 import { providerMessageTextWithAttachmentPaths } from "@t3tools/provider-core/server/attachmentPrompt";
 import * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
+import { readClaudeContextUsage } from "../../fork/claudeContextUsage.ts";
 import {
   ProviderAdapterDriverCreateError,
   type ProviderAdapterDriverCreateInput,
@@ -569,6 +570,10 @@ export interface ClaudeAgentSdkQuerySession {
   ) => Effect.Effect<boolean, ClaudeAgentSdkQueryRunnerError>;
   readonly mcpServerStatus: Effect.Effect<
     ReadonlyArray<ClaudeMcpServerStatus>,
+    ClaudeAgentSdkQueryRunnerError
+  >;
+  readonly getContextUsage?: Effect.Effect<
+    Awaited<ReturnType<ClaudeQuery["getContextUsage"]>>,
     ClaudeAgentSdkQueryRunnerError
   >;
   readonly readMcpResource: (input: {
@@ -1512,6 +1517,10 @@ export const layerQueryRunner: Layer.Layer<
             mcpServerStatus: Effect.tryPromise({
               try: () => queryRuntime.mcpServerStatus(),
               catch: (cause) => queryRunnerError(cause, "mcpServerStatus"),
+            }),
+            getContextUsage: Effect.tryPromise({
+              try: () => queryRuntime.getContextUsage({ detail: "summary" }),
+              catch: (cause) => queryRunnerError(cause, "getContextUsage"),
             }),
             readMcpResource: ({ server, uri }) =>
               Effect.tryPromise({
@@ -12330,6 +12339,10 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
               message: { ...turnInput.message, text: "/compact" },
             }),
           steerTurn,
+          readContextUsage: ({ providerThread }) =>
+            Effect.flatMap(Ref.get(queryContext), (liveQuery) =>
+              readClaudeContextUsage({ driver: CLAUDE_PROVIDER, liveQuery, providerThread }),
+            ),
           mcpApps: {
             listTools: Effect.fn("ClaudeAdapterV2.listMcpTools")(function* ({
               providerThread,

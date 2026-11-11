@@ -53,6 +53,13 @@ export const FORK_FEATURES = [
     description: "Mark the even-use pace on the usage limit bars.",
     searchTerms: ["fork pace marker usage limits weekly session bar tick"],
   },
+  {
+    key: "contextBreakdown",
+    searchId: "fork-context-breakdown",
+    title: "Context breakdown",
+    description: "Open the Context row to see the tokens by category. Claude only.",
+    searchTerms: ["fork context window breakdown tokens category mcp memory claude"],
+  },
 ] as const;
 
 export type ForkFeature = (typeof FORK_FEATURES)[number]["key"];
