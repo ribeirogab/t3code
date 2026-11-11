@@ -9,6 +9,7 @@ import {
   MenuPopup,
   MenuTrigger,
 } from "~/components/ui/menu";
+import { useForkFeature } from "./forkFeatures";
 import { SIDEBAR_CARD_FIELDS, useSidebarCardDisplayStore } from "./sidebarCardDisplay";
 
 export const SIDEBAR_CARD_DISPLAY_LABEL = "Display options";
@@ -16,6 +17,8 @@ export const SIDEBAR_CARD_DISPLAY_LABEL = "Display options";
 export function SidebarCardDisplayMenu(props: { trigger: ReactElement }) {
   const display = useSidebarCardDisplayStore((state) => state.display);
   const setFieldVisible = useSidebarCardDisplayStore((state) => state.setFieldVisible);
+  const enabled = useForkFeature("cardDisplayOptions");
+  if (!enabled) return null;
   return (
     <Menu>
       <MenuTrigger render={props.trigger}>
