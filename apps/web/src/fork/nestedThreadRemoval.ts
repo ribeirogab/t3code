@@ -2,6 +2,8 @@ import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environ
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
 import { isListedThreadLineage, type CommandId, type ScopedThreadRef } from "@t3tools/contracts";
 
+import { isForkFeatureEnabled } from "./forkFeatures";
+
 export type NestedRemovalChoice = "cancel" | "all" | "this" | "none";
 
 export interface NestedRemoval {
@@ -99,6 +101,7 @@ export async function unarchiveWithBatch<Result>(
   unarchive: (ref: ScopedThreadRef) => Promise<Result>,
 ): Promise<Result> {
   const result = await unarchive(target);
+  if (!isForkFeatureEnabled("nestedThreads")) return result;
   for (const mate of mates) await unarchive(mate);
   return result;
 }

@@ -2,7 +2,9 @@
 
 Personal fork of [pingdotgg/t3code](https://github.com/pingdotgg/t3code). The `custom` branch is the latest upstream nightly tag plus the fork commits on top.
 
-Fork-owned files: `FORK.md`, `.github/workflows/fork-release.yml`, `fork/`, `apps/web/src/fork/`, and `apps/server/src/fork/`. Everything else is upstream, including the line in `AGENTS.md` that points here.
+The fork is for the desktop app only. The desktop app renders `apps/web` and bundles `apps/server`, so fork code goes there. Do not change, build, or test the mobile app, the hosted web app, or any other app for the fork. In the surface checklist of `AGENTS.md`, only the desktop app applies.
+
+Fork-owned files: `FORK.md`, `.github/workflows/fork-release.yml`, `fork/`, `apps/web/src/fork/`, `apps/web/src/routes/_chat.settings.fork.tsx`, and `apps/server/src/fork/`. Everything else is upstream, including the line in `AGENTS.md` that points here.
 
 ## Add a change
 
@@ -10,6 +12,7 @@ Every change goes through a pull request into `custom`. Do not commit or push to
 
 - The repository is public. Keep private data out of every file, commit message, and pull request: hostnames, addresses, IPs, personal paths, and emails. The commit author name and email are fine.
 - Keep fork changes free of database migrations. An upstream build cannot open a database that has a migration it does not know, so `fork/bin/use official` would fail.
+- Every feature that changes what the app shows or does gets a toggle in **Settings → Fork**. Add it to `FORK_FEATURES` in `apps/web/src/fork/forkFeatures.ts`, then read it with `useForkFeature` in components and with `isForkFeatureEnabled` in event handlers. With the toggle off, the app behaves like upstream. New features are on by default. The toggles live in the desktop app on each machine. The server cannot read them, so the server part of a feature stays on.
 
 1. `git fetch origin && git switch -c fork/<change> origin/custom`
 2. Put new code in new files under `fork/`, `apps/web/src/fork/`, or `apps/server/src/fork/`. In upstream files, change as few lines as possible, for example one import and one call. Each changed upstream line can conflict on a rebase.
