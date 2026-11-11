@@ -11,7 +11,13 @@ runs:
           https://mirrors.edge.kernel.org/ubuntu 2 \
           https://mirror.math.princeton.edu/pub/ubuntu 3 \
           | sudo tee /etc/apt/blacksmith-ubuntu-mirrors.txt > /dev/null
-        if [ -f /etc/apt/apt-mirrors.txt ]; then sudo cp /etc/apt/blacksmith-ubuntu-mirrors.txt /etc/apt/apt-mirrors.txt; fi
+        if [ -f /etc/apt/apt-mirrors.txt ]; then
+          printf '%s\tpriority:%s\n' \
+            https://mirrors.edge.kernel.org/ubuntu 1 \
+            https://mirror.math.princeton.edu/pub/ubuntu 2 \
+            https://archive.ubuntu.com/ubuntu 3 \
+            | sudo tee /etc/apt/apt-mirrors.txt /etc/apt/blacksmith-ubuntu-mirrors.txt > /dev/null
+        fi
 
         # APT's mirror transport retries each file against the next server.
         sudo find /etc/apt -maxdepth 2 -type f \( -name '*.list' -o -name '*.sources' \) \
