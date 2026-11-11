@@ -9,17 +9,18 @@ import {
   resolveThreadDetailsVisibility,
   RESET_THREAD_DETAILS_ITEMS,
   setThreadDetailsItem,
-  THREAD_DETAILS_ITEMS,
 } from "./threadDetailsItems";
+import { useForkThreadDetailsItems } from "../../fork/forkThreadDetailsItems";
 
 /** Menu body that shows and hides thread details items. The card's context menu and Settings share it. */
 export function ThreadDetailsItemsMenuItems() {
   const visibility = useClientSettings(resolveThreadDetailsVisibility);
+  const items = useForkThreadDetailsItems();
   return (
     <>
       <MenuGroup>
         <MenuGroupLabel>Show in thread details</MenuGroupLabel>
-        {THREAD_DETAILS_ITEMS.map((item) => (
+        {items.map((item) => (
           <MenuCheckboxItem
             key={item.id}
             checked={visibility[item.id]}
