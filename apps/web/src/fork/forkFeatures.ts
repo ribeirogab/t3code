@@ -60,6 +60,14 @@ export const FORK_FEATURES = [
     description: "Open the Context row to see the tokens by category. Claude only.",
     searchTerms: ["fork context window breakdown tokens category mcp memory claude"],
   },
+  {
+    key: "providerUsage",
+    searchId: "fork-provider-usage",
+    title: "Provider usage",
+    description:
+      "Add a Provider usage item to thread details with the weekly pace of each provider.",
+    searchTerms: ["fork provider usage weekly pace deficit reserve accounts thread details"],
+  },
 ] as const;
 
 export type ForkFeature = (typeof FORK_FEATURES)[number]["key"];
