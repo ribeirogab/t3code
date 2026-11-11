@@ -80,13 +80,11 @@ function childStatusCommands(input: {
     CommandId.make(`server:fork-child-status:${input.cause}:${threadId}:${action}`);
   const parentSettled = parent.settledOverride === "settled";
   const childSettled = child.settledOverride === "settled";
-  if (parentSettled) {
-    return childSettled && liveSnoozeUntil(child, now) === null
-      ? []
-      : [{ type: "thread.settle", commandId: commandId("settle"), threadId }];
-  }
+  const settles = parentSettled && !childSettled;
   const commands: StatusCommand[] = [];
-  if (childSettled) {
+  if (settles) {
+    commands.push({ type: "thread.settle", commandId: commandId("settle"), threadId });
+  } else if (!parentSettled && childSettled) {
     commands.push({
       type: "thread.unsettle",
       commandId: commandId("unsettle"),
@@ -95,7 +93,8 @@ function childStatusCommands(input: {
     });
   }
   const parentSnooze = liveSnoozeUntil(parent, now);
-  const childSnooze = liveSnoozeUntil(child, now);
+  const childSnooze = settles ? null : liveSnoozeUntil(child, now);
+  const childSnoozedUntil = settles ? null : (child.snoozedUntil ?? null);
   if (parentSnooze !== null) {
     if (
       childSnooze === null ||
@@ -108,7 +107,7 @@ function childStatusCommands(input: {
         snoozedUntil: DateTime.formatIso(parentSnooze),
       });
     }
-  } else if (parent.snoozedUntil == null && child.snoozedUntil != null) {
+  } else if (parent.snoozedUntil == null && childSnoozedUntil !== null) {
     commands.push({
       type: "thread.unsnooze",
       commandId: commandId("unsnooze"),

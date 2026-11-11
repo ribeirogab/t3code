@@ -148,6 +148,8 @@ it.effect("nested children follow every Settle and Snooze change of the parent",
 
     for (const [index, command] of [
       { type: "thread.settle" as const },
+      { type: "thread.snooze" as const, snoozedUntil },
+      { type: "thread.unsnooze" as const, reason: "user" as const },
       { type: "thread.unsettle" as const, reason: "user" as const },
       { type: "thread.snooze" as const, snoozedUntil },
       { type: "thread.unsnooze" as const, reason: "user" as const },
