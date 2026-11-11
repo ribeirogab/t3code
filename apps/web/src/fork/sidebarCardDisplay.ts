@@ -3,6 +3,8 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import { resolveStorage } from "~/lib/storage";
 
+import { useForkFeature } from "./forkFeatures";
+
 export const SIDEBAR_CARD_FIELDS = [
   { key: "project", label: "Project" },
   { key: "branch", label: "Branch" },
@@ -68,6 +70,12 @@ export const useSidebarCardDisplayStore = create<SidebarCardDisplayState>()(
   ),
 );
 
+const ALL_SIDEBAR_CARD_FIELDS: SidebarCardDisplay = Object.fromEntries(
+  SIDEBAR_CARD_FIELDS.map(({ key }) => [key, true]),
+) as SidebarCardDisplay;
+
 export function useSidebarCardDisplay(): SidebarCardDisplay {
-  return useSidebarCardDisplayStore((state) => state.display);
+  const display = useSidebarCardDisplayStore((state) => state.display);
+  const enabled = useForkFeature("cardDisplayOptions");
+  return enabled ? display : ALL_SIDEBAR_CARD_FIELDS;
 }
