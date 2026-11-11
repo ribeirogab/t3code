@@ -47,8 +47,9 @@ function childOf(
   });
 }
 
-function nest(all: readonly NestingThread[]) {
+function nest(all: readonly NestingThread[], enabled = true) {
   return buildSidebarNesting({
+    enabled,
     visible: all.filter(
       (thread) => thread.archivedAt === null && isListedThreadLineage(thread.lineage),
     ),
@@ -62,7 +63,7 @@ const ids = (threads: readonly NestingThread[]) => threads.map((thread) => threa
 
 describe("buildSidebarNesting", () => {
   it("nests listed children and lifts broken chains to the top level", () => {
-    const nesting = nest([
+    const threads = [
       makeThread("root"),
       childOf("listed", "root"),
       childOf("fork", "root", { relationshipToParent: "fork" }),
@@ -74,12 +75,27 @@ describe("buildSidebarNesting", () => {
       childOf("after-archived", "archived"),
       childOf("loop-a", "loop-b"),
       childOf("loop-b", "loop-a"),
-    ]);
+    ];
+    const nesting = nest(threads);
 
     expect(ids(nesting.roots)).toEqual(["root", "orphan", "after-archived", "loop-a", "loop-b"]);
     expect(ids(nesting.childrenByKey.get(key("root")) ?? [])).toEqual(["listed", "fork"]);
     expect(ids(nesting.childrenByKey.get(key("listed")) ?? [])).toEqual(["grandchild"]);
     expect(nesting.childrenByKey.has(key("hidden"))).toBe(false);
+
+    const flat = nest(threads, false);
+    expect(ids(flat.roots)).toEqual([
+      "root",
+      "listed",
+      "fork",
+      "grandchild",
+      "under-hidden",
+      "orphan",
+      "after-archived",
+      "loop-a",
+      "loop-b",
+    ]);
+    expect(flat.childrenByKey.size).toBe(0);
   });
 });
 
@@ -138,9 +154,13 @@ describe("nested sidebar entries", () => {
       "d2",
       "s1",
     ]);
-    expect(nestedRouteRowKey(key("d4"), all, collapsed)).toBe(key("d2"));
-    expect(nestedRouteRowKey(key("d4"), all, new Set([key("root"), key("d2")]))).toBe(key("root"));
-    expect(nestedRouteRowKey(key("s1"), all, collapsed)).toBe(key("s1"));
-    expect(nestedRouteRowKey(key("under-hidden"), all, new Set())).toBe(key("root"));
+    expect(nestedRouteRowKey(key("d4"), all, collapsed, true)).toBe(key("d2"));
+    expect(nestedRouteRowKey(key("d4"), all, new Set([key("root"), key("d2")]), true)).toBe(
+      key("root"),
+    );
+    expect(nestedRouteRowKey(key("s1"), all, collapsed, true)).toBe(key("s1"));
+    expect(nestedRouteRowKey(key("under-hidden"), all, new Set(), true)).toBe(key("root"));
+    expect(nestedRouteRowKey(key("d4"), all, collapsed, false)).toBe(key("d4"));
+    expect(nestedRouteRowKey(key("under-hidden"), all, new Set(), false)).toBe(key("under-hidden"));
   });
 });

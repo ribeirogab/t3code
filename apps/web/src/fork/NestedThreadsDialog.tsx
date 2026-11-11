@@ -16,6 +16,7 @@ import { randomUUID } from "~/lib/utils";
 import { appAtomRegistry } from "~/rpc/atomRegistry";
 import { environmentThreadShells } from "~/state/threads";
 
+import { isForkFeatureEnabled } from "./forkFeatures";
 import {
   sidebarDescendantRefs,
   type NestedRemoval,
@@ -55,7 +56,9 @@ export async function chooseNestedRemoval(input: {
   readonly title: string;
 }): Promise<NestedRemoval> {
   const threads = appAtomRegistry.get(environmentThreadShells.quietThreadShellsAtom);
-  const descendants = sidebarDescendantRefs(threads, input.threadRef);
+  const descendants = isForkFeatureEnabled("nestedThreads")
+    ? sidebarDescendantRefs(threads, input.threadRef)
+    : [];
   const archiveBatchId = CommandId.make(randomUUID());
   if (descendants.length === 0) return { choice: "none", descendants, archiveBatchId };
   const choice = await requestNestedRemoval({
