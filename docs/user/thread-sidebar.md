@@ -285,6 +285,11 @@ Archiving or deleting a parent asks whether to include its nested threads;
 unarchive brings the whole batch back. While a parent is archived, its nested
 threads show at the top level.
 
+Nested threads follow their parent when it settles, un-settles, snoozes, or
+wakes, on every device. A nested thread that is still running follows when its
+turn ends. You can still change one nested thread on its own; it follows the
+parent again at the parent's next change.
+
 **Detach to top level** in the menu of a nested thread makes it a normal
 thread for good: it leaves its parent in the sidebar and takes its own nested
 threads with it. The parent still gets its result. There is no way back.
