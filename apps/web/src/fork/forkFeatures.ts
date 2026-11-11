@@ -26,11 +26,11 @@ export const FORK_FEATURES = [
     searchTerms: ["fork sidebar card fields branch machine model diff terminal pull request"],
   },
   {
-    key: "hideArchivedAgents",
-    searchId: "fork-hide-archived-agents",
-    title: "Hide archived agents",
-    description: "Leave archived threads out of Previous agents in thread details.",
-    searchTerms: ["fork previous agents subagents archived thread details"],
+    key: "modelIconInTitle",
+    searchId: "fork-model-icon-in-title",
+    title: "Model icon in title",
+    description: "Show the provider icon at the start of the thread title in sidebar cards.",
+    searchTerms: ["fork sidebar card model provider icon title start"],
   },
   {
     key: "nestedThreads",
@@ -38,6 +38,13 @@ export const FORK_FEATURES = [
     title: "Nested threads",
     description: "Show forks and listed child threads under their parent in the sidebar.",
     searchTerms: ["fork nested child threads subagents tree parent detach hide listed"],
+  },
+  {
+    key: "hideArchivedAgents",
+    searchId: "fork-hide-archived-agents",
+    title: "Hide archived agents",
+    description: "Leave archived threads out of Previous agents in thread details.",
+    searchTerms: ["fork previous agents subagents archived thread details"],
   },
   {
     key: "paceMarker",
