@@ -59,7 +59,8 @@ import {
 import { useRef, useState, type ReactNode } from "react";
 
 import { useArchivedThreadSnapshots } from "../../lib/archivedThreadsState";
-import { withoutArchivedAgentRows } from "~/fork/archivedAgentRows";
+import { useWithoutArchivedAgentRows } from "~/fork/archivedAgentRows";
+import { useForkFeature } from "~/fork/forkFeatures";
 import { buildThreadRouteParams } from "../../threadRoutes";
 import {
   useProjects,
@@ -543,7 +544,12 @@ export function ThreadRelationshipsPanel(props: {
       Object.hasOwn(resolvedThreadTitles, threadId),
   );
   const canDetach = projection ? canDetachThreadProviderSession(projection) : false;
-  const liveRelationships = withoutArchivedAgentRows(visibleRelationships, graph, props.threadId);
+  const liveRelationships = useWithoutArchivedAgentRows(
+    visibleRelationships,
+    graph,
+    props.threadId,
+  );
+  const nestedThreadsEnabled = useForkFeature("nestedThreads");
 
   const {
     related = [],
@@ -754,7 +760,10 @@ export function ThreadRelationshipsPanel(props: {
       agent?.origin === "provider_native" &&
       providerDriver === "claudeAgent";
     const canToggleListed =
-      !canStop && !isMergeTarget && canToggleThreadListed(node?.thread, isParent);
+      nestedThreadsEnabled &&
+      !canStop &&
+      !isMergeTarget &&
+      canToggleThreadListed(node?.thread, isParent);
     const trailingVisibilityClass = (workflowGroup ? canStopWorkflow : canStop || canToggleListed)
       ? "group-hover:opacity-0 group-focus-within:opacity-0 pointer-coarse:opacity-0 [@media(hover:none)]:opacity-0"
       : "";
