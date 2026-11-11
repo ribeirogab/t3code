@@ -16,6 +16,7 @@ import {
   FileDiffIcon,
   FolderTreeIcon,
   GitBranchIcon,
+  GitForkIcon,
   GlobeIcon,
   InfoIcon,
   MessageSquareTextIcon,
@@ -109,6 +110,7 @@ const SETTINGS_SECTION_ICONS: Readonly<
   "/settings/secrets": KeyRoundIcon,
   "/settings/maintenance": WrenchIcon,
   "/settings/labs": FlaskConicalIcon,
+  "/settings/fork": GitForkIcon,
   "/settings/about": InfoIcon,
   "/settings/archived": ArchiveIcon,
 };
