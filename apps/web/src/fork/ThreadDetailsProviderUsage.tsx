@@ -60,7 +60,7 @@ export function ForkThreadDetailsProviderUsage(props: {
           />
         </button>
         {expanded ? (
-          <div className="grid grid-cols-[0.75rem_minmax(0,1fr)_5.5rem_2.25rem] gap-x-2 pb-1 tabular-nums">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)_5.5rem_auto] gap-x-2 pb-1 tabular-nums">
             {entries.map((entry) => (
               <ProviderRow key={entry.account.id} entry={entry} now={now} />
             ))}
