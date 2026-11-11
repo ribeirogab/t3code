@@ -1,7 +1,7 @@
 import type { SDKControlGetContextUsageResponse } from "@anthropic-ai/claude-agent-sdk";
 import type {
   ForkContextUsage,
-  ForkContextUsageEntry,
+  ForkContextUsageCategory,
   ForkContextUsageGroup,
   OrchestrationV2ProviderThread,
   ProviderDriverKind,
@@ -17,8 +17,19 @@ interface ClaudeContextUsageQuery {
   };
 }
 
-const byTokens = (left: ForkContextUsageEntry, right: ForkContextUsageEntry) =>
+const byTokens = (left: { readonly tokens: number }, right: { readonly tokens: number }) =>
   right.tokens - left.tokens;
+
+const CATEGORY_KIND_ORDER: ReadonlyArray<ForkContextUsageCategory["kind"]> = [
+  "used",
+  "buffer",
+  "free",
+  "deferred",
+];
+
+const byKindThenTokens = (left: ForkContextUsageCategory, right: ForkContextUsageCategory) =>
+  CATEGORY_KIND_ORDER.indexOf(left.kind) - CATEGORY_KIND_ORDER.indexOf(right.kind) ||
+  byTokens(left, right);
 
 function shortPath(path: string): string {
   return path.split("/").filter(Boolean).slice(-2).join("/");
@@ -64,12 +75,14 @@ export function toForkContextUsage(response: SDKControlGetContextUsageResponse):
   return {
     totalTokens: response.totalTokens,
     maxTokens: response.maxTokens,
-    categories: response.categories.map((category) => ({
-      id: category.id ?? category.name,
-      name: category.name,
-      tokens: category.tokens,
-      kind: category.kind,
-    })),
+    categories: response.categories
+      .map((category) => ({
+        id: category.id ?? category.name,
+        name: category.name,
+        tokens: category.tokens,
+        kind: category.kind,
+      }))
+      .toSorted(byKindThenTokens),
     groups: groups.filter((group) => group.count > 0),
   };
 }
