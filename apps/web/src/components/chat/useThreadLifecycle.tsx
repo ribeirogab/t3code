@@ -63,6 +63,7 @@ import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { appAtomRegistry } from "../../rpc/atomRegistry";
 import { readEnvironmentScope } from "../../state/session";
 import { useAtomCommand } from "../../state/use-atom-command";
+import { useSupervisedTurnNowItem } from "../../fork/useSupervisedTurnNowItem";
 import { useOrchestrationCommand } from "../../state/use-orchestration-command";
 import {
   backgroundWorkNowItem,
@@ -76,7 +77,6 @@ import type { RunStopPresentation } from "@t3tools/client-runtime/state/thread-e
 import { Atom } from "effect/reactivity";
 import { environmentThreadDetails } from "../../state/threads";
 import { openSideChatTab } from "../../lib/sideChatPane";
-import { useSupervisedTurnNowItem } from "../../fork/useSupervisedTurnNowItem";
 import type { useLocalDispatchState } from "./useLocalDispatchState";
 const RELATED_THREAD_SHELL_WAIT_MS = 1_000;
 const NO_RUN_STOP_ATOM = Atom.make<RunStopPresentation | null>(null).pipe(
