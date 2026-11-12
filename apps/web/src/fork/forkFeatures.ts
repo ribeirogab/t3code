@@ -80,6 +80,14 @@ export const FORK_FEATURES = [
     description: "Add a Provider usage item with the weekly pace of each provider.",
     searchTerms: ["fork provider usage weekly pace deficit reserve accounts thread details"],
   },
+  {
+    key: "goalWaiting",
+    section: "Sidebar",
+    searchId: "fork-goal-waiting",
+    title: "Waiting while a goal is open",
+    description: "Keep a thread with an active /goal in Waiting, not Done.",
+    searchTerms: ["fork goal waiting working shelf done completed sidebar"],
+  },
 ] as const satisfies ReadonlyArray<{
   readonly key: string;
   readonly section: (typeof FORK_FEATURE_SECTIONS)[number];
