@@ -79,6 +79,8 @@ import * as PullRequestsHandlers from "./toolkits/pullRequests/handlers.ts";
 import * as ToolSearchHandlers from "./toolkits/toolSearch/handlers.ts";
 import { ToolSearchToolkit } from "./toolkits/toolSearch/tools.ts";
 import { PullRequestsToolkit } from "./toolkits/pullRequests/tools.ts";
+import * as WorkflowRunWatchHandlers from "../fork/workflowRunWatch/handlers.ts";
+import { WorkflowRunWatchToolkit } from "../fork/workflowRunWatch/tools.ts";
 import * as DeviceHandlers from "./toolkits/device/handlers.ts";
 import {
   DeviceScreenshotTool,
@@ -90,6 +92,10 @@ import { MessageToolkit } from "./toolkits/message/tools.ts";
 import * as MessageHandlers from "./toolkits/message/handlers.ts";
 import { HtmlPreviewTool, HtmlPreviewToolkit, HtmlRenderToolkit } from "./toolkits/html/tools.ts";
 import { MCP_HTTP_PATH } from "../httpCors.ts";
+import * as PublishedPortsHandlers from "../fork/publishedPorts/handlers.ts";
+import { PublishedPortsToolkit } from "../fork/publishedPorts/tools.ts";
+import * as ForkThreadHandoffHandlers from "../fork/threadHandoff/handlers.ts";
+import { ForkThreadHandoffToolkit } from "../fork/threadHandoff/tools.ts";
 import { requestUrl } from "../requestUrl.ts";
 
 const mcpResourceMetadataUrl = (request: HttpServerRequest.HttpServerRequest) =>
@@ -936,6 +942,7 @@ const HANDOFF_TOOLS: ReadonlySet<string> = new Set([
   "delegate_task",
   "create_threads",
   "t3_thread_launch",
+  "t3_thread_handoff",
   "t3_thread_send",
   "t3_thread_send_attachments",
   "schedule_task",
@@ -1258,6 +1265,11 @@ export const layerOrchestratorToolkit = toolkitRegistration(
   OrchestratorHandlers.layer,
 ).pipe(Layer.provide(OrchestratorMcpService.layer), Layer.provide(ThreadMetadataMcpService.layer));
 
+const layerForkThreadHandoffToolkit = toolkitRegistration(
+  ForkThreadHandoffToolkit,
+  ForkThreadHandoffHandlers.layer,
+).pipe(Layer.provide(OrchestratorMcpService.layer));
+
 export const layerThreadToolkit = toolkitRegistration(ThreadToolkit, ThreadHandlers.layer);
 
 const layerMessageToolkit = toolkitRegistration(MessageToolkit, MessageHandlers.layer);
@@ -1292,6 +1304,11 @@ export const layerPullRequestsToolkit = toolkitRegistration(
   PullRequestsToolkit,
   PullRequestsHandlers.layer,
 ).pipe(Layer.provide(PullRequestWatchService.layer));
+
+const layerWorkflowRunWatchToolkit = toolkitRegistration(
+  WorkflowRunWatchToolkit,
+  WorkflowRunWatchHandlers.layer,
+);
 
 const layerDeviceStandardToolkitRegistration = toolkitRegistration(
   DeviceStandardToolkit,
@@ -1342,6 +1359,7 @@ export const layerMcpTransport = <RA, RE, RR>(registrations: Layer.Layer<RA, RE,
 export const layerTools = Layer.mergeAll(
   layerPreviewToolkit,
   layerOrchestratorToolkit,
+  layerForkThreadHandoffToolkit,
   layerThreadToolkit,
   layerAttachmentToolkit,
   layerProjectRegistration,
@@ -1350,9 +1368,11 @@ export const layerTools = Layer.mergeAll(
   layerPreviewControlsRegistration,
   layerWorktreeToolkitRegistration,
   layerPullRequestsToolkit,
+  layerWorkflowRunWatchToolkit,
   layerDeviceToolkit,
   layerHtmlToolkit,
   layerMessageToolkit,
+  toolkitRegistration(PublishedPortsToolkit, PublishedPortsHandlers.layer),
 );
 
 const layerToolExposure = Layer.effect(

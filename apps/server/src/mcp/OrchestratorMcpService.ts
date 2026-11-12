@@ -137,6 +137,12 @@ import { assertTargetWithinLimits, isLiveCallerShell, threadNotFound } from "./t
 import * as SecretRequests from "../secrets/SecretRequests.ts";
 import * as PeerForwarding from "../peer/PeerForwarding.ts";
 import * as RemoteDelegation from "../peer/RemoteDelegation.ts";
+import { mayWakeParentOnFinish } from "../fork/notifyParent.ts";
+import {
+  queueGoal,
+  refuseRemoteGoal,
+  requireGoalSupport,
+} from "../fork/threadHandoff/goalQueue.ts";
 
 // Return recoverable handles before common MCP client timeouts expire.
 const DEFAULT_WAIT_TIMEOUT_MS = 30_000;
@@ -1855,7 +1861,9 @@ const make = Effect.gen(function* () {
       waitTimedOut,
     } satisfies OrchestratorMcpDelegateTaskResult;
     const response: OrchestratorMcpDelegateTaskResult =
-      endsTaskWait(result) || task.completionDelivery?.state === "disposed"
+      endsTaskWait(result) ||
+      task.completionDelivery?.state === "disposed" ||
+      !mayWakeParentOnFinish(task)
         ? result
         : { ...result, next: ORCHESTRATOR_MCP_RUNNING_TASK_NEXT };
     if (
@@ -2642,6 +2650,7 @@ const make = Effect.gen(function* () {
           : PeerForwarding.remoteTarget(callerScope, input.target.environmentId);
       if (input.target !== undefined && environmentId !== undefined) {
         yield* requireCapability(callerScope);
+        yield* refuseRemoteGoal(input.goal);
         const scope = yield* requireThreadScope(callerScope, "delegate_task");
         // The task's child runs as an ordinary thread there; this thread keeps the task.
         const { taskId } = yield* remoteDelegation.delegate(scope, {
@@ -2689,6 +2698,7 @@ const make = Effect.gen(function* () {
         providers,
         skipProjectEnablementFilter: isRetryOfAcceptedDelegation,
       });
+      yield* requireGoalSupport(input.goal, providers, target.modelSelection.instanceId);
       const runtimeMode = yield* resolveRuntimeMode(
         parent.thread.runtimeMode,
         input.runtimeMode,
@@ -2751,6 +2761,7 @@ const make = Effect.gen(function* () {
           // gives up the wait (timeout, cancelled call) and upgrades the wake.
           completionWake: input.mode === "wait" ? "settled_only" : "always",
           ...(input.listed === undefined ? {} : { listed: input.listed }),
+          ...(input.notifyParent === undefined ? {} : { notifyParent: input.notifyParent }),
         })
         .pipe(
           Effect.mapError((error) =>
@@ -2788,6 +2799,14 @@ const make = Effect.gen(function* () {
           runId: childRunEvent.event.payload.id,
         });
       }
+      if (childThreadId !== null)
+        yield* queueGoal(threadManagement, {
+          goal: input.goal,
+          projectId: parent.thread.projectId,
+          threadId: childThreadId,
+          senderThreadId: childThreadId,
+          commandId,
+        });
 
       return yield* input.mode === "wait"
         ? awaitTask(scope, taskId, key, input.timeoutMs)
