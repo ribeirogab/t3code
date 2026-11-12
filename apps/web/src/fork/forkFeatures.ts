@@ -3,9 +3,14 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import { resolveStorage } from "~/lib/storage";
 
+export const FORK_FEATURE_SECTIONS = ["Sidebar", "Thread details"] as const;
+
+export const FORK_MASTER_SEARCH_ID = "fork-features";
+
 export const FORK_FEATURES = [
   {
     key: "forkPill",
+    section: "Sidebar",
     searchId: "fork-pill",
     title: "Fork pill",
     description: "Mark the stage pill in the sidebar as Fork.",
@@ -13,6 +18,7 @@ export const FORK_FEATURES = [
   },
   {
     key: "titleFirstCards",
+    section: "Sidebar",
     searchId: "fork-title-first-cards",
     title: "Title first in thread cards",
     description: "Show the thread title on the first line of a sidebar card.",
@@ -20,6 +26,7 @@ export const FORK_FEATURES = [
   },
   {
     key: "cardDisplayOptions",
+    section: "Sidebar",
     searchId: "fork-card-display-options",
     title: "Card display options",
     description: "Choose the fields of a sidebar card from the sidebar header.",
@@ -27,6 +34,7 @@ export const FORK_FEATURES = [
   },
   {
     key: "modelIconInTitle",
+    section: "Sidebar",
     searchId: "fork-model-icon-in-title",
     title: "Model icon in title",
     description: "Show the provider icon at the start of the thread title in sidebar cards.",
@@ -34,6 +42,7 @@ export const FORK_FEATURES = [
   },
   {
     key: "nestedThreads",
+    section: "Sidebar",
     searchId: "fork-nested-threads",
     title: "Nested threads",
     description: "Show forks and listed child threads under their parent in the sidebar.",
@@ -41,34 +50,44 @@ export const FORK_FEATURES = [
   },
   {
     key: "hideArchivedAgents",
+    section: "Thread details",
     searchId: "fork-hide-archived-agents",
     title: "Hide archived agents",
-    description: "Leave archived threads out of Previous agents in thread details.",
+    description: "Leave archived threads out of Previous agents.",
     searchTerms: ["fork previous agents subagents archived thread details"],
   },
   {
-    key: "paceMarker",
-    searchId: "fork-pace-marker",
-    title: "Pace marker",
-    description: "Mark the even-use pace on the usage limit bars.",
-    searchTerms: ["fork pace marker usage limits weekly session bar tick"],
-  },
-  {
     key: "contextBreakdown",
+    section: "Thread details",
     searchId: "fork-context-breakdown",
     title: "Context breakdown",
     description: "Open the Context row to see the tokens by category. Claude only.",
     searchTerms: ["fork context window breakdown tokens category mcp memory claude"],
   },
   {
+    key: "paceMarker",
+    section: "Thread details",
+    searchId: "fork-pace-marker",
+    title: "Pace marker",
+    description: "Mark the even-use pace on the usage limit bars.",
+    searchTerms: ["fork pace marker usage limits weekly session bar tick"],
+  },
+  {
     key: "providerUsage",
+    section: "Thread details",
     searchId: "fork-provider-usage",
     title: "Provider usage",
-    description:
-      "Add a Provider usage item to thread details with the weekly pace of each provider.",
+    description: "Add a Provider usage item with the weekly pace of each provider.",
     searchTerms: ["fork provider usage weekly pace deficit reserve accounts thread details"],
   },
-] as const;
+] as const satisfies ReadonlyArray<{
+  readonly key: string;
+  readonly section: (typeof FORK_FEATURE_SECTIONS)[number];
+  readonly searchId: string;
+  readonly title: string;
+  readonly description: string;
+  readonly searchTerms: ReadonlyArray<string>;
+}>;
 
 export type ForkFeature = (typeof FORK_FEATURES)[number]["key"];
 
@@ -78,23 +97,43 @@ export const DEFAULT_FORK_FEATURES: ForkFeatures = Object.fromEntries(
   FORK_FEATURES.map(({ key }) => [key, true]),
 ) as ForkFeatures;
 
-export const FORK_SETTINGS_SEARCH_ITEMS = FORK_FEATURES.map((feature) => ({
-  id: feature.searchId,
-  title: feature.title,
-  to: "/settings/fork" as const,
-  searchTerms: feature.searchTerms,
-}));
+export const FORK_SETTINGS_SEARCH_ITEMS = [
+  {
+    id: FORK_MASTER_SEARCH_ID,
+    title: "Fork features",
+    to: "/settings/fork" as const,
+    searchTerms: ["fork features all upstream master off"],
+  },
+  ...FORK_FEATURES.map((feature) => ({
+    id: feature.searchId,
+    title: feature.title,
+    to: "/settings/fork" as const,
+    searchTerms: feature.searchTerms,
+  })),
+];
 
-interface ForkFeaturesState {
+interface ForkSettings {
+  master: boolean;
   enabled: ForkFeatures;
+}
+
+interface ForkFeaturesState extends ForkSettings {
+  setMaster: (master: boolean) => void;
   setEnabled: (feature: ForkFeature, enabled: boolean) => void;
 }
 
-export function mergePersistedForkFeatures(persisted: unknown): ForkFeatures {
-  const enabled =
-    persisted !== null && typeof persisted === "object" && "enabled" in persisted
-      ? persisted.enabled
-      : null;
+export function mergePersistedForkSettings(persisted: unknown): ForkSettings {
+  const stored =
+    persisted !== null && typeof persisted === "object"
+      ? (persisted as Partial<Record<string, unknown>>)
+      : {};
+  return {
+    master: typeof stored.master === "boolean" ? stored.master : true,
+    enabled: mergeEnabled(stored.enabled),
+  };
+}
+
+function mergeEnabled(enabled: unknown): ForkFeatures {
   if (enabled === null || typeof enabled !== "object") return DEFAULT_FORK_FEATURES;
   const stored = enabled as Partial<Record<string, unknown>>;
   return Object.fromEntries(
@@ -105,10 +144,16 @@ export function mergePersistedForkFeatures(persisted: unknown): ForkFeatures {
   ) as ForkFeatures;
 }
 
+export function isForkFeatureActive(settings: ForkSettings, feature: ForkFeature): boolean {
+  return settings.master && settings.enabled[feature];
+}
+
 export const useForkFeaturesStore = create<ForkFeaturesState>()(
   persist(
     (set) => ({
+      master: true,
       enabled: DEFAULT_FORK_FEATURES,
+      setMaster: (master) => set({ master }),
       setEnabled: (feature, enabled) =>
         set((state) => ({ enabled: { ...state.enabled, [feature]: enabled } })),
     }),
@@ -117,19 +162,16 @@ export const useForkFeaturesStore = create<ForkFeaturesState>()(
       storage: createJSONStorage(() =>
         resolveStorage(typeof window !== "undefined" ? window.localStorage : undefined),
       ),
-      partialize: ({ enabled }) => ({ enabled }),
-      merge: (persisted, current) => ({
-        ...current,
-        enabled: mergePersistedForkFeatures(persisted),
-      }),
+      partialize: ({ master, enabled }) => ({ master, enabled }),
+      merge: (persisted, current) => ({ ...current, ...mergePersistedForkSettings(persisted) }),
     },
   ),
 );
 
 export function useForkFeature(feature: ForkFeature): boolean {
-  return useForkFeaturesStore((state) => state.enabled[feature]);
+  return useForkFeaturesStore((state) => isForkFeatureActive(state, feature));
 }
 
 export function isForkFeatureEnabled(feature: ForkFeature): boolean {
-  return useForkFeaturesStore.getState().enabled[feature];
+  return isForkFeatureActive(useForkFeaturesStore.getState(), feature);
 }
