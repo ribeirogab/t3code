@@ -6,6 +6,9 @@ on:
   push:
     branches:
       - custom
+    paths-ignore:
+      - FORK.md
+      - .github/workflows/fork-ci.yml
   workflow_dispatch:
     inputs:
       rebuild:
