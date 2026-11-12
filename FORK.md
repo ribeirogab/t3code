@@ -29,11 +29,11 @@ Every change goes through a pull request into `custom`. Do not commit or push to
 
    The daily rebase rewrites `custom`, so rebase the branch right before the merge. Git drops the old copies of the fork commits. The squash keeps one `fork: <change>` commit per change.
 
-7. The merge pushes to `custom`, and the workflow builds and publishes a release.
+7. The merge pushes to `custom`, and the workflow builds and publishes a release. A merge that changes only `FORK.md` or `.github/workflows/fork-ci.yml` does not start a build. The next daily run builds it.
 
 ## Release flow
 
-`fork-release.yml` runs once a day at 08:23 UTC, on each push to `custom`, and on demand (`rebuild` forces a new build of the same commit).
+`fork-release.yml` runs once a day at 08:23 UTC, on each push to `custom` that changes more than `FORK.md` and `.github/workflows/fork-ci.yml`, and on demand (`rebuild` forces a new build of the same commit).
 
 1. It finds the latest published upstream nightly.
 2. When `custom` does not contain it, it rebases `custom` onto it and pushes. The push starts the build run.
