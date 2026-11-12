@@ -129,6 +129,7 @@ import { isLiveCallerShell, threadNotFound } from "./threadAccess.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
 import * as PeerForwarding from "../peer/PeerForwarding.ts";
 import * as RemoteDelegation from "../peer/RemoteDelegation.ts";
+import { mayWakeParentOnFinish } from "../fork/notifyParent.ts";
 
 const DEFAULT_WAIT_TIMEOUT_MS = 10 * 60 * 1_000;
 const MAX_WAIT_TIMEOUT_MS = 60 * 60 * 1_000;
@@ -1627,7 +1628,9 @@ const make = Effect.gen(function* () {
       waitTimedOut,
     } satisfies OrchestratorMcpDelegateTaskResult;
     const response: OrchestratorMcpDelegateTaskResult =
-      endsTaskWait(result) || task.completionDelivery?.state === "disposed"
+      endsTaskWait(result) ||
+      task.completionDelivery?.state === "disposed" ||
+      !mayWakeParentOnFinish(task)
         ? result
         : { ...result, next: ORCHESTRATOR_MCP_RUNNING_TASK_NEXT };
     if (
@@ -2514,6 +2517,7 @@ const make = Effect.gen(function* () {
           // gives up the wait (timeout, cancelled call) and upgrades the wake.
           completionWake: input.mode === "wait" ? "settled_only" : "always",
           ...(input.listed === undefined ? {} : { listed: input.listed }),
+          ...(input.notifyParent === undefined ? {} : { notifyParent: input.notifyParent }),
         })
         .pipe(
           Effect.mapError((error) =>

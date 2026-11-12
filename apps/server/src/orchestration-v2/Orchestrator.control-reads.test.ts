@@ -1541,11 +1541,12 @@ it.effect("wakes the parent once when its delegated task asks a question", () =>
       commandId: CommandId.make("question-followup"),
       threadId: task.childThreadId!,
       messageId: MessageId.make("message:question-followup"),
+      senderThreadId: parentThreadId,
       text: "Check the sources again",
       attachments: [],
       dispatchMode: { type: "start_immediately" },
-      createdBy: "user",
-      creationSource: "web",
+      createdBy: "agent",
+      creationSource: "mcp",
     });
     const followup = (yield* projections.getThreadRecords(task.childThreadId!, ["runs"])).runs.find(
       (run) => run.userMessageId === "message:question-followup",
