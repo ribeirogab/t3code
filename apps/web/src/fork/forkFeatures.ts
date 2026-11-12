@@ -107,6 +107,14 @@ export const FORK_FEATURES = [
     searchTerms: ["fork provider usage weekly pace deficit reserve accounts thread details"],
   },
   {
+    key: "centerChatBesideDetails",
+    section: "Chat",
+    searchId: "fork-center-chat-beside-details",
+    title: "Center chat beside thread details",
+    description: "Center the chat in the free space left of the open Thread details card.",
+    searchTerms: ["fork center chat thread details card free space lane layout middle"],
+  },
+  {
     key: "goalWaiting",
     section: "Sidebar",
     searchId: "fork-goal-waiting",
