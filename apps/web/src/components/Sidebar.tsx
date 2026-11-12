@@ -290,6 +290,8 @@ import { useNestedCollapseStore, useNestedCollapsedKeys } from "../fork/nestedCo
 import { chooseNestedRemoval } from "../fork/NestedThreadsDialog";
 import { removeWithNested } from "../fork/nestedThreadRemoval";
 import { useDetachThread } from "../fork/useDetachThread";
+import { continueInNewThreadPlacement } from "../fork/continueInNewThread";
+import { useContinueInNewThread } from "../fork/useContinueInNewThread";
 import { useForkFeature } from "../fork/forkFeatures";
 import { useSetThreadListed } from "../fork/useSetThreadListed";
 import {
@@ -997,6 +999,8 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   });
   const setThreadListed = useSetThreadListed();
   const detachThread = useDetachThread();
+  const continueInNewThread = useContinueInNewThread();
+  const continueInNewThreadEnabled = useForkFeature("continueInNewThread");
   const nestedThreadsEnabled = useForkFeature("nestedThreads");
   const { copyToClipboard: copyPathToClipboard } = useCopyToClipboard<{ path: string }>({
     onError: (error) => {
@@ -2764,6 +2768,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
               canTurnIntoProject: canTurnThreadIntoProject(threadRef),
               canRename: !fromSearch,
               canHideFromSidebar: nestedThreadsEnabled && thread.lineage.parentThreadId !== null,
+              canContinueInNewThread: continueInNewThreadEnabled,
               supports: {
                 settlement: configLoaded,
                 autoSettleOptOut: supportsAutoSettleOptOut,
@@ -2779,6 +2784,11 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         );
         if (clicked._tag === "Failure" || clicked.value === null) return;
         if (threadActionRequiresOperate(clicked.value) && !checkThreadOperations([thread])) return;
+        const handoffPlacement = continueInNewThreadPlacement(clicked.value);
+        if (handoffPlacement !== null) {
+          await continueInNewThread(threadRef, handoffPlacement);
+          return;
+        }
         if (clicked.value?.startsWith("snooze:")) {
           const preset =
             clicked.value === "snooze:custom"
