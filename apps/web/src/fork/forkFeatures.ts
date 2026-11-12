@@ -68,6 +68,13 @@ export const FORK_FEATURES = [
       "Add a Provider usage item to thread details with the weekly pace of each provider.",
     searchTerms: ["fork provider usage weekly pace deficit reserve accounts thread details"],
   },
+  {
+    key: "goalWaiting",
+    searchId: "fork-goal-waiting",
+    title: "Waiting while a goal is open",
+    description: "Keep a thread with an active /goal in Waiting, not Done.",
+    searchTerms: ["fork goal waiting working shelf done completed sidebar"],
+  },
 ] as const;
 
 export type ForkFeature = (typeof FORK_FEATURES)[number]["key"];
