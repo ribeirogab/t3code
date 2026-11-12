@@ -11,9 +11,21 @@ conflict_list() {
   tr ',' '\n' <<< "$conflicts" | sed '/^$/d; s/^/- `/; s/$/`/'
 }
 
+run_url() {
+  printf '%s/%s/actions/runs/%s' "${GITHUB_SERVER_URL:-https://github.com}" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+}
+
+conflict_section() {
+  if [[ -z "$conflicts" ]]; then
+    printf 'Git stopped before it listed the conflicting files. See the run log: %s\n\n' "$(run_url)"
+  else
+    printf 'Conflicting files:\n\n%s\n\n' "$(conflict_list)"
+  fi
+}
+
 issue_body() {
   printf 'The `custom` branch does not rebase onto `%s`.\n\n' "$base_tag"
-  printf 'Conflicting files:\n\n%s\n\n' "$(conflict_list)"
+  conflict_section
   printf 'Run `fork/bin/sync`, resolve the conflict, then run `git rebase --continue` and `git push --force-with-lease origin custom`.\n'
 }
 
