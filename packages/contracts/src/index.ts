@@ -74,3 +74,7 @@ export * from "./secretReference.ts";
 export * from "./settingsSecretValue.ts";
 export * from "./clientRpcPermissions.ts";
 export * from "./fork/contextUsage.ts";
+export * from "./fork/notifyParent.ts";
+export * from "./fork/publishedPorts.ts";
+export * from "./fork/threadHandoff.ts";
+export * from "./fork/fullAccessConsent.ts";

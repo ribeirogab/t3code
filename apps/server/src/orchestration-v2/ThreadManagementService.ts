@@ -89,6 +89,7 @@ export function withCreationProvenance(
         linkOrigin: _linkOrigin,
         delegatedFrom: _delegatedFrom,
         initialMessage: _initialMessage,
+        continuesFrom: _continuesFrom,
         ...rest
       } = command;
       return { ...rest, ...provenance };

@@ -22,6 +22,12 @@ import {
   ForkContextUsageInput,
 } from "./fork/contextUsage.ts";
 import {
+  ForkPublishedPortError,
+  ForkPublishedPorts,
+  ForkPublishedPortsInput,
+  ForkUnpublishPortInput,
+} from "./fork/publishedPorts.ts";
+import {
   PeerLink,
   PeerLinkCreateInput,
   PeerLinkError,
@@ -447,6 +453,8 @@ export const WS_METHODS = {
   mcpAppsReadResource: "mcpApps.readResource",
   mcpAppsUpdateModelContext: "mcpApps.updateModelContext",
   forkContextUsage: "fork.contextUsage",
+  forkSubscribePublishedPorts: "fork.subscribePublishedPorts",
+  forkUnpublishPort: "fork.unpublishPort",
 
   providerUploadFeedback: "provider.uploadFeedback",
   providerAuthStart: "provider.auth.start",
@@ -1510,6 +1518,19 @@ const WsMcpAppsReadResourceRpc = Rpc.make(WS_METHODS.mcpAppsReadResource, {
   error: Schema.Union([McpAppRequestError, EnvironmentAuthorizationError]),
 });
 
+const WsForkSubscribePublishedPortsRpc = Rpc.make(WS_METHODS.forkSubscribePublishedPorts, {
+  payload: ForkPublishedPortsInput,
+  success: ForkPublishedPorts,
+  error: EnvironmentAuthorizationError,
+  stream: true,
+});
+
+const WsForkUnpublishPortRpc = Rpc.make(WS_METHODS.forkUnpublishPort, {
+  payload: ForkUnpublishPortInput,
+  success: Schema.Void,
+  error: Schema.Union([ForkPublishedPortError, EnvironmentAuthorizationError]),
+});
+
 const WsForkContextUsageRpc = Rpc.make(WS_METHODS.forkContextUsage, {
   payload: ForkContextUsageInput,
   success: ForkContextUsage,
@@ -2259,6 +2280,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsMcpAppsReadResourceRpc,
   WsMcpAppsUpdateModelContextRpc,
   WsForkContextUsageRpc,
+  WsForkSubscribePublishedPortsRpc,
+  WsForkUnpublishPortRpc,
   WsProviderUploadFeedbackRpc,
   WsSubscribeVcsStatusRpc,
   WsSubscribeVcsBranchRpc,
