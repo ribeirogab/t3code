@@ -6,6 +6,14 @@ The fork is for the desktop app only. The desktop app renders `apps/web` and bun
 
 Fork-owned files: `FORK.md`, `.github/workflows/fork-release.yml`, `.github/workflows/fork-ci.yml`, `fork/`, `apps/web/src/fork/`, `apps/web/src/routes/_chat.settings.fork.tsx`, `apps/server/src/fork/`, `packages/contracts/src/fork/`, and `packages/provider-core/src/fork/`. Everything else is upstream, including the line in `AGENTS.md` that points here.
 
+## Local setup
+
+Read `fork/AGENTS.local.md` of the main checkout when it exists. It completes this file with the setup of one machine: its hosts, how to reach the other machines, how to get credentials, and the checks it can run. Git ignores it, so private data goes there and never here. From any worktree, its path is:
+
+```sh
+"$(git rev-parse --path-format=absolute --git-common-dir)/../fork/AGENTS.local.md"
+```
+
 ## Add a change
 
 Every change goes through a pull request into `custom`. Do not commit or push to `custom` directly.
@@ -47,7 +55,7 @@ fork/bin/release mac     # Mac: macOS arm64 app, signed with the fork certificat
 
 The version keeps the upstream nightly format, so the app stays on the Nightly track and sorts after the upstream build it comes from.
 
-Each command works in its own clone (`~/Library/Caches/t3code-fork-release` on the Mac, `~/.cache/t3code-fork-release` on Linux) and never touches the clone you run it from. `linux` needs Docker. `mac` needs Xcode, Rust, Vite+, and the `T3 Code Fork (ribeirogab)` certificate in the login keychain. Over SSH, unlock the login keychain first, or `codesign` fails with `errSecInternalComponent`.
+Each command works in its own clone (`~/Library/Caches/t3code-fork-release` on the Mac, `~/.cache/t3code-fork-release` on Linux) and never touches the clone you run it from. `linux` needs Docker. `mac` needs Xcode, Rust, Vite+, and the `T3 Code Fork (ribeirogab)` certificate in the login keychain. Over SSH, unlock the login keychain first, or `codesign` fails with `errSecInternalComponent`. `fork/AGENTS.local.md` has the SSH steps of this machine.
 
 ## Install and update
 
