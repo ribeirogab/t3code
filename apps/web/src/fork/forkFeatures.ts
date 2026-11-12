@@ -131,6 +131,15 @@ export const FORK_FEATURES = [
     searchTerms: ["fork goal pause resume clear stop hook objective"],
   },
   {
+    key: "goalComposerCard",
+    section: "Chat",
+    searchId: "fork-goal-composer-card",
+    title: "Goal card on the composer",
+    description:
+      "Show the thread goal as a card on top of the composer, not as a line in the chat.",
+    searchTerms: ["fork goal card composer codex objective clear pause resume expand"],
+  },
+  {
     key: "publishedPorts",
     section: "Thread details",
     searchId: "fork-published-ports",

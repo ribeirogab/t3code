@@ -85,7 +85,7 @@ import { Atom } from "effect/reactivity";
 import { environmentThreadDetails } from "../../state/threads";
 import { type SideThreadOpenIntent, sideThreadKindOf } from "@t3tools/client-runtime/side-thread";
 import { openSideThread, resolveThreadOpenRoute } from "../../lib/sideChatPane";
-import { useGoalPauseNowItem } from "../../fork/useGoalPauseNowItem";
+import { useThreadGoal } from "../../fork/useThreadGoal";
 import type { useLocalDispatchState } from "./useLocalDispatchState";
 const RELATED_THREAD_SHELL_WAIT_MS = 1_000;
 
@@ -607,7 +607,7 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
   };
   const sendStandaloneCommandStable = useStableCallback(sendStandaloneCommand);
   const activeGoal = activeThreadShell?.goal ?? null;
-  const goalNow = useGoalPauseNowItem({
+  const { now: goalNow, card: goalCard } = useThreadGoal({
     threadKey: routeThreadKey,
     threadId: activeThread?.id ?? null,
     goal: activeGoal,
@@ -767,6 +767,7 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
     workNow: runStop?.state === "stopping" ? runStopNow : backgroundWorkNow,
     childInputNow,
     goalNow,
+    goalCard,
     handleSwitchCheckoutToThread,
     handleSwitchCheckoutToThreadStable,
     isRestoringThreadBranch,
