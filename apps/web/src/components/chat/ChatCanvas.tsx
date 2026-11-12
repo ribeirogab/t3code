@@ -10,6 +10,7 @@ import {
 import { selectThreadPanelOpen, useRightPanelStore } from "../../rightPanelStore";
 import { observeResize } from "../../lib/observeResize";
 import type { ScopedThreadRef } from "@t3tools/contracts";
+import { useForkFeature } from "~/fork/forkFeatures";
 
 function panelWidthTransitions(element: HTMLElement) {
   const panels = element
@@ -152,12 +153,14 @@ export function ChatCanvas({
       ? false
       : selectThreadPanelOpen(state.threadPanelVisibilityByThreadKey, threadRef, "inline"),
   );
+  const centerBesideDetailsCard = useForkFeature("centerChatBesideDetails");
   const model = resolveChatCanvasModel({
     measurements,
     detailsCardMeasurement,
     threadRef,
     preview,
     detailsCardInlineOpen,
+    centerBesideDetailsCard,
   });
   const context = {
     container: model.container,
