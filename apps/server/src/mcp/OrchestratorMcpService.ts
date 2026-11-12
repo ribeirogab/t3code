@@ -129,6 +129,11 @@ import { isLiveCallerShell, threadNotFound } from "./threadAccess.ts";
 import * as SecretRequests from "../secrets/SecretRequests.ts";
 import * as PeerForwarding from "../peer/PeerForwarding.ts";
 import * as RemoteDelegation from "../peer/RemoteDelegation.ts";
+import {
+  queueGoal,
+  refuseRemoteGoal,
+  requireGoalSupport,
+} from "../fork/threadHandoff/goalQueue.ts";
 
 const DEFAULT_WAIT_TIMEOUT_MS = 10 * 60 * 1_000;
 const MAX_WAIT_TIMEOUT_MS = 60 * 60 * 1_000;
@@ -2405,6 +2410,7 @@ const make = Effect.gen(function* () {
           : PeerForwarding.remoteTarget(callerScope, input.target.environmentId);
       if (input.target !== undefined && environmentId !== undefined) {
         yield* requireCapability(callerScope);
+        yield* refuseRemoteGoal(input.goal);
         const scope = yield* requireThreadScope(callerScope, "delegate_task");
         // The task's child runs as an ordinary thread there; this thread keeps the task.
         const { taskId } = yield* remoteDelegation.delegate(scope, {
@@ -2452,6 +2458,7 @@ const make = Effect.gen(function* () {
         providers,
         skipProjectEnablementFilter: isRetryOfAcceptedDelegation,
       });
+      yield* requireGoalSupport(input.goal, providers, target.modelSelection.instanceId);
       const runtimeMode = yield* resolveRuntimeMode(
         parent.thread.runtimeMode,
         input.runtimeMode,
@@ -2551,6 +2558,14 @@ const make = Effect.gen(function* () {
           runId: childRunEvent.event.payload.id,
         });
       }
+      if (childThreadId !== null)
+        yield* queueGoal(threadManagement, {
+          goal: input.goal,
+          projectId: parent.thread.projectId,
+          threadId: childThreadId,
+          senderThreadId: childThreadId,
+          commandId,
+        });
 
       return yield* input.mode === "wait"
         ? awaitTask(scope, taskId, key, input.timeoutMs)

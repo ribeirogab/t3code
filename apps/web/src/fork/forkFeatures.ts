@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import { resolveStorage } from "~/lib/storage";
 
-export const FORK_FEATURE_SECTIONS = ["Sidebar", "Thread details"] as const;
+export const FORK_FEATURE_SECTIONS = ["Sidebar", "Thread details", "Threads"] as const;
 
 export const FORK_MASTER_SEARCH_ID = "fork-features";
 
@@ -79,6 +79,15 @@ export const FORK_FEATURES = [
     title: "Provider usage",
     description: "Add a Provider usage item with the weekly pace of each provider.",
     searchTerms: ["fork provider usage weekly pace deficit reserve accounts thread details"],
+  },
+  {
+    key: "continueInNewThread",
+    section: "Threads",
+    searchId: "fork-continue-in-new-thread",
+    title: "Continue in new thread",
+    description:
+      "Add Continue in new thread to the thread menu. The agent writes a handoff and starts the new thread.",
+    searchTerms: ["fork continue new thread handoff goal worktree child menu"],
   },
 ] as const satisfies ReadonlyArray<{
   readonly key: string;
