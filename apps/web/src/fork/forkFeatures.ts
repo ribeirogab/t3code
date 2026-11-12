@@ -68,6 +68,13 @@ export const FORK_FEATURES = [
       "Add a Provider usage item to thread details with the weekly pace of each provider.",
     searchTerms: ["fork provider usage weekly pace deficit reserve accounts thread details"],
   },
+  {
+    key: "goalPause",
+    searchId: "fork-goal-pause",
+    title: "Pause goal",
+    description: "Add Pause next to a goal's Clear. Pause keeps the goal text for Resume.",
+    searchTerms: ["fork goal pause resume clear stop hook objective"],
+  },
 ] as const;
 
 export type ForkFeature = (typeof FORK_FEATURES)[number]["key"];
