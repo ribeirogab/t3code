@@ -66,6 +66,15 @@ export const FORK_FEATURES = [
     searchTerms: ["fork previous agents subagents archived thread details"],
   },
   {
+    key: "supervisedTurn",
+    section: "Chat",
+    searchId: "fork-supervised-turn",
+    title: "Supervised turn for a yes",
+    description:
+      "When a tool in Full access needs a yes that no one can give, offer one Supervised turn.",
+    searchTerms: ["fork full access supervised approval consent yes permission runtime mode"],
+  },
+  {
     key: "contextBreakdown",
     section: "Thread details",
     searchId: "fork-context-breakdown",

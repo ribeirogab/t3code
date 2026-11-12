@@ -63,6 +63,7 @@ import { formatRelativeTimeLabel } from "../../timestampFormat";
 import { appAtomRegistry } from "../../rpc/atomRegistry";
 import { readEnvironmentScope } from "../../state/session";
 import { useAtomCommand } from "../../state/use-atom-command";
+import { useSupervisedTurnNowItem } from "../../fork/useSupervisedTurnNowItem";
 import { useOrchestrationCommand } from "../../state/use-orchestration-command";
 import { backgroundWorkNowItem, childInputNowItem, runStopNowItem } from "./ThreadActivityBanners";
 import { useForceStopThread } from "./useForceStopThread";
@@ -687,12 +688,22 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
       }).then(toastThreadActionFailure("Failed to regenerate thread title"));
     },
   } satisfies ChatShortcutCommands;
+  const supervisedTurnNow = useSupervisedTurnNowItem({
+    environmentId,
+    threadRef: activeThreadRef,
+    threadDetailRef,
+    threadShell: activeThreadShell,
+    runtimeMode,
+    isWorking,
+    turnItems,
+  });
   return {
     shortcuts,
     acknowledgeActiveThreadWoke,
     activeBranchMismatchKey,
     // A Stop that went unanswered needs the user; one in progress is the thread's work.
-    attentionNow: runStop?.state === "unresponsive" ? runStopNow : childInputNow,
+    attentionNow:
+      supervisedTurnNow ?? (runStop?.state === "unresponsive" ? runStopNow : childInputNow),
     workNow: runStop?.state === "stopping" ? runStopNow : backgroundWorkNow,
     childInputNow,
     goalNow,
