@@ -79,10 +79,6 @@ jobs:
           ref: ${{ steps.plan.outputs.branch_sha }}
           path: fork-repo
           fetch-depth: 0
-          sparse-checkout: |
-            /*
-            !/.repos/
-          sparse-checkout-cone-mode: false
 
       - name: Rebase onto the upstream nightly
         id: rebase
