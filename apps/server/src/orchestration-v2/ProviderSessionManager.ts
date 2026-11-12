@@ -56,6 +56,7 @@ import * as ProviderInstallationGate from "../provider/ProviderInstallationGate.
 import * as ProjectService from "../project/ProjectService.ts";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as ServerSettings from "../serverSettings.ts";
+import { makeAgentLanguageTurnInput } from "../fork/agentLanguage.ts";
 import * as McpSessionRegistry from "../mcp/McpSessionRegistry.ts";
 import * as EffectOutbox from "./EffectOutbox.ts";
 import * as EventSink from "./EventSink.ts";
@@ -477,6 +478,7 @@ export const layerWithOptions = (
       const mcpSessions = yield* McpProviderSessions.McpProviderSessions;
       /** Unreadable settings must preserve explicit browser-access opt-outs. */
       const serverSettings = yield* Effect.serviceOption(ServerSettings.ServerSettingsService);
+      const withAgentLanguage = makeAgentLanguageTurnInput(serverSettings);
       const projectService = yield* Effect.serviceOption(ProjectService.ProjectService);
       const eventSink = yield* EventSink.EventSinkV2;
       const commandOutput = yield* CommandOutputHub.CommandOutputHub;
@@ -2738,8 +2740,12 @@ export const layerWithOptions = (
             ),
           startTurn: (input) =>
             busyTurn(input, () =>
-              agentFeedbackMode.pipe(
-                Effect.flatMap((agentFeedback) => runtime.startTurn({ ...input, agentFeedback })),
+              withAgentLanguage(input).pipe(
+                Effect.flatMap((turn) =>
+                  agentFeedbackMode.pipe(
+                    Effect.flatMap((agentFeedback) => runtime.startTurn({ ...turn, agentFeedback })),
+                  ),
+                ),
                 turnMetrics("send", input.modelSelection.model),
               ),
             ),
@@ -2765,7 +2771,12 @@ export const layerWithOptions = (
               }),
           steerTurn: (input) =>
             observeActivity(providerSessionId, touchActivity(providerSessionId)).pipe(
-              Effect.andThen(runtime.steerTurn(input).pipe(turnMetrics("steer"))),
+              Effect.andThen(
+                withAgentLanguage(input).pipe(
+                  Effect.flatMap((turn) => runtime.steerTurn(turn)),
+                  turnMetrics("steer"),
+                ),
+              ),
             ),
           // A provider starved of memory can stop answering, so no caller may wait on it unbounded.
           interruptTurn: (input) =>
