@@ -22,6 +22,7 @@ import {
   TrimmedNonEmptyString,
   TrimmedString,
 } from "./baseSchemas.ts";
+import { ForkServerSettingsFields, ForkServerSettingsPatchFields } from "./fork/agentLanguage.ts";
 import { UsageLimitSourceId } from "./usageLimitSourceId.ts";
 import { UsageModelFilter } from "./usage.ts";
 import { SecretProviderId, SecretProviderSlug } from "./secretReference.ts";
@@ -1658,6 +1659,7 @@ export const ServerSettings = Schema.Struct({
 
   /** Sent by the Usage tab with each summary request to this environment; edit in settings.json. Invalid values are ignored. */
   usageModelFilter: ForwardCompatibleOptional(UsageModelFilter),
+  ...ForkServerSettingsFields,
 });
 export type ServerSettings = typeof ServerSettings.Type;
 
@@ -2049,6 +2051,7 @@ export const ServerSettingsPatch = Schema.Struct({
   usageModelAliases: Schema.optionalKey(
     Schema.Record(TrimmedNonEmptyString, Schema.NullOr(TrimmedNonEmptyString)),
   ),
+  ...ForkServerSettingsPatchFields,
 });
 export type ServerSettingsPatch = typeof ServerSettingsPatch.Type;
 

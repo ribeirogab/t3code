@@ -5,6 +5,7 @@ import {
   SettingsSection,
 } from "~/components/settings/settingsLayout";
 
+import { AgentLanguageSection } from "./AgentLanguageSection";
 import { FORK_FEATURES, useForkFeaturesStore } from "./forkFeatures";
 
 export function ForkSettingsPanel() {
@@ -29,6 +30,7 @@ export function ForkSettingsPanel() {
           />
         ))}
       </SettingsSection>
+      <AgentLanguageSection />
     </SettingsPageContainer>
   );
 }
