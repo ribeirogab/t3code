@@ -83,6 +83,14 @@ export const FORK_FEATURES = [
     searchTerms: ["fork context window breakdown tokens category mcp memory claude"],
   },
   {
+    key: "sharedWorktree",
+    section: "Chat",
+    searchId: "fork-shared-worktree",
+    title: "Shared worktree",
+    description: "Mark the thread header when other active threads use the same worktree.",
+    searchTerms: ["fork shared worktree threads commit stage paths header siblings"],
+  },
+  {
     key: "paceMarker",
     section: "Thread details",
     searchId: "fork-pace-marker",

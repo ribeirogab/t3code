@@ -27,6 +27,7 @@ import { useThreadActionMenu } from "~/hooks/useThreadActionMenu";
 import { readLocalApi } from "~/localApi";
 import { threadEnvironment } from "../../state/threads";
 import { canShareWithGuestAtom } from "./guestShareAvailability";
+import { ThreadHeaderSharedWorktree } from "~/fork/ThreadHeaderSharedWorktree";
 import { useAtomValue } from "@effect/atom-react";
 import { useOrchestrationCommand } from "../../state/use-orchestration-command";
 import { readEnvironmentScope, useEnvironmentScope } from "../../state/session";
@@ -391,6 +392,9 @@ export const ChatHeader = memo(function ChatHeader({
                 Started by an agent on {activeThreadLinkOrigin} through a linked environment.
               </TooltipPopup>
             </Tooltip>
+          ) : null}
+          {renamingTitle === null && isServerThread ? (
+            <ThreadHeaderSharedWorktree threadRef={activeThreadRef} />
           ) : null}
         </WorkspaceBreadcrumbItem>
       </WorkspaceBreadcrumb>
