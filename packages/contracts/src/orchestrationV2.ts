@@ -1,6 +1,7 @@
 import { OrchestrationMessageContext } from "./composerContext.ts";
 import { ForkNotifyParent } from "./fork/notifyParent.ts";
 import { withRecordIdTable } from "./orchestrationV2IdTable.ts";
+import { ForkPlanProgress } from "./fork/planProgress.ts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
@@ -2175,6 +2176,7 @@ export const OrchestrationV2ThreadShell = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed([])),
   ),
   goal: Schema.optional(Schema.NullOr(OrchestrationV2ProviderGoal)),
+  forkPlanProgress: Schema.optional(Schema.NullOr(ForkPlanProgress)),
   itemCount: NonNegativeInt,
   visibleItemCount: NonNegativeInt,
   createdAt: Schema.DateTimeUtc,
