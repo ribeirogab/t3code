@@ -16,6 +16,7 @@ import {
   PullRequestReviewDecision,
   PullRequestState,
 } from "./pullRequest.ts";
+import { ForkThreadPullRequestWatchFields } from "./fork/pullRequestWatch.ts";
 
 export const ThreadLinkedPullRequest = Schema.Struct({
   projectId: ProjectId,
@@ -124,6 +125,7 @@ export const ThreadPullRequestWatch = Schema.Struct({
   checksPending: Schema.optional(Schema.Boolean),
   /** How long the watch holds its thread. Absent means until every check finished. */
   until: Schema.optional(Schema.Literal("merged")),
+  ...ForkThreadPullRequestWatchFields,
 });
 export type ThreadPullRequestWatch = typeof ThreadPullRequestWatch.Type;
 

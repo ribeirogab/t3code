@@ -32,12 +32,14 @@ describe("buildThreadActionMenuItems", () => {
       const items = buildThreadActionMenuItems({
         ...baseState,
         canOperate: false,
+        canContinueInNewThread: true,
         isPinned: reversed,
         isSettled: reversed,
         isSnoozed: reversed,
       });
       const expected = reversed
         ? [
+            "continue-in-new-thread",
             "unpin",
             "unsettle",
             "unsnooze",
@@ -48,6 +50,7 @@ describe("buildThreadActionMenuItems", () => {
             "delete",
           ]
         : [
+            "continue-in-new-thread",
             "pin",
             "settle",
             "snooze",
@@ -58,10 +61,12 @@ describe("buildThreadActionMenuItems", () => {
             "delete",
           ];
       expect(items.filter((item) => item.disabled).map((item) => item.id)).toEqual(expected);
-      expect(
-        items.find((item) => item.id === "snooze")?.children?.every((child) => child.disabled) ??
-          true,
-      ).toBe(true);
+      for (const parent of ["snooze", "continue-in-new-thread"]) {
+        expect(
+          items.find((item) => item.id === parent)?.children?.every((child) => child.disabled) ??
+            true,
+        ).toBe(true);
+      }
     },
   );
 

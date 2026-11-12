@@ -3,6 +3,10 @@ import type { SnoozePreset } from "@t3tools/client-runtime/state/thread-settled"
 import { msg } from "gt-react";
 
 import { m, type MessageResolver } from "../i18n/messages";
+import {
+  continueInNewThreadMenuItems,
+  type ContinueInNewThreadMenuId,
+} from "../fork/continueInNewThread";
 
 export type ThreadActionMenuId =
   | "find"
@@ -32,7 +36,8 @@ export type ThreadActionMenuId =
   | "copy-thread"
   | "copy-thread-id"
   | "archive"
-  | "delete";
+  | "delete"
+  | ContinueInNewThreadMenuId;
 
 export type DraftActionMenuId =
   | "copy"
@@ -126,6 +131,7 @@ export interface ThreadActionMenuState {
   /** A No project thread with its own folder, on a server that can promote it. */
   readonly canTurnIntoProject?: boolean;
   readonly canHideFromSidebar?: boolean;
+  readonly canContinueInNewThread?: boolean;
 }
 
 /** Local navigation, read markers, and copying remain available to read-only clients. */
@@ -161,6 +167,7 @@ export function buildThreadActionMenuItems(
           },
         ]
       : []),
+    ...continueInNewThreadMenuItems(state.canContinueInNewThread === true),
     ...(state.supports.pinning
       ? [
           state.isPinned
