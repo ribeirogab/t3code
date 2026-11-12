@@ -10,9 +10,10 @@ import {
   remainingPercent,
 } from "@t3tools/shared/usageLimits";
 
-import { paceMarkerPercent } from "./paceMarker";
+import { paceMarkerPercent, windowDurationMins } from "./paceMarker";
 
 const EVEN_PACE_BAND = 5;
+const MINUTE = 60_000;
 
 export type ProviderPaceKind = "deficit" | "reserve" | "even";
 
@@ -49,6 +50,35 @@ export function providerPace(window: ServerProviderUsageWindow, now: number): Pr
     delta,
     kind,
     segment: kind === "even" ? null : { start: Math.min(left, tick), width: Math.abs(delta) },
+  };
+}
+
+export type WeeklyProjection =
+  | { readonly kind: "runsOut"; readonly inMs: number }
+  | { readonly kind: "leftAtReset"; readonly percent: number; readonly estimated: boolean };
+
+export function weeklyProjection(
+  window: ServerProviderUsageWindow,
+  now: number,
+): WeeklyProjection | null {
+  const durationMins = windowDurationMins(window);
+  const resetsAt = window.resetsAt ? Date.parse(window.resetsAt) : Number.NaN;
+  if (durationMins === undefined || !Number.isFinite(resetsAt)) return null;
+  const used = Math.max(0, Math.min(100, window.usedPercent));
+  const left = 100 - used;
+  const untilReset = Math.max(0, resetsAt - now);
+  const elapsed = durationMins * MINUTE - untilReset;
+  if (left <= 0) return { kind: "runsOut", inMs: 0 };
+  if (elapsed <= 0 || used <= 0) {
+    return { kind: "leftAtReset", percent: Math.round(left), estimated: false };
+  }
+  const usedPerMs = used / elapsed;
+  const untilEmpty = left / usedPerMs;
+  if (untilEmpty < untilReset) return { kind: "runsOut", inMs: untilEmpty };
+  return {
+    kind: "leftAtReset",
+    percent: Math.round(left - usedPerMs * untilReset),
+    estimated: true,
   };
 }
 
