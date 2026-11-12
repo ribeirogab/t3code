@@ -29,18 +29,25 @@ Every change goes through a pull request into `custom`. Do not commit or push to
 
    The daily rebase rewrites `custom`, so rebase the branch right before the merge. Git drops the old copies of the fork commits. The squash keeps one `fork: <change>` commit per change.
 
-7. The merge pushes to `custom`, and the workflow builds and publishes a release. A merge that changes only `FORK.md` or `.github/workflows/fork-ci.yml` does not start a build. The next daily run builds it.
+7. Make a release from the new `custom` with `fork/bin/release`. See [Release flow](#release-flow).
 
 ## Release flow
 
-`fork-release.yml` runs once a day at 08:23 UTC, on each push to `custom` that changes more than `FORK.md` and `.github/workflows/fork-ci.yml`, and on demand (`rebuild` forces a new build of the same commit).
+`fork/bin/release` makes the releases on our own machines. GitHub Actions is not in the path: the hosted macOS runners often had no capacity, and `fork-release.yml` was found disabled several times. The workflow stays disabled as a fallback.
 
-1. It finds the latest published upstream nightly.
-2. When `custom` does not contain it, it rebases `custom` onto it and pushes. The push starts the build run.
-3. It builds the macOS arm64 app, the Linux x64 AppImage, and the Linux x64 CLI archive with upstream's `release-desktop.yml`.
-4. It signs the macOS app with the fork certificate (`fork/bin/resign-mac`).
-5. It publishes the prerelease `vX.Y.Z-nightly.YYYYMMDD.<upstream run><fork revision>`, for example `v0.1.8-nightly.20261108.4367001`. The version keeps the upstream nightly format, so the app stays on the Nightly track and sorts after the upstream build it comes from.
-6. It keeps the last 20 releases.
+```sh
+fork/bin/release sync    # homelab: rebase custom onto the latest upstream nightly and push it
+fork/bin/release linux   # homelab: Linux x64 AppImage and CLI archive, built in Docker
+fork/bin/release mac     # Mac: macOS arm64 app, signed with the fork certificate
+```
+
+1. `sync` stops when the rebase has conflicts. Resolve them as [Rebase conflicts](#rebase-conflicts) says, then run `sync` again.
+2. `linux` and `mac` build the head of `custom`. The first one creates a draft release `vX.Y.Z-nightly.YYYYMMDD.<upstream run><fork revision>`, for example `v0.1.8-nightly.20261108.4367001`. The second one builds the same commit and version as the draft. Run them in any order.
+3. The one that finishes second publishes the prerelease and keeps the last 20 releases. A draft never reaches the updater, so the app and the server never see a release that has only one platform.
+
+The version keeps the upstream nightly format, so the app stays on the Nightly track and sorts after the upstream build it comes from.
+
+Each command works in its own clone (`~/Library/Caches/t3code-fork-release` on the Mac, `~/.cache/t3code-fork-release` on Linux) and never touches the clone you run it from. `linux` needs Docker. `mac` needs Xcode, Rust, Vite+, and the `T3 Code Fork (ribeirogab)` certificate in the login keychain. Over SSH, unlock the login keychain first, or `codesign` fails with `errSecInternalComponent`.
 
 ## Install and update
 
@@ -65,7 +72,7 @@ Do not use **Settings → About → Update track**. It reads upstream npm versio
 
 ## Rebase conflicts
 
-The workflow opens an issue with the `fork-conflict` label. The last release keeps working. To fix:
+`fork/bin/release sync` stops and lists the files. The last release keeps working. To fix:
 
 ```sh
 fork/bin/sync
