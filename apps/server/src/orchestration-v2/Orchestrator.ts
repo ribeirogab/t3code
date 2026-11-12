@@ -196,6 +196,7 @@ import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAda
 import * as ServerSettings from "../serverSettings.ts";
 import { nestingPatch, nestingRejection, withListed } from "../fork/threadNesting.ts";
 import { quietCompletion } from "../fork/notifyParent.ts";
+import { createdThreadLineage } from "../fork/threadHandoff/handoffRules.ts";
 
 const isMessageQuestionAnswer = Schema.is(
   Schema.Union([TrimmedNonEmptyString, Schema.NonEmptyArray(TrimmedNonEmptyString)]),
@@ -3328,11 +3329,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       ...(command.linkOrigin === undefined || command.delegatedFrom === undefined
         ? {}
         : { delegatedFrom: command.delegatedFrom }),
-      lineage: {
-        parentThreadId: null,
-        relationshipToParent: null,
-        rootThreadId: command.threadId,
-      },
+      lineage: createdThreadLineage(command),
       forkedFrom: null,
       createdAt: now,
       updatedAt: now,

@@ -4,6 +4,7 @@ import * as SchemaTransformation from "effect/SchemaTransformation";
 
 import { AuthMcpClientAccess } from "./auth.ts";
 import { ForkNotifyParentToolInput } from "./fork/notifyParent.ts";
+import { ForkGoal } from "./fork/threadHandoff.ts";
 import {
   ContextTransferId,
   EnvironmentId,
@@ -202,6 +203,7 @@ export const OrchestratorMcpDelegateTaskInput = Schema.Struct({
     }),
   ),
   notifyParent: Schema.optional(ForkNotifyParentToolInput),
+  goal: Schema.optional(ForkGoal),
 });
 export type OrchestratorMcpDelegateTaskInput = typeof OrchestratorMcpDelegateTaskInput.Type;
 

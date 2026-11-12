@@ -86,6 +86,7 @@ import {
   ToolActivitySource,
 } from "./providerRuntime.ts";
 import { ThreadTokenUsageSnapshot } from "./providerRuntime.ts";
+import { ForkContinuesFrom } from "./fork/threadHandoff.ts";
 
 export const OrchestrationV2Actor = Schema.Literals(["user", "agent", "system"]);
 export type OrchestrationV2Actor = typeof OrchestrationV2Actor.Type;
@@ -2984,6 +2985,7 @@ export const OrchestrationV2Command = Schema.Union([
     linkOrigin: Schema.optional(OrchestrationV2LinkOrigin),
     /** Only the server sets this, with `linkOrigin`, for a linked environment's delegated task. */
     delegatedFrom: Schema.optional(OrchestrationV2DelegatedFrom),
+    continuesFrom: Schema.optional(ForkContinuesFrom),
     importedNativeThread: Schema.optional(
       Schema.Struct({
         ref: Schema.Struct({

@@ -247,6 +247,7 @@ type DelegateTaskInput = {
   interactionMode?: "inherit" | "plan" | "default";
   listed?: boolean;
   notifyParent?: "on_finish" | "on_question" | "never";
+  goal?: string;
 };
 ```
 
@@ -257,6 +258,11 @@ hidden by default.
 default) wakes it for results and questions, `on_question` only for questions,
 and `never` not at all. A turn the user types in the child thread, and a turn
 that is only a slash command, never wake the parent.
+
+`goal` (fork) queues `/goal <goal>` in the child after its first message, as a
+run the child queues for itself, so the goal run belongs to the same task. It
+needs a Codex, Claude, or OpenCode child and is refused for a task in a linked
+environment. `t3_thread_launch` takes the same `goal`.
 
 Provider, model, runtime mode, and interaction mode inherit from the parent
 when omitted. A driver-only target inherits the parent's provider instance
@@ -395,6 +401,22 @@ interaction modes than the caller. As for `delegate_task`, a runtime mode the
 provider does not offer is refused, and an inherited or default one steps down
 to the broadest mode it offers. Launch has no retry key, so inspect existing threads after a failed or lost response before
 launching again. `create_threads` remains the batch option for a shared checkout.
+
+### `t3_thread_handoff` (fork)
+
+Continues the caller's work in a new thread whose first message is the
+`handoff` the agent wrote; no history is copied, unlike a `t3_thread_transfer`
+fork. `placement` picks where it runs: `same_worktree` (default) binds the
+caller's checkout, `new_worktree` creates a worktree from the caller's `HEAD`
+(optional `branch`), and `child` is a `delegate_task` with `listed: true`.
+`goal` queues `/goal <goal>` after the first turn. `settle` settles the caller
+when its turn ends; a child cannot take it, because it follows its parent's
+Settle status.
+
+A top-level handoff records the link three ways: the new thread's lineage names
+the caller as a detached fork in the caller's family (`thread.create`
+`continuesFrom`, set only by the server), its first message names the caller as
+the sender, and the caller's timeline gets a created-thread item.
 
 ### `t3_thread_list`
 
