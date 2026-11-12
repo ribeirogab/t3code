@@ -49,6 +49,7 @@ import * as ProjectService from "../project/ProjectService.ts";
 import * as McpProviderSessions from "@t3tools/provider-core/server/McpProviderSessions";
 import * as ServerSettings from "../serverSettings.ts";
 import { makeAgentLanguageTurnInput } from "../fork/agentLanguage.ts";
+import { makeSharedWorktreeTurnInput } from "../fork/sharedWorktree.ts";
 import * as McpSessionRegistry from "../mcp/McpSessionRegistry.ts";
 import * as EventSink from "./EventSink.ts";
 import * as CommandOutputHub from "./CommandOutputHub.ts";
@@ -377,6 +378,7 @@ export const layerWithOptions = (
       const idAllocator = yield* IdAllocator.IdAllocatorV2;
       const providerEventIngestor = yield* ProviderEventIngestor.ProviderEventIngestorV2;
       const projectionStore = yield* ProjectionStore.ProjectionStoreV2;
+      const withSharedWorktree = makeSharedWorktreeTurnInput(projectionStore);
       const agentScope = yield* AgentScope;
       // Labs flag, read live: Codex per turn (its shared session outlives a toggle), Claude per query.
       // Unreadable settings keep it off.
@@ -2135,6 +2137,7 @@ export const layerWithOptions = (
                   ),
                   () =>
                     withAgentLanguage(input).pipe(
+                      Effect.flatMap(withSharedWorktree),
                       Effect.flatMap((turn) => runtime.startTurn(turn)),
                       turnMetrics("send", input.modelSelection.model),
                     ),

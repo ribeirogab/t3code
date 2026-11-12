@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import { resolveStorage } from "~/lib/storage";
 
-export const FORK_FEATURE_SECTIONS = ["Sidebar", "Thread details"] as const;
+export const FORK_FEATURE_SECTIONS = ["Sidebar", "Thread details", "Chat"] as const;
 
 export const FORK_MASTER_SEARCH_ID = "fork-features";
 
@@ -63,6 +63,14 @@ export const FORK_FEATURES = [
     title: "Context breakdown",
     description: "Open the Context row to see the tokens by category. Claude only.",
     searchTerms: ["fork context window breakdown tokens category mcp memory claude"],
+  },
+  {
+    key: "sharedWorktree",
+    section: "Chat",
+    searchId: "fork-shared-worktree",
+    title: "Shared worktree",
+    description: "Mark the thread header when other active threads use the same worktree.",
+    searchTerms: ["fork shared worktree threads commit stage paths header siblings"],
   },
   {
     key: "paceMarker",
