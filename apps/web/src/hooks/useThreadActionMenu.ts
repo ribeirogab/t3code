@@ -50,6 +50,9 @@ import { useClientSettings } from "./useSettings";
 import { canTurnThreadIntoProject, useThreadActions } from "./useThreadActions";
 import { chooseNestedRemoval } from "../fork/NestedThreadsDialog";
 import { removeWithNested } from "../fork/nestedThreadRemoval";
+import { continueInNewThreadPlacement } from "../fork/continueInNewThread";
+import { isForkFeatureEnabled } from "../fork/forkFeatures";
+import { useContinueInNewThread } from "../fork/useContinueInNewThread";
 
 function failureToast(title: string, error: unknown) {
   toastManager.add(
@@ -95,6 +98,7 @@ export function useThreadActionMenu(input: {
     reportFailure: false,
   });
   const handleNewThread = useNewThreadHandler();
+  const continueInNewThread = useContinueInNewThread();
   const confirmThreadDelete = useClientSettings((s) => s.confirmThreadDelete);
   const confirmThreadArchive = useClientSettings((s) => s.confirmThreadArchive);
   const timestampFormat = useClientSettings((s) => s.timestampFormat);
@@ -155,6 +159,7 @@ export function useThreadActionMenu(input: {
         snoozePresets,
         canShareWithGuest,
         canTurnIntoProject: canTurnThreadIntoProject(threadRef),
+        canContinueInNewThread: isForkFeatureEnabled("continueInNewThread"),
       });
       const clicked = await settlePromise(() => api.contextMenu.show(items, position));
       if (clicked._tag === "Failure" || clicked.value === null) return;
@@ -167,6 +172,11 @@ export function useThreadActionMenu(input: {
           "Thread action unavailable",
           new Error("This connection cannot change threads."),
         );
+        return;
+      }
+      const handoffPlacement = continueInNewThreadPlacement(action);
+      if (handoffPlacement !== null) {
+        await continueInNewThread(threadRef, handoffPlacement);
         return;
       }
       if (action.startsWith("snooze:")) {

@@ -29,6 +29,7 @@ import { ThreadServersPanel } from "./ThreadServersPanel";
 import { ThreadDetailsUsage, type ThreadDetailsUsageInput } from "./ThreadDetailsUsage";
 import { ForkThreadDetailsContext } from "../../fork/ThreadDetailsContextBreakdown";
 import { ForkThreadDetailsProviderUsage } from "../../fork/ThreadDetailsProviderUsage";
+import { ForkThreadDetailsPublishedPorts } from "../../fork/ThreadDetailsPublishedPorts";
 import { ThreadDetailsItemsMenuItems } from "./ThreadDetailsItemsMenu";
 import { resolveThreadDetailsVisibility, THREAD_DETAILS_ITEMS } from "./threadDetailsItems";
 import { useClientSettings } from "../../hooks/useSettings";
@@ -264,6 +265,13 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
 
               {density === "full" && !props.draftId && visible.servers ? (
                 <ThreadServersPanel environmentId={props.environmentId} threadId={props.threadId} />
+              ) : null}
+
+              {density === "full" && !props.draftId ? (
+                <ForkThreadDetailsPublishedPorts
+                  environmentId={props.environmentId}
+                  threadId={props.threadId}
+                />
               ) : null}
 
               {density === "full" && !props.draftId && visible.automations ? (

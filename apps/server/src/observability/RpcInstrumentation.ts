@@ -179,6 +179,8 @@ const RPC_AGGREGATES = {
   [WS_METHODS.mcpAppsUpdateModelContext]: "provider",
   [WS_METHODS.mcpAppsReadResource]: "provider",
   [WS_METHODS.forkContextUsage]: "provider",
+  [WS_METHODS.forkSubscribePublishedPorts]: "preview",
+  [WS_METHODS.forkUnpublishPort]: "preview",
   [WS_METHODS.subscribeVcsStatus]: "vcs",
   [WS_METHODS.subscribeVcsBranch]: "vcs",
   [WS_METHODS.vcsRefreshBranch]: "vcs",

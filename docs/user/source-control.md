@@ -326,10 +326,12 @@ when requested. Settling a thread refreshes its open and closed reviews once; af
 review is terminal. An open or unsynced link keeps it active.
 
 Ask the agent to watch, monitor, or babysit a pull request and it calls `watch_pull_request`. While
-the thread is active, the server checks the pull request every two minutes and wakes the agent when a
-check fails or waits for a maintainer's approval, the required checks pass, someone else comments or reviews, or the branch starts to
-conflict. On github.com it also wakes the agent, with GitHub's reason, when the merge queue drops
-the pull request without merging it. Threads in a project that watch the same pull request share one check. On GitHub, a check
+the thread is active, the server checks the pull request every two minutes and wakes the agent: once
+when the checks of the latest commit finish, with every failure in one message; when a check waits for
+a maintainer's approval; when someone else comments or reviews; and when the branch conflicts with a
+base commit it has not reported yet. A check still pending after 30 minutes stops holding back the
+others. On github.com it also wakes the agent, with GitHub's reason, when the merge queue drops the
+pull request without merging it. Threads in a project that watch the same pull request share one check. On GitHub, a check
 first asks whether anything changed and reads the pull request only when it did, which keeps
 watching inside GitHub's rate limit. Comments from your own account do not wake it. Watching ends
 when the pull request merges or closes, after 10 wakes in a row that bring only comments, after 8
@@ -346,6 +348,11 @@ including review bots that report as checks, the thread returns to your inbox: w
 up to a person. That includes a workflow waiting for a maintainer to approve it, which runs only
 once someone does. The watch stays on and still wakes the agent on new comments, failed checks or
 conflicts, and a watched thread never auto-settles.
+
+To wait for GitHub Actions on a branch, such as a deploy after a push, the agent calls
+`watch_workflow_run` with the branch and an optional workflow. The server wakes the agent once, when
+every run of the branch's commit has ended, when no run starts within 15 minutes, or after 6 hours. It
+uses `gh` on the server machine, so `gh` must be signed in there. Archiving the thread ends the watch.
 
 Cross-repository links use a project on the same host. Azure DevOps reviews require a project checked
 out from the matching organization and repository.
