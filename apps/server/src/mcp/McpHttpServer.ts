@@ -75,6 +75,8 @@ import * as PullRequestsHandlers from "./toolkits/pullRequests/handlers.ts";
 import * as ToolSearchHandlers from "./toolkits/toolSearch/handlers.ts";
 import { ToolSearchToolkit } from "./toolkits/toolSearch/tools.ts";
 import { PullRequestsToolkit } from "./toolkits/pullRequests/tools.ts";
+import * as WorkflowRunWatchHandlers from "../fork/workflowRunWatch/handlers.ts";
+import { WorkflowRunWatchToolkit } from "../fork/workflowRunWatch/tools.ts";
 import * as DeviceHandlers from "./toolkits/device/handlers.ts";
 import {
   DeviceScreenshotTool,
@@ -1239,6 +1241,11 @@ export const layerPullRequestsToolkit = toolkitRegistration(
   PullRequestsHandlers.layer,
 );
 
+const layerWorkflowRunWatchToolkit = toolkitRegistration(
+  WorkflowRunWatchToolkit,
+  WorkflowRunWatchHandlers.layer,
+);
+
 const layerDeviceStandardToolkitRegistration = toolkitRegistration(
   DeviceStandardToolkit,
   DeviceHandlers.layerStandard,
@@ -1294,6 +1301,7 @@ export const layerTools = Layer.mergeAll(
   layerPreviewControlsRegistration,
   layerWorktreeToolkitRegistration,
   layerPullRequestsToolkit,
+  layerWorkflowRunWatchToolkit,
   layerDeviceToolkit,
   layerHtmlToolkit,
 );
