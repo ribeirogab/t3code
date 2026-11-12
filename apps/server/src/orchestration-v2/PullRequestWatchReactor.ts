@@ -39,10 +39,10 @@ import * as Orchestrator from "./Orchestrator.ts";
 import * as ProjectionStore from "./ProjectionStore.ts";
 import {
   combinePullRequestWatchWakes,
-  evaluatePullRequestWatch,
   PULL_REQUEST_WATCH_NO_CHECKS_MS,
   pullRequestWatchMessage,
 } from "./pullRequestWatch.ts";
+import { pullRequestWatchEvaluator } from "../fork/pullRequestWatchBatching.ts";
 
 /** Checks take minutes; faster sweeps waste the account's shared host quota. */
 const SWEEP_MINUTES = 2;
@@ -216,7 +216,8 @@ function watchesEqual(left: ThreadPullRequestWatch, right: ThreadPullRequestWatc
     left.wakes === right.wakes &&
     left.awaitingBaseline === right.awaitingBaseline &&
     left.checksAwaitedSince === right.checksAwaitedSince &&
-    left.checksPending === right.checksPending
+    left.checksPending === right.checksPending &&
+    left.checksHeldSince === right.checksHeldSince
   );
 }
 
@@ -235,6 +236,7 @@ export const make = Effect.gen(function* () {
   const pullRequests = yield* PullRequestService.PullRequestService;
   const random = yield* SecureRandom.SecureRandom;
   const bootedAt = yield* Clock.currentTimeMillis;
+  const watchEvaluator = yield* pullRequestWatchEvaluator;
   const lives = new Map<string, WatchLife>();
 
   const lifeOf = (target: WatchTarget): WatchLife => {
@@ -693,8 +695,13 @@ export const make = Effect.gen(function* () {
       status: fingerprint?.status ?? null,
       remarks: fingerprint?.remarks ?? null,
     });
+    const baseSha = yield* watchEvaluator.baseSha({
+      detail,
+      host: reference.host,
+      watches: group.targets.map((target) => target.watch),
+    });
     yield* eachTarget(group, (target) => {
-      const report = evaluatePullRequestWatch(target.watch, detail, remarks, now);
+      const report = watchEvaluator.evaluate(target.watch, detail, remarks, now, baseSha);
       if (report.changes.length > 0) {
         const wake = {
           ...pullRequestWatchMessage({

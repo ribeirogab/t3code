@@ -204,6 +204,8 @@ import { planThreadDeletion } from "./ThreadDeletion.ts";
 import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import * as ServerSettings from "../serverSettings.ts";
 import { nestingPatch, nestingRejection, withListed } from "../fork/threadNesting.ts";
+import { quietCompletion } from "../fork/notifyParent.ts";
+import { createdThreadLineage } from "../fork/threadHandoff/handoffRules.ts";
 
 const isMessageQuestionAnswer = Schema.is(
   Schema.Union([TrimmedNonEmptyString, Schema.NonEmptyArray(TrimmedNonEmptyString)]),
@@ -3747,11 +3749,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       ...(command.linkOrigin === undefined || command.delegatedFrom === undefined
         ? {}
         : { delegatedFrom: command.delegatedFrom }),
-      lineage: {
-        parentThreadId: null,
-        relationshipToParent: null,
-        rootThreadId: command.threadId,
-      },
+      lineage: createdThreadLineage(command),
       forkedFrom: null,
       createdAt: now,
       updatedAt: now,
@@ -9432,6 +9430,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         model: command.modelSelection.model,
         modelSelection: command.modelSelection,
         ...(command.completionWake === undefined ? {} : { completionWake: command.completionWake }),
+        ...(command.notifyParent === undefined ? {} : { notifyParent: command.notifyParent }),
         status: "running",
         result: null,
         startedAt: now,
@@ -14450,6 +14449,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
               completionDelivery: { state: "disposed" as const, observedByRunId: null },
             }
           : {}),
+        ...quietCompletion(task, childRun, childControls.messages),
       };
       const completionPlan = yield* planDelegatedCompletionDelivery({
         parentProjection,
