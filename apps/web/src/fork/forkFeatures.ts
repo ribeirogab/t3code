@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import { resolveStorage } from "~/lib/storage";
 
-export const FORK_FEATURE_SECTIONS = ["Sidebar", "Thread details"] as const;
+export const FORK_FEATURE_SECTIONS = ["Sidebar", "Thread details", "Chat"] as const;
 
 export const FORK_MASTER_SEARCH_ID = "fork-features";
 
@@ -87,6 +87,14 @@ export const FORK_FEATURES = [
     title: "Waiting while a goal is open",
     description: "Keep a thread with an active /goal in Waiting, not Done.",
     searchTerms: ["fork goal waiting working shelf done completed sidebar"],
+  },
+  {
+    key: "goalPause",
+    section: "Chat",
+    searchId: "fork-goal-pause",
+    title: "Pause goal",
+    description: "Add Pause next to a goal's Clear. Pause keeps the goal text for Resume.",
+    searchTerms: ["fork goal pause resume clear stop hook objective"],
   },
 ] as const satisfies ReadonlyArray<{
   readonly key: string;
