@@ -83,6 +83,8 @@ import {
 } from "./toolkits/device/tools.ts";
 import * as HtmlHandlers from "./toolkits/html/handlers.ts";
 import { HtmlPreviewTool, HtmlPreviewToolkit, HtmlRenderToolkit } from "./toolkits/html/tools.ts";
+import * as PublishedPortsHandlers from "../fork/publishedPorts/handlers.ts";
+import { PublishedPortsToolkit } from "../fork/publishedPorts/tools.ts";
 import { requestUrl } from "../requestUrl.ts";
 
 const mcpResourceMetadataUrl = (request: HttpServerRequest.HttpServerRequest) =>
@@ -1296,6 +1298,7 @@ export const layerTools = Layer.mergeAll(
   layerPullRequestsToolkit,
   layerDeviceToolkit,
   layerHtmlToolkit,
+  toolkitRegistration(PublishedPortsToolkit, PublishedPortsHandlers.layer),
 );
 
 const layerToolExposure = Layer.effect(

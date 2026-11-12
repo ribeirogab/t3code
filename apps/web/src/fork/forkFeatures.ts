@@ -80,6 +80,14 @@ export const FORK_FEATURES = [
     description: "Add a Provider usage item with the weekly pace of each provider.",
     searchTerms: ["fork provider usage weekly pace deficit reserve accounts thread details"],
   },
+  {
+    key: "publishedPorts",
+    section: "Thread details",
+    searchId: "fork-published-ports",
+    title: "Published ports",
+    description: "List the tailnet URLs agents published, with a stop control.",
+    searchTerms: ["fork published ports tailnet tailscale serve url publish_port thread details"],
+  },
 ] as const satisfies ReadonlyArray<{
   readonly key: string;
   readonly section: (typeof FORK_FEATURE_SECTIONS)[number];
