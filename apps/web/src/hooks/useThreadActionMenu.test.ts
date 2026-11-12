@@ -38,6 +38,9 @@ vi.mock("../components/CustomSnoozeDialog", () => ({ requestCustomSnooze: vi.fn(
 vi.mock("../fork/NestedThreadsDialog", () => ({
   chooseNestedRemoval: async () => ({ choice: "none", descendants: [] }),
 }));
+vi.mock("../fork/useContinueInNewThread", () => ({
+  useContinueInNewThread: () => async () => recordEffect("continue-in-new-thread"),
+}));
 vi.mock("react", () => ({
   useCallback: (callback: unknown) => callback,
   useMemo: (factory: () => unknown) => factory(),
