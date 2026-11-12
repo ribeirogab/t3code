@@ -170,6 +170,8 @@ export const RPC_REQUIRED_SCOPES = {
   [WS_METHODS.mcpAppsToolInfo]: AuthOrchestrationReadScope,
   [WS_METHODS.mcpAppsReadResource]: AuthOrchestrationReadScope,
   [WS_METHODS.forkContextUsage]: AuthOrchestrationReadScope,
+  [WS_METHODS.forkSubscribePublishedPorts]: AuthOrchestrationReadScope,
+  [WS_METHODS.forkUnpublishPort]: AuthOrchestrationOperateScope,
   [WS_METHODS.mcpAppsUpdateModelContext]: AuthOrchestrationOperateScope,
   [WS_METHODS.subscribeVcsStatus]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeVcsBranch]: AuthOrchestrationReadScope,
