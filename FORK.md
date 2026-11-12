@@ -27,13 +27,13 @@ Every change goes through a pull request into `custom`. Do not commit or push to
    gh pr merge <number> --squash --delete-branch
    ```
 
-   The hourly rebase rewrites `custom`, so rebase the branch right before the merge. Git drops the old copies of the fork commits. The squash keeps one `fork: <change>` commit per change.
+   The daily rebase rewrites `custom`, so rebase the branch right before the merge. Git drops the old copies of the fork commits. The squash keeps one `fork: <change>` commit per change.
 
 7. The merge pushes to `custom`, and the workflow builds and publishes a release.
 
 ## Release flow
 
-`fork-release.yml` runs every hour, on each push to `custom`, and on demand (`rebuild` forces a new build of the same commit).
+`fork-release.yml` runs once a day at 08:23 UTC, on each push to `custom`, and on demand (`rebuild` forces a new build of the same commit).
 
 1. It finds the latest published upstream nightly.
 2. When `custom` does not contain it, it rebases `custom` onto it and pushes. The push starts the build run.
