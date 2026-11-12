@@ -1,7 +1,7 @@
 import type { ServerProviderUsageWindow } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { formatPaceDelta, providerPace, weeklyWindow } from "./providerUsagePace";
+import { formatPaceDelta, providerPace, weeklyProjection, weeklyWindow } from "./providerUsagePace";
 
 const HOUR = 3_600_000;
 const now = Date.parse("2026-11-10T12:00:00Z");
@@ -47,5 +47,19 @@ describe("provider pace", () => {
     expect(weeklyWindow([session, scoped, weekly(20, 10)])?.id).toBe("seven_day");
     expect(weeklyWindow([session, scoped])?.id).toBe("seven_day_fable");
     expect(weeklyWindow([session])).toBeUndefined();
+  });
+
+  it.each([
+    { used: 45, hours: 151, projection: { kind: "runsOut", inMs: (55 * 17 * HOUR) / 45 } },
+    { used: 9, hours: 82, projection: { kind: "leftAtReset", percent: 82, estimated: true } },
+    { used: 0, hours: 82, projection: { kind: "leftAtReset", percent: 100, estimated: false } },
+    { used: 5, hours: 168, projection: { kind: "leftAtReset", percent: 95, estimated: false } },
+    { used: 100, hours: 84, projection: { kind: "runsOut", inMs: 0 } },
+  ])("projects the burn rate to the reset: %o", (row) => {
+    expect(weeklyProjection(weekly(row.used, row.hours), now)).toEqual(row.projection);
+  });
+
+  it("has no projection without a reset time", () => {
+    expect(weeklyProjection({ ...weekly(10, 10), resetsAt: undefined }, now)).toBeNull();
   });
 });
