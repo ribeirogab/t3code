@@ -21,6 +21,15 @@ Threads don't require a project. Pick **No project** (or press `mod+alt+n` on we
 - **Background start** (web/desktop): Press `Cmd+Enter` (macOS) or `Ctrl+Enter` (Windows/Linux) in a new thread to submit it and immediately open another draft with the same workspace mode and base branch.
 - **Same prompt, multiple models** (web/desktop, Git projects): `Shift`-click models in a new thread's model picker to select several. Sending starts a separate thread and worktree for each model.
 
+### Continue in a new thread
+
+When a thread's context gets long, pick **Continue in new thread** from its menu,
+then **Same worktree**, **New worktree**, or **Child thread**. The agent writes a
+short handoff and starts the new thread with it, with a goal when the rest of the
+work has a clear end. The new thread links back to the old one, and the old one
+settles when its turn ends. A child thread stays under its parent instead. Turn it
+off in **Settings → Fork**.
+
 ## Sidebar layout and organization
 
 - **Resize or hide** (web/desktop): Drag the sidebar's right edge past its minimum width to hide it; hover the left window edge and click or drag the handle to bring it back.

@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 
 import { resolveStorage } from "~/lib/storage";
 
-export const FORK_FEATURE_SECTIONS = ["Sidebar", "Thread details"] as const;
+export const FORK_FEATURE_SECTIONS = ["Sidebar", "Thread details", "Chat", "Threads"] as const;
 
 export const FORK_MASTER_SEARCH_ID = "fork-features";
 
@@ -33,6 +33,15 @@ export const FORK_FEATURES = [
     searchTerms: ["fork sidebar card fields branch machine model diff terminal pull request"],
   },
   {
+    key: "planProgress",
+    section: "Sidebar",
+    searchId: "fork-plan-progress",
+    title: "Plan progress",
+    description:
+      "Show the done steps of the agent's plan and the next step on cards and in the thread header.",
+    searchTerms: ["fork plan progress todo tasks steps percent next done header card"],
+  },
+  {
     key: "modelIconInTitle",
     section: "Sidebar",
     searchId: "fork-model-icon-in-title",
@@ -57,12 +66,29 @@ export const FORK_FEATURES = [
     searchTerms: ["fork previous agents subagents archived thread details"],
   },
   {
+    key: "supervisedTurn",
+    section: "Chat",
+    searchId: "fork-supervised-turn",
+    title: "Supervised turn for a yes",
+    description:
+      "When a tool in Full access needs a yes that no one can give, offer one Supervised turn.",
+    searchTerms: ["fork full access supervised approval consent yes permission runtime mode"],
+  },
+  {
     key: "contextBreakdown",
     section: "Thread details",
     searchId: "fork-context-breakdown",
     title: "Context breakdown",
     description: "Open the Context row to see the tokens by category. Claude only.",
     searchTerms: ["fork context window breakdown tokens category mcp memory claude"],
+  },
+  {
+    key: "sharedWorktree",
+    section: "Chat",
+    searchId: "fork-shared-worktree",
+    title: "Shared worktree",
+    description: "Mark the thread header when other active threads use the same worktree.",
+    searchTerms: ["fork shared worktree threads commit stage paths header siblings"],
   },
   {
     key: "paceMarker",
@@ -79,6 +105,39 @@ export const FORK_FEATURES = [
     title: "Provider usage",
     description: "Add a Provider usage item with the weekly pace of each provider.",
     searchTerms: ["fork provider usage weekly pace deficit reserve accounts thread details"],
+  },
+  {
+    key: "goalWaiting",
+    section: "Sidebar",
+    searchId: "fork-goal-waiting",
+    title: "Waiting while a goal is open",
+    description: "Keep a thread with an active /goal in Waiting, not Done.",
+    searchTerms: ["fork goal waiting working shelf done completed sidebar"],
+  },
+  {
+    key: "goalPause",
+    section: "Chat",
+    searchId: "fork-goal-pause",
+    title: "Pause goal",
+    description: "Add Pause next to a goal's Clear. Pause keeps the goal text for Resume.",
+    searchTerms: ["fork goal pause resume clear stop hook objective"],
+  },
+  {
+    key: "publishedPorts",
+    section: "Thread details",
+    searchId: "fork-published-ports",
+    title: "Published ports",
+    description: "List the tailnet URLs agents published, with a stop control.",
+    searchTerms: ["fork published ports tailnet tailscale serve url publish_port thread details"],
+  },
+  {
+    key: "continueInNewThread",
+    section: "Threads",
+    searchId: "fork-continue-in-new-thread",
+    title: "Continue in new thread",
+    description:
+      "Add Continue in new thread to the thread menu. The agent writes a handoff and starts the new thread.",
+    searchTerms: ["fork continue new thread handoff goal worktree child menu"],
   },
 ] as const satisfies ReadonlyArray<{
   readonly key: string;
