@@ -33,6 +33,15 @@ export const FORK_FEATURES = [
     searchTerms: ["fork sidebar card fields branch machine model diff terminal pull request"],
   },
   {
+    key: "planProgress",
+    section: "Sidebar",
+    searchId: "fork-plan-progress",
+    title: "Plan progress",
+    description:
+      "Show the done steps of the agent's plan and the next step on cards and in the thread header.",
+    searchTerms: ["fork plan progress todo tasks steps percent next done header card"],
+  },
+  {
     key: "modelIconInTitle",
     section: "Sidebar",
     searchId: "fork-model-icon-in-title",
