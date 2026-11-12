@@ -76,6 +76,7 @@ import type { RunStopPresentation } from "@t3tools/client-runtime/state/thread-e
 import { Atom } from "effect/reactivity";
 import { environmentThreadDetails } from "../../state/threads";
 import { openSideChatTab } from "../../lib/sideChatPane";
+import { useSupervisedTurnNowItem } from "../../fork/useSupervisedTurnNowItem";
 import type { useLocalDispatchState } from "./useLocalDispatchState";
 const RELATED_THREAD_SHELL_WAIT_MS = 1_000;
 const NO_RUN_STOP_ATOM = Atom.make<RunStopPresentation | null>(null).pipe(
@@ -692,12 +693,22 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
       }).then(toastThreadActionFailure("Failed to regenerate thread title"));
     },
   } satisfies ChatShortcutCommands;
+  const supervisedTurnNow = useSupervisedTurnNowItem({
+    environmentId,
+    threadRef: activeThreadRef,
+    threadDetailRef,
+    threadShell: activeThreadShell,
+    runtimeMode,
+    isWorking,
+    turnItems,
+  });
   return {
     shortcuts,
     acknowledgeActiveThreadWoke,
     activeBranchMismatchKey,
     // A Stop that went unanswered needs the user; one in progress is the thread's work.
-    attentionNow: runStop?.state === "unresponsive" ? runStopNow : childInputNow,
+    attentionNow:
+      supervisedTurnNow ?? (runStop?.state === "unresponsive" ? runStopNow : childInputNow),
     workNow: runStop?.state === "stopping" ? runStopNow : backgroundWorkNow,
     childInputNow,
     goalNow,
