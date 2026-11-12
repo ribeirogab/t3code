@@ -9,6 +9,7 @@ import type {
   PreviewMiniPlayerSize,
   PreviewMiniPlayerState,
 } from "~/previewMiniPlayerStore";
+import { resolveChatCenterSpanWidth } from "~/fork/chatCenterBesideDetails";
 
 export interface ChatCanvasPreview {
   readonly key: string;
@@ -30,6 +31,7 @@ export function resolveChatCanvasLayout({
   composerHeight = 0,
   detailsCard = null,
   findBar = null,
+  centerBesideDetailsCard = false,
 }: {
   container: PreviewMiniPlayerSize;
   preview: ChatCanvasPreview | null;
@@ -39,13 +41,17 @@ export function resolveChatCanvasLayout({
   composerHeight?: number;
   detailsCard?: PreviewMiniPlayerObstacles["detailsCard"];
   findBar?: PreviewMiniPlayerObstacles["detailsCard"];
+  centerBesideDetailsCard?: boolean;
 }) {
   const centeredWidth = Math.max(0, Math.min(maxChatWidth, container.width - padding * 2));
   const laneRight = detailsCard
     ? detailsCard.left - DETAILS_CARD_CLEARANCE
     : container.width - padding;
   const normalWidth = Math.max(0, Math.min(centeredWidth, laneRight - padding));
-  const canvasCenterLeft = (container.width - normalWidth) / 2;
+  const canvasCenterLeft =
+    (resolveChatCenterSpanWidth(container.width, detailsCard, centerBesideDetailsCard) -
+      normalWidth) /
+    2;
   const normalLeft = Math.max(padding, Math.min(canvasCenterLeft, laneRight - normalWidth));
   let chat = {
     left: normalLeft,
