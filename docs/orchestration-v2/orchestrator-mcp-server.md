@@ -246,11 +246,17 @@ type DelegateTaskInput = {
   runtimeMode?: "inherit" | "approval-required" | "auto-accept-edits" | "full-access";
   interactionMode?: "inherit" | "plan" | "default";
   listed?: boolean;
+  notifyParent?: "on_finish" | "on_question" | "never";
 };
 ```
 
 `listed: true` gives the child a sidebar row under its parent. Children are
 hidden by default.
+
+`notifyParent` limits which child events wake the parent: `on_finish` (the
+default) wakes it for results and questions, `on_question` only for questions,
+and `never` not at all. A turn the user types in the child thread, and a turn
+that is only a slash command, never wake the parent.
 
 Provider, model, runtime mode, and interaction mode inherit from the parent
 when omitted. A driver-only target inherits the parent's provider instance
