@@ -15,6 +15,7 @@ import { TYPOGRAPHY_ADVANCED_STORAGE_KEY } from "../../appearanceFonts";
 import { writeLocalStorageValue } from "../../hooks/useLocalStorage";
 import { commandLabel } from "./KeybindingsSettings.logic";
 import { FORK_SETTINGS_SEARCH_ITEMS } from "~/fork/forkFeatures";
+import { AGENT_LANGUAGE_SETTINGS_SEARCH_ITEMS } from "~/fork/agentLanguage";
 import type { ResolvedSettingsScope } from "./settingsScope";
 
 export type SettingsPath =
@@ -1347,6 +1348,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["restore reopen deleted history projects"],
   },
   ...FORK_SETTINGS_SEARCH_ITEMS,
+  ...AGENT_LANGUAGE_SETTINGS_SEARCH_ITEMS,
 ] as const satisfies ReadonlyArray<SettingsSearchItem>;
 
 export type SettingsSearchItemId = (typeof SETTINGS_SEARCH_ITEMS)[number]["id"];
