@@ -133,6 +133,7 @@ import { hasTitleFirstProjectLabel, TitleFirstProjectLabel } from "~/fork/TitleF
 import { useSidebarCardDisplay } from "~/fork/sidebarCardDisplay";
 import { useForkFeature } from "~/fork/forkFeatures";
 import { SidebarTitleProviderIcon } from "~/fork/SidebarTitleProviderIcon";
+import { SidebarPlanProgress } from "~/fork/PlanProgress";
 
 // The fields thread rows show. Provider status pushes refresh `checkedAt`,
 // status and auth on every provider; leaving those out keeps each
@@ -1674,6 +1675,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
               <div className="mt-1 flex min-w-0 items-center gap-1.5">{cardTitle}</div>
             )}
             {metaLine}
+            <SidebarPlanProgress thread={thread} />
           </div>
         </TooltipTrigger>
         {detailsTooltip}

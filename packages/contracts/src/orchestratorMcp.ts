@@ -3,6 +3,8 @@ import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
 
 import { AuthMcpClientAccess } from "./auth.ts";
+import { ForkNotifyParentToolInput } from "./fork/notifyParent.ts";
+import { ForkGoal } from "./fork/threadHandoff.ts";
 import {
   ContextTransferId,
   EnvironmentId,
@@ -200,6 +202,8 @@ export const OrchestratorMcpDelegateTaskInput = Schema.Struct({
         "true: the child gets its own sidebar row under this thread, for a separate, parallel, or background thread the user asked for. Default false: hidden helper for review or research.",
     }),
   ),
+  notifyParent: Schema.optional(ForkNotifyParentToolInput),
+  goal: Schema.optional(ForkGoal),
 });
 export type OrchestratorMcpDelegateTaskInput = typeof OrchestratorMcpDelegateTaskInput.Type;
 

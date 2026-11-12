@@ -57,6 +57,15 @@ in a new thread's model picker to add or remove them. A regular click returns to
 single model. Choose a base branch and send. Each selection starts a separate thread
 and worktree while you stay in the new thread composer. This requires a Git project.
 
+### Continue in a new thread
+
+When a thread's context gets long, pick **Continue in new thread** from its menu,
+then **Same worktree**, **New worktree**, or **Child thread**. The agent writes a
+short handoff and starts the new thread with it, with a goal when the rest of the
+work has a clear end. The new thread links back to the old one, and the old one
+settles when its turn ends. A child thread stays under its parent instead. Turn it
+off in **Settings → Fork**.
+
 ## Pin and reorder threads
 
 Pin a thread from its menu to keep it above your active work.

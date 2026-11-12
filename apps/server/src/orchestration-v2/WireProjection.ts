@@ -23,6 +23,7 @@ import {
 } from "@t3tools/shared/toolOutput";
 
 import { wireThread } from "../fork/wireLineage.ts";
+import { markConsentRefusal } from "../fork/fullAccessConsent.ts";
 
 // A checkpoint over vendored or generated trees can list 15k+ files; the card needs a prefix.
 const MAX_WIRE_CHECKPOINT_FILES = 200;
@@ -157,6 +158,10 @@ function capCheckpointItemFiles(item: OrchestrationV2TurnItem): OrchestrationV2T
 }
 
 export function projectTurnItemForWire(item: OrchestrationV2TurnItem): OrchestrationV2TurnItem {
+  return markConsentRefusal(item, projectUpstreamTurnItemForWire(item));
+}
+
+function projectUpstreamTurnItemForWire(item: OrchestrationV2TurnItem): OrchestrationV2TurnItem {
   switch (item.type) {
     case "checkpoint":
       return capCheckpointFiles(item);

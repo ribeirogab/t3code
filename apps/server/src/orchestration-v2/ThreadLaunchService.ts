@@ -9,6 +9,7 @@ import {
   type ModelSelection,
   type OrchestrationV2Actor,
   type OrchestrationV2CreationSource,
+  type ForkContinuesFrom,
   type OrchestrationV2DelegatedFrom,
   type OrchestrationV2LinkOrigin,
   type OrchestrationV2ProviderThreadNativeMetadata,
@@ -105,6 +106,7 @@ export interface ThreadLaunchInput {
   readonly linkOrigin?: OrchestrationV2LinkOrigin;
   /** The parent there, when that environment's agent delegated this as a task. */
   readonly delegatedFrom?: OrchestrationV2DelegatedFrom;
+  readonly continuesFrom?: ForkContinuesFrom;
 }
 
 type PreparationInput = Pick<
@@ -1073,6 +1075,9 @@ const make = Effect.gen(function* () {
                 ...(input.delegatedFrom === undefined
                   ? {}
                   : { delegatedFrom: input.delegatedFrom }),
+                ...(input.continuesFrom === undefined
+                  ? {}
+                  : { continuesFrom: input.continuesFrom }),
                 createdBy: input.createdBy,
                 creationSource: input.creationSource,
               });
