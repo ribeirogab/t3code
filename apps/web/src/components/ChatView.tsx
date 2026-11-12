@@ -2443,6 +2443,7 @@ export default function ChatView(props: ChatViewProps) {
     workNow,
     childInputNow,
     goalNow,
+    goalCard,
     handleSwitchCheckoutToThread,
     handleSwitchCheckoutToThreadStable,
     isRestoringThreadBranch,
@@ -3683,6 +3684,7 @@ export default function ChatView(props: ChatViewProps) {
                                               : projectCloneSendBlockReason
                                 }
                                 isPreparingWorktree={isPreparingWorktree && !sendQueuesBehindSetup}
+                                goalCard={goalCard}
                                 bannerItems={
                                   isDraftHeroState || composerBannerItems.length === 0
                                     ? EMPTY_COMPOSER_BANNER_ITEMS
