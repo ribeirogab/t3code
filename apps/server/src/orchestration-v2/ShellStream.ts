@@ -43,6 +43,7 @@ import {
   skipsHiddenChildAncestors,
 } from "../fork/threadNesting.ts";
 import { wireThread, wireThreadLists, wireThreads } from "../fork/wireLineage.ts";
+import { forkRefusesShellResume } from "../fork/forkFeatureSettings.ts";
 
 type ShellDelta = Extract<OrchestrationV2ShellStreamItem, { readonly sequence: number }>;
 
@@ -65,6 +66,7 @@ export const canResumeShellFrom = Effect.fnUntraced(function* (
   afterSequence: number,
   headSequence: number,
 ) {
+  if (forkRefusesShellResume(afterSequence)) return false;
   // A cursor at the head missed nothing, even where pruning has passed the head.
   if (afterSequence === headSequence) return true;
   const replayGap = headSequence - afterSequence;
