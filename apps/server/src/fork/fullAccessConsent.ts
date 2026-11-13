@@ -1,4 +1,5 @@
 import {
+  forkFeatureActive,
   FORK_CONSENT_REFUSAL_TEXT,
   FORK_NEEDS_YES_OUTPUT_KEY,
   type OrchestrationV2TurnItem,
@@ -24,7 +25,7 @@ export function markConsentRefusal(
   raw: OrchestrationV2TurnItem,
   projected: OrchestrationV2TurnItem,
 ): OrchestrationV2TurnItem {
-  if (raw.status !== "failed") return projected;
+  if (raw.status !== "failed" || !forkFeatureActive("supervisedTurn")) return projected;
   if (raw.type === "dynamic_tool" && projected.type === "dynamic_tool") {
     if (!mentionsConsentRefusal(raw.output)) return projected;
     const output =

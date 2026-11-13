@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import {
+  overrideForkFeatureSettings,
   ThreadId,
   type OrchestrationV2AppThreadLineage,
   type OrchestrationV2ThreadStreamItem,
@@ -55,6 +56,21 @@ describe("wireLineage", () => {
   it("is stable when applied to its own output", () => {
     const wired = wireLineage(lineage({ listed: true, detached: true }));
     expect(wireLineage(wired)).toBe(wired);
+  });
+});
+
+describe("wireLineage while Nested threads is off", () => {
+  it.each([
+    { master: false, features: {} },
+    { master: true, features: { nestedThreads: false } },
+  ])("sends the stored lineage without the fork fields, as upstream does, with %o", (settings) => {
+    using _settings = overrideForkFeatureSettings(settings);
+    expect(wireLineage(lineage({ listed: true }))).toEqual(lineage({}));
+    expect(
+      wireLineage(lineage({ relationshipToParent: "fork", listed: false, detached: true })),
+    ).toEqual(lineage({ relationshipToParent: "fork" }));
+    const upstream = lineage({});
+    expect(wireLineage(upstream)).toBe(upstream);
   });
 });
 

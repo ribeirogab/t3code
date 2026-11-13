@@ -102,6 +102,7 @@ import {
   forkLatestTodoListStepsColumn,
   forkPlanProgressFromStepsJson,
 } from "../fork/planProgress.ts";
+import { listedThreadsFilter } from "../fork/threadNesting.ts";
 import {
   isFoldableWorkItem,
   isThreadHistoryUserTurn,
@@ -7871,13 +7872,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
               LIMIT 1
             ) AND blocked.status = 'failed'
             WHERE ${includeDeleted ? sql`1 = 1` : sql`t.deleted_at IS NULL`}${
-              listedOnly
-                ? sql` AND json_extract(t.payload_json, '$.lineage.sideChat') IS NOT 1
-                    AND COALESCE(
-                      json_extract(t.payload_json, '$.lineage.listed'),
-                      json_extract(t.payload_json, '$.lineage.relationshipToParent') IS NOT 'subagent'
-                    ) = 1`
-                : sql``
+              listedOnly ? sql` AND ${listedThreadsFilter(sql)}` : sql``
             }${threadId === undefined ? sql`` : sql` AND t.thread_id = ${threadId}`}${
               projectId === undefined ? sql`` : sql` AND t.project_id = ${projectId}`
             }${
@@ -8985,11 +8980,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
         FROM orchestration_v2_projection_threads t
         WHERE t.deleted_at IS NULL
           AND json_extract(t.payload_json, '$.archivedAt') IS NULL
-          AND json_extract(t.payload_json, '$.lineage.sideChat') IS NOT 1
-          AND COALESCE(
-            json_extract(t.payload_json, '$.lineage.listed'),
-            json_extract(t.payload_json, '$.lineage.relationshipToParent') IS NOT 'subagent'
-          ) = 1
+          AND ${listedThreadsFilter(sql)}
           AND json_extract(t.payload_json, '$.settledOverride') = 'settled'
           AND json_extract(t.payload_json, '$.settledAt') IS NOT NULL${
             projectIds === undefined ? sql`` : sql` AND t.project_id IN ${sql.in(projectIds)}`
