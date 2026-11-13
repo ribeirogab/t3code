@@ -51,6 +51,8 @@ import { canTurnThreadIntoProject, useThreadActions } from "./useThreadActions";
 import { chooseNestedRemoval } from "../fork/NestedThreadsDialog";
 import { removeWithNested } from "../fork/nestedThreadRemoval";
 import { continueInNewThreadPlacement } from "../fork/continueInNewThread";
+import { readThreadParked, setThreadParked } from "../fork/parkedThreads";
+import { parkedThreadMenuTarget } from "../fork/parkedThreads.logic";
 import { isForkFeatureEnabled } from "../fork/forkFeatures";
 import { useContinueInNewThread } from "../fork/useContinueInNewThread";
 
@@ -160,6 +162,7 @@ export function useThreadActionMenu(input: {
         canShareWithGuest,
         canTurnIntoProject: canTurnThreadIntoProject(threadRef),
         canContinueInNewThread: isForkFeatureEnabled("continueInNewThread"),
+        parked: readThreadParked(threadRef, thread),
       });
       const clicked = await settlePromise(() => api.contextMenu.show(items, position));
       if (clicked._tag === "Failure" || clicked.value === null) return;
@@ -177,6 +180,11 @@ export function useThreadActionMenu(input: {
       const handoffPlacement = continueInNewThreadPlacement(action);
       if (handoffPlacement !== null) {
         await continueInNewThread(threadRef, handoffPlacement);
+        return;
+      }
+      const parkTarget = parkedThreadMenuTarget(action);
+      if (parkTarget !== null) {
+        await setThreadParked(threadRef, parkTarget);
         return;
       }
       if (action.startsWith("snooze:")) {
