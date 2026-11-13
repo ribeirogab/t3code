@@ -1,4 +1,5 @@
 import {
+  forkFeatureActive,
   isListedThreadLineage,
   type OrchestrationV2ThreadShell,
   type ThreadId,
@@ -61,8 +62,10 @@ export function makeSharedWorktreeTurnInput(
   return <Input extends { readonly threadId: ThreadId; readonly message: TurnMessage }>(
     input: Input,
   ) =>
-    noteFor(input.threadId).pipe(
-      Effect.orElseSucceed(() => null),
-      Effect.map((note) => withSharedWorktreeNote(input, note)),
-    );
+    forkFeatureActive("sharedWorktree")
+      ? noteFor(input.threadId).pipe(
+          Effect.orElseSucceed(() => null),
+          Effect.map((note) => withSharedWorktreeNote(input, note)),
+        )
+      : Effect.succeed(input);
 }

@@ -20,7 +20,7 @@ import {
   TrimmedNonEmptyString,
   TrimmedString,
 } from "./baseSchemas.ts";
-import { ForkServerSettingsFields, ForkServerSettingsPatchFields } from "./fork/agentLanguage.ts";
+import { ForkServerSettingsFields, ForkServerSettingsPatchFields } from "./fork/serverSettings.ts";
 import { UsageLimitSourceId } from "./usageLimitSourceId.ts";
 import { UsageModelFilter } from "./usage.ts";
 import { SecretProviderId, SecretProviderSlug } from "./secretReference.ts";

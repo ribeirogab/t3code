@@ -3,6 +3,7 @@ import {
   CommandId,
   EventId,
   NodeId,
+  overrideForkFeatureSettings,
   ProjectId,
   ProviderDriverKind,
   ProviderInstanceId,
@@ -171,6 +172,27 @@ it.effect("nested children follow every Settle and Snooze change of the parent",
         );
       }
     }
+  }).pipe(Effect.provide(layerTest)),
+);
+
+it.effect("children keep their own status, as upstream does, while Nested threads is off", () =>
+  Effect.gen(function* () {
+    const { createThread, run, status } = yield* setup;
+    const delegated = ThreadId.make("thread:delegated");
+    yield* createThread(parentId, null);
+    yield* createThread(delegated, {
+      ...rootLineage,
+      relationshipToParent: "subagent",
+      listed: true,
+    });
+    using _settings = overrideForkFeatureSettings({ features: { nestedThreads: false } });
+    yield* run({
+      type: "thread.settle",
+      commandId: CommandId.make("settle-parent-while-off"),
+      threadId: parentId,
+    });
+    assert.equal((yield* status(parentId)).settledOverride, "settled");
+    assert.deepEqual(yield* status(delegated), { settledOverride: null, snoozedUntil: null });
   }).pipe(Effect.provide(layerTest)),
 );
 

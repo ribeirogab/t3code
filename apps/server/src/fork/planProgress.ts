@@ -1,4 +1,8 @@
-import type { OrchestrationV2PlanStep, OrchestrationV2ThreadShell } from "@t3tools/contracts";
+import {
+  forkFeatureActive,
+  type OrchestrationV2PlanStep,
+  type OrchestrationV2ThreadShell,
+} from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import type * as SqlClient from "effect/sql/SqlClient";
@@ -44,6 +48,14 @@ export function forkPlanProgressFromStepsJson(json: string | null): ForkPlanProg
 }
 
 export const forkLatestTodoListStepsColumn = (
+  sql: SqlClient.SqlClient,
+  threadIdColumn: Statement.Fragment,
+) =>
+  forkFeatureActive("planProgress")
+    ? latestTodoListStepsColumn(sql, threadIdColumn)
+    : sql`NULL AS fork_todo_list_steps_json`;
+
+const latestTodoListStepsColumn = (
   sql: SqlClient.SqlClient,
   threadIdColumn: Statement.Fragment,
 ) => sql`(

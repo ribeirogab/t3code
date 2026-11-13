@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest";
 import {
   EventId,
   MessageId,
+  overrideForkFeatureSettings,
   ProjectId,
   ProviderInstanceId,
   ThreadId,
@@ -182,6 +183,10 @@ it.layer(layerTest)("shared worktree turn note", (it) => {
       );
       const alone = { ...turn("Commit it"), threadId: ThreadId.make("thread:elsewhere") };
       assert.strictEqual((yield* withNote(alone)).message.text, "Commit it");
+
+      using _settings = overrideForkFeatureSettings({ features: { sharedWorktree: false } });
+      const shared = turn("Commit it");
+      assert.strictEqual(yield* withNote(shared), shared);
     }),
   );
 });
