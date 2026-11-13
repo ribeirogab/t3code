@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest";
-import { MessageId } from "@t3tools/contracts";
+import { MessageId, overrideForkFeatureSettings } from "@t3tools/contracts";
 import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -57,6 +57,11 @@ describe("withAgentLanguage", () => {
     for (const [input, setting] of unchanged) {
       assert.strictEqual(withAgentLanguage(input, setting), input);
     }
+  });
+
+  it("keeps the text as it is while Fork features is off", () => {
+    using _settings = overrideForkFeatureSettings({ master: false });
+    assert.strictEqual(withAgentLanguage(pullRequestUpdate, language), pullRequestUpdate);
   });
 });
 
