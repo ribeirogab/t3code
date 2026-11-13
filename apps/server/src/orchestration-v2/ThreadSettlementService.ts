@@ -30,6 +30,7 @@ import * as GitManager from "../git/GitManager.ts";
 import * as ProjectSetupScriptRunner from "../project/ProjectSetupScriptRunner.ts";
 import * as PullRequestService from "../pullRequest/PullRequestService.ts";
 import * as ServerSettings from "../serverSettings.ts";
+import { isParkedThread } from "../fork/parkedThreads.ts";
 import { forkParked } from "../serverActivation.ts";
 import * as TerminalManager from "../terminal/Manager.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
@@ -334,7 +335,8 @@ export const make = Effect.gen(function* () {
     const candidates = threads.filter(
       (thread) =>
         (automaticSettlementEnabled || thread.lineage.relationshipToParent === "subagent") &&
-        isAutoSettlementCandidate(thread, nowMs),
+        isAutoSettlementCandidate(thread, nowMs) &&
+        !isParkedThread(settings, thread.id),
     );
 
     // Runs per candidate thread, thousands per sweep on busy servers; the sweep owns the span.
