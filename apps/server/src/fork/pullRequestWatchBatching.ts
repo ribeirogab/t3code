@@ -1,8 +1,9 @@
-import type {
-  PullRequestCheck,
-  PullRequestComment,
-  PullRequestDetail,
-  ThreadPullRequestWatch,
+import {
+  forkFeatureActive,
+  type PullRequestCheck,
+  type PullRequestComment,
+  type PullRequestDetail,
+  type ThreadPullRequestWatch,
 } from "@t3tools/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -116,9 +117,16 @@ const upstreamEvaluator: PullRequestWatchEvaluator = {
   evaluate: (watch, detail, remarks, now) => evaluatePullRequestWatch(watch, detail, remarks, now),
 };
 
+const whenHoldingChecks = (batched: PullRequestWatchEvaluator): PullRequestWatchEvaluator => ({
+  baseSha: (input) =>
+    forkFeatureActive("holdRunningPrChecks") ? batched.baseSha(input) : Effect.succeed(null),
+  evaluate: (...input) =>
+    (forkFeatureActive("holdRunningPrChecks") ? batched : upstreamEvaluator).evaluate(...input),
+});
+
 export const pullRequestWatchEvaluator = Effect.map(
   Effect.serviceOption(PullRequestWatchBatching),
-  Option.getOrElse(() => upstreamEvaluator),
+  Option.match({ onNone: () => upstreamEvaluator, onSome: whenHoldingChecks }),
 );
 
 export const layer = Layer.effect(

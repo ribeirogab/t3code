@@ -1,5 +1,10 @@
 import { assert, describe, expect, it } from "@effect/vitest";
-import { EnvironmentId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
+import {
+  EnvironmentId,
+  overrideForkFeatureSettings,
+  ProviderInstanceId,
+  ThreadId,
+} from "@t3tools/contracts";
 
 import {
   T3_MCP_BEARER_ENV,
@@ -18,7 +23,7 @@ import {
   materializePiT3McpExtension,
   resolvePiLaunchArgs,
 } from "./mcpInjection.ts";
-import { PI_T3_MCP_EXTENSION_SOURCE } from "./mcpExtensionSource.ts";
+import { PI_T3_MCP_EXTENSION_SOURCE, piT3McpExtensionSource } from "./mcpExtensionSource.ts";
 
 const threadId = ThreadId.make("thread-pi-t3-mcp");
 
@@ -192,9 +197,9 @@ describe("materializePiT3McpExtension", () => {
             // partial read means the writer truncated the file mid-write.
             if (text.value.length === 0) {
               anomalies.push("empty: truncated mid-write");
-            } else if (text.value.length !== PI_T3_MCP_EXTENSION_SOURCE.length) {
+            } else if (text.value.length !== piT3McpExtensionSource().length) {
               anomalies.push(
-                `partial: ${text.value.length} of ${PI_T3_MCP_EXTENSION_SOURCE.length} chars`,
+                `partial: ${text.value.length} of ${piT3McpExtensionSource().length} chars`,
               );
             }
           }),
@@ -204,5 +209,18 @@ describe("materializePiT3McpExtension", () => {
       yield* Fiber.interrupt(reader);
       expect(anomalies).toEqual([]);
     }).pipe(Effect.provide(NodeServices.layer)),
+  );
+
+  it.effect("writes the upstream extension while Orchestration rules is off", () =>
+    Effect.gen(function* () {
+      const fs = yield* NodeFS.FileSystem;
+      const directory = yield* fs.makeTempDirectoryScoped({ prefix: "t3-pi-rules-" });
+      const withRules = yield* fs.readFileString(yield* materializePiT3McpExtension(directory));
+      expect(withRules).not.toBe(PI_T3_MCP_EXTENSION_SOURCE);
+      expect(withRules).toContain("schedule_task");
+      using _settings = overrideForkFeatureSettings({ features: { orchestrationRules: false } });
+      const upstream = yield* fs.readFileString(yield* materializePiT3McpExtension(directory));
+      expect(upstream).toBe(PI_T3_MCP_EXTENSION_SOURCE);
+    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
 });
