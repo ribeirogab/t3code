@@ -5,6 +5,7 @@ import {
   EventId,
   NodeId,
   type OrchestrationV2DomainEvent,
+  overrideForkFeatureSettings,
   PlanId,
   ProjectId,
   ProviderDriverKind,
@@ -1790,11 +1791,12 @@ it.effect.each([false, true])(
         commandId: CommandId.make("stale-question-followup"),
         threadId: task.childThreadId!,
         messageId: MessageId.make("message:stale-question-followup"),
+        senderThreadId: parentThreadId,
         text: "Capture another proof",
         attachments: [],
         dispatchMode: { type: "start_immediately" },
-        createdBy: "user",
-        creationSource: "web",
+        createdBy: "agent",
+        creationSource: "mcp",
       });
       const followup = (yield* projections.getThreadRecords(task.childThreadId!, [
         "runs",
@@ -2054,6 +2056,83 @@ it.effect(
         .pipe(Effect.flip);
       assert.equal(hideDetached._tag, "OrchestratorDispatchError");
     }).pipe(Effect.provide(layerTest)),
+);
+
+it.effect("keeps the upstream lineage and thread lists while Nested threads is off", () =>
+  Effect.gen(function* () {
+    const orchestrator = yield* Orchestrator.OrchestratorV2;
+    const projections = yield* ProjectionStore.ProjectionStoreV2;
+    const parentId = ThreadId.make("thread:nested-off-parent");
+    yield* orchestrator.dispatch({
+      type: "thread.create",
+      commandId: CommandId.make("create:nested-off-parent"),
+      threadId: parentId,
+      projectId: ProjectId.make("project:nested-off"),
+      title: "Parent",
+      modelSelection,
+      runtimeMode: "full-access",
+      interactionMode: "default",
+      branch: null,
+      worktreePath: null,
+      createdBy: "user",
+      creationSource: "web",
+    });
+    yield* orchestrator.dispatch({
+      type: "message.dispatch",
+      commandId: CommandId.make("start:nested-off-parent"),
+      threadId: parentId,
+      messageId: MessageId.make("message:nested-off-parent"),
+      text: "Run this apart",
+      attachments: [],
+      dispatchMode: { type: "start_immediately" },
+      createdBy: "user",
+      creationSource: "web",
+    });
+    const parentRun = (yield* projections.getThreadProjection(parentId)).runs[0]!;
+    const delegate = (key: string) =>
+      orchestrator.dispatch({
+        type: "delegated_task.request",
+        commandId: CommandId.make(`delegate:nested-off:${key}`),
+        parentThreadId: parentId,
+        parentRunId: parentRun.id,
+        parentNodeId: parentRun.rootNodeId!,
+        task: `Run apart ${key}`,
+        completionWake: "settled_only",
+        modelSelection,
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        listed: true,
+        createdBy: "agent",
+        creationSource: "mcp",
+      });
+    yield* delegate("stored");
+    const storedId = (yield* projections.getThreadProjection(parentId)).subagents[0]!
+      .childThreadId!;
+    const listedIds = Effect.map(projections.getAgentAwarenessSnapshot(), (snapshot) =>
+      snapshot.threads.map((thread) => thread.id),
+    );
+    assert.include(yield* listedIds, storedId);
+
+    using _settings = overrideForkFeatureSettings({ features: { nestedThreads: false } });
+    assert.notInclude(yield* listedIds, storedId);
+    yield* delegate("ignored");
+    const ignoredId = (yield* projections.getThreadProjection(parentId)).subagents.find(
+      (task) => task.prompt === "Run apart ignored",
+    )!.childThreadId!;
+    assert.isUndefined((yield* projections.getThreadShell(ignoredId))?.lineage.listed);
+    yield* orchestrator.dispatch({
+      type: "thread.metadata.update",
+      commandId: CommandId.make("nested-off:hide-root"),
+      threadId: parentId,
+      listed: false,
+      detached: true,
+    });
+    assert.deepEqual((yield* projections.getThreadShell(parentId))?.lineage, {
+      parentThreadId: null,
+      relationshipToParent: null,
+      rootThreadId: parentId,
+    });
+  }).pipe(Effect.provide(layerTest)),
 );
 
 it.effect("explicit settle clears snooze atomically and stays idempotent after re-snoozing", () =>

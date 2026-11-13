@@ -1,13 +1,14 @@
-import type {
-  ForkNotifyParent,
-  NodeId,
-  OrchestrationV2ConversationMessage,
-  OrchestrationV2ExecutionNode,
-  OrchestrationV2Run,
-  OrchestrationV2RuntimeRequest,
-  OrchestrationV2Subagent,
-  RunId,
-  ThreadId,
+import {
+  forkFeatureActive,
+  type ForkNotifyParent,
+  type NodeId,
+  type OrchestrationV2ConversationMessage,
+  type OrchestrationV2ExecutionNode,
+  type OrchestrationV2Run,
+  type OrchestrationV2RuntimeRequest,
+  type OrchestrationV2Subagent,
+  type RunId,
+  type ThreadId,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 
@@ -56,6 +57,7 @@ export function childEventWakesParent(input: {
   readonly event: ChildWakeEvent;
   readonly starter: TurnStarter | undefined;
 }): boolean {
+  if (!forkFeatureActive("quietParentWake")) return true;
   return (
     !turnStaysInChild(input.starter) &&
     optionWakesParent(input.notifyParent ?? "on_finish", input.event)
@@ -63,7 +65,14 @@ export function childEventWakesParent(input: {
 }
 
 export function mayWakeParentOnFinish(task: Pick<OrchestrationV2Subagent, "notifyParent">) {
+  if (!forkFeatureActive("quietParentWake")) return true;
   return optionWakesParent(task.notifyParent ?? "on_finish", "finish");
+}
+
+export function askTheUserForChildQuestion(): string {
+  return forkFeatureActive("orchestrationRules")
+    ? "ask the user with your question tool"
+    : "ask the user";
 }
 
 const QUIET_COMPLETION = {

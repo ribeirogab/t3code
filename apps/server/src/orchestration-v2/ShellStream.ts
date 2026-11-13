@@ -37,8 +37,13 @@ import * as Stream from "effect/Stream";
 import type * as OrchestrationEventStore from "../persistence/OrchestrationEventStore.ts";
 import { bufferLatestLiveStream } from "./LiveStreamBudget.ts";
 import type { ActiveShellIndexEntry } from "./ProjectionStore.ts";
-import { isUnlistedSubagentLineage } from "../fork/threadNesting.ts";
+import {
+  isNestedListedChild,
+  isUnlistedSubagentLineage,
+  skipsHiddenChildAncestors,
+} from "../fork/threadNesting.ts";
 import { wireThread, wireThreadLists, wireThreads } from "../fork/wireLineage.ts";
+import { forkRefusesShellResume } from "../fork/forkFeatureSettings.ts";
 
 type ShellDelta = Extract<OrchestrationV2ShellStreamItem, { readonly sequence: number }>;
 
@@ -61,6 +66,7 @@ export const canResumeShellFrom = Effect.fnUntraced(function* (
   afterSequence: number,
   headSequence: number,
 ) {
+  if (forkRefusesShellResume(afterSequence)) return false;
   // A cursor at the head missed nothing, even where pruning has passed the head.
   if (afterSequence === headSequence) return true;
   const replayGap = headSequence - afterSequence;
@@ -245,8 +251,8 @@ function hiddenChildAncestorIds(
 ) {
   const ancestorIds = new Set<string>();
   for (const thread of threads) {
-    if (thread.lineage.parentThreadId === null) continue;
-    ancestorIds.add(thread.lineage.parentThreadId);
+    if (skipsHiddenChildAncestors(thread.lineage)) continue;
+    if (thread.lineage.parentThreadId !== null) ancestorIds.add(thread.lineage.parentThreadId);
     ancestorIds.add(thread.lineage.rootThreadId);
   }
   return ancestorIds;
@@ -389,9 +395,7 @@ function shellSubscriberThreadIds(
   const ancestorIds = hiddenChildAncestorIds([
     ...subagents,
     ...index.filter(
-      (entry) =>
-        entry.lineage.sideChat === true ||
-        (entry.lineage.parentThreadId !== null && !isUnlistedSubagentLineage(entry.lineage)),
+      (entry) => entry.lineage.sideChat === true || isNestedListedChild(entry.lineage),
     ),
   ]);
   const keptSubagentIds = new Set(subagents.map((entry) => entry.id));

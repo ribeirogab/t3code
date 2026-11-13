@@ -1,5 +1,10 @@
 import { describe, expect, it } from "@effect/vitest";
-import { ThreadId, TurnItemId, type OrchestrationV2TurnItem } from "@t3tools/contracts";
+import {
+  overrideForkFeatureSettings,
+  ThreadId,
+  TurnItemId,
+  type OrchestrationV2TurnItem,
+} from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 
 import { projectTurnItemForWire } from "../orchestration-v2/WireProjection.ts";
@@ -76,6 +81,15 @@ describe("consent refusal on the wire", () => {
       outputOmitted: true,
     });
     expect(wireOutput(command("completed", refusal))).toEqual({
+      output: undefined,
+      outputOmitted: true,
+    });
+  });
+
+  it("projects a refusal as upstream does while Supervised turn is off", () => {
+    using _settings = overrideForkFeatureSettings({ features: { supervisedTurn: false } });
+    expect(wireOutput(tool("failed", refusal))?.output ?? {}).not.toHaveProperty("forkNeedsYes");
+    expect(wireOutput(command("failed", refusal))).toEqual({
       output: undefined,
       outputOmitted: true,
     });

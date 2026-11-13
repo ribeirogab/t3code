@@ -1,6 +1,7 @@
-import type {
-  OrchestrationV2AppThreadLineage,
-  OrchestrationV2ThreadStreamItem,
+import {
+  forkFeatureActive,
+  type OrchestrationV2AppThreadLineage,
+  type OrchestrationV2ThreadStreamItem,
 } from "@t3tools/contracts";
 
 interface LineageHolder {
@@ -10,6 +11,7 @@ interface LineageHolder {
 export function wireLineage(
   lineage: OrchestrationV2AppThreadLineage,
 ): OrchestrationV2AppThreadLineage {
+  if (!forkFeatureActive("nestedThreads")) return withoutNesting(lineage);
   if (lineage.detached === true) {
     return lineage.parentThreadId === null && lineage.relationshipToParent === null
       ? lineage
@@ -18,6 +20,12 @@ export function wireLineage(
   return lineage.relationshipToParent === "subagent" && lineage.listed === true
     ? { ...lineage, relationshipToParent: null }
     : lineage;
+}
+
+function withoutNesting(lineage: OrchestrationV2AppThreadLineage): OrchestrationV2AppThreadLineage {
+  if (lineage.listed === undefined && lineage.detached === undefined) return lineage;
+  const { listed: _listed, detached: _detached, ...upstream } = lineage;
+  return upstream;
 }
 
 export function wireThread<Thread extends LineageHolder>(thread: Thread): Thread {
