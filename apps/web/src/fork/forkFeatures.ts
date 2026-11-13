@@ -207,6 +207,14 @@ export const FORK_FEATURES = [
     description: "Let agents start a delegated or launched thread with a /goal.",
     searchTerms: ["fork goal delegate launch new thread child objective"],
   },
+  {
+    key: "parkedThreads",
+    section: "Sidebar",
+    searchId: "fork-parked-threads",
+    title: "Parked threads",
+    description: "Park a thread to keep it in the Parked shelf, out of the list and auto-settle.",
+    searchTerms: ["fork parked park unpark shelf hide keep long lived threads sidebar"],
+  },
 ] as const satisfies ReadonlyArray<{
   readonly key: string;
   readonly section: (typeof FORK_FEATURE_SECTIONS)[number];
