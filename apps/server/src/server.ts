@@ -15,6 +15,7 @@ import * as MilestoneHub from "./milestones/MilestoneHub.ts";
 import * as OrchestrationMilestones from "./milestones/OrchestrationMilestones.ts";
 import * as ChildStatusReactor from "./fork/ChildStatusReactor.ts";
 import * as PublishedPorts from "./fork/publishedPorts/PublishedPorts.ts";
+import * as ForkFeatureSettings from "./fork/forkFeatureSettings.ts";
 // Effect wraps this raw Node HTTP server after its startup and write-error guards attach.
 // @effect-diagnostics nodeBuiltinImport:off
 import * as NodeHttp from "node:http";
@@ -777,6 +778,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   ).pipe(Layer.provide(OrchestrationMilestones.layer), Layer.provide(ProjectionStoreV2.layer)),
   ChildStatusReactor.layerStarted,
   PublishedPorts.layer,
+  ForkFeatureSettings.layer,
   ProviderUsageLimitsIngestion.layer,
   layerProviderInstallationRefresh,
   ProviderInstallation.layer,

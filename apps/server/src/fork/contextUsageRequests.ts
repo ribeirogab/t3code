@@ -1,4 +1,8 @@
-import { ForkContextUsageError, type ForkContextUsageInput } from "@t3tools/contracts";
+import {
+  forkFeatureActive,
+  ForkContextUsageError,
+  type ForkContextUsageInput,
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 
@@ -18,6 +22,7 @@ export const readForkContextUsage = Effect.fn("ForkContextUsage.read")(function*
       reason,
       ...(cause === undefined ? {} : { cause }),
     });
+  if (!forkFeatureActive("contextBreakdown")) return yield* fail("provider-unsupported");
   const projection = yield* services.threadManagement
     .getThreadRecords(input.threadId, ["providerThreads"])
     .pipe(Effect.mapError((cause) => fail("request-failed", cause)));

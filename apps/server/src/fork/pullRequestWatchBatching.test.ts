@@ -1,16 +1,23 @@
-import type {
-  PullRequestCheck,
-  PullRequestComment,
-  ThreadPullRequestWatch,
+import * as NodeServices from "@effect/platform-node/NodeServices";
+import {
+  overrideForkFeatureSettings,
+  type PullRequestCheck,
+  type PullRequestComment,
+  SourceControlProviderKind,
+  type ThreadPullRequestWatch,
 } from "@t3tools/contracts";
 import { assert, describe, it } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
+import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
 
-import type { evaluatePullRequestWatch } from "../orchestration-v2/pullRequestWatch.ts";
+import { evaluatePullRequestWatch } from "../orchestration-v2/pullRequestWatch.ts";
 import {
   CHECKS_HOLD_LIMIT_MS,
   conflictNewsPending,
   evaluateBatchedPullRequestWatch,
+  layer as layerBatching,
+  pullRequestWatchEvaluator,
 } from "./pullRequestWatchBatching.ts";
 
 const STARTED = "2026-10-02T12:00:00.000Z";
@@ -259,4 +266,33 @@ describe("conflictNewsPending", () => {
   it.each(cases)("%s", (_name, told, read, expected) => {
     assert.strictEqual(conflictNewsPending(watch(told), detail(read)), expected);
   });
+});
+
+describe("pullRequestWatchEvaluator", () => {
+  it.effect("evaluates as upstream while Hold running PR checks is off", () =>
+    Effect.gen(function* () {
+      const evaluator = yield* pullRequestWatchEvaluator;
+      const read = detail({ checks: [check("lint", "failure"), check("test", "pending")] });
+      assert.deepEqual(kinds(evaluator.evaluate(watch(), read, null, NOW, null)), []);
+
+      using _settings = overrideForkFeatureSettings({
+        features: { holdRunningPrChecks: false },
+      });
+      const upstream = evaluatePullRequestWatch(watch(), read, null, NOW);
+      assert.deepEqual(kinds(upstream), ["checks-failed"]);
+      assert.deepEqual(evaluator.evaluate(watch(), read, null, NOW, "base"), upstream);
+      const baseSha = yield* evaluator.baseSha({
+        detail: {
+          provider: SourceControlProviderKind.make("github"),
+          repository: "o/r",
+          baseBranch: "main",
+          headSha: "aaaaaaaaaa",
+          mergeability: "conflicting",
+        },
+        host: "github.com",
+        watches: [watch()],
+      });
+      assert.isNull(baseSha);
+    }).pipe(Effect.provide(layerBatching.pipe(Layer.provide(NodeServices.layer)))),
+  );
 });

@@ -112,6 +112,7 @@ import * as PublishedPortsHandlers from "../fork/publishedPorts/handlers.ts";
 import { PublishedPortsToolkit } from "../fork/publishedPorts/tools.ts";
 import * as ForkThreadHandoffHandlers from "../fork/threadHandoff/handlers.ts";
 import { ForkThreadHandoffToolkit } from "../fork/threadHandoff/tools.ts";
+import { forkToolVisible } from "../fork/forkToolGates.ts";
 import { requestUrl } from "../requestUrl.ts";
 
 const mcpResourceMetadataUrl = (request: HttpServerRequest.HttpServerRequest) =>
@@ -1477,6 +1478,7 @@ export const layerTools = Layer.mergeAll(
   layerHtmlToolkit,
   layerMessageToolkit,
   toolkitRegistration(PublishedPortsToolkit, PublishedPortsHandlers.layer),
+  McpServer.visibility(({ target }) => Effect.succeed(forkToolVisible(target)), { global: true }),
 );
 
 const layerToolExposure = Layer.effect(
