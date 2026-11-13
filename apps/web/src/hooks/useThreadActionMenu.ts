@@ -51,7 +51,7 @@ import { canTurnThreadIntoProject, useThreadActions } from "./useThreadActions";
 import { chooseNestedRemoval } from "../fork/NestedThreadsDialog";
 import { removeWithNested } from "../fork/nestedThreadRemoval";
 import { continueInNewThreadPlacement } from "../fork/continueInNewThread";
-import { readThreadParked, setThreadParked } from "../fork/parkedThreads";
+import { readThreadParked, setThreadParked } from "../fork/parkedThreadActions";
 import { parkedThreadMenuTarget } from "../fork/parkedThreads.logic";
 import { isForkFeatureEnabled } from "../fork/forkFeatures";
 import { useContinueInNewThread } from "../fork/useContinueInNewThread";

@@ -282,12 +282,8 @@ import { continueInNewThreadPlacement } from "../fork/continueInNewThread";
 import { useContinueInNewThread } from "../fork/useContinueInNewThread";
 import { useForkFeature } from "../fork/forkFeatures";
 import { useSetThreadListed } from "../fork/useSetThreadListed";
-import {
-  readThreadParked,
-  setThreadParked,
-  useParkedShelfExpanded,
-  useParkedThreadKeys,
-} from "../fork/parkedThreads";
+import { readThreadParked, setThreadParked } from "../fork/parkedThreadActions";
+import { useParkedShelfExpanded, useParkedThreadKeys } from "../fork/parkedThreads";
 import {
   parkedThreadHasOpenRequest,
   parkedThreadMenuTarget,
