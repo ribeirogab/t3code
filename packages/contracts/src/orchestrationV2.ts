@@ -1,5 +1,6 @@
 import { OrchestrationMessageContext } from "./composerContext.ts";
 import { ForkNotifyParent } from "./fork/notifyParent.ts";
+import { forkFeatureActive } from "./fork/forkFeatures.ts";
 import { withRecordIdTable } from "./orchestrationV2IdTable.ts";
 import { ForkPlanProgress } from "./fork/planProgress.ts";
 import * as DateTime from "effect/DateTime";
@@ -207,7 +208,8 @@ export type OrchestrationV2AppThreadLineage = typeof OrchestrationV2AppThreadLin
 export const isListedThreadLineage = (lineage: OrchestrationV2AppThreadLineage): boolean =>
   lineage.sideChat !== true &&
   lineage.workflowStep !== true &&
-  (lineage.listed ?? lineage.relationshipToParent !== "subagent");
+  ((forkFeatureActive("nestedThreads") ? lineage.listed : undefined) ??
+    lineage.relationshipToParent !== "subagent");
 
 export const OrchestrationV2ContextTransferType = Schema.Literals([
   "fork",
