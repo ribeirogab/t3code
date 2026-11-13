@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest";
 import {
   EventId,
   NodeId,
+  overrideForkFeatureSettings,
   PlanId,
   ProjectId,
   ProviderInstanceId,
@@ -174,6 +175,9 @@ it.layer(layerTest)("thread shell plan progress", (it) => {
         snapshot.threads.find((thread) => thread.id === threadId)?.forkPlanProgress,
         expected,
       );
+
+      using _settings = overrideForkFeatureSettings({ features: { planProgress: false } });
+      assert.isNull((yield* store.getThreadShell(threadId))?.forkPlanProgress ?? null);
     }),
   );
 });

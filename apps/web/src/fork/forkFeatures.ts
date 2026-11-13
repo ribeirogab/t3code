@@ -1,9 +1,17 @@
-import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
+import { useAtomValue } from "@effect/atom-react";
+import { isForkFeatureOn } from "@t3tools/contracts";
+import { Atom } from "effect/reactivity";
 
-import { resolveStorage } from "~/lib/storage";
+import { appAtomRegistry } from "~/rpc/atomRegistry";
+import { primaryServerSettingsAtom } from "~/state/server";
 
-export const FORK_FEATURE_SECTIONS = ["Sidebar", "Thread details", "Chat", "Threads"] as const;
+export const FORK_FEATURE_SECTIONS = [
+  "Sidebar",
+  "Thread details",
+  "Chat",
+  "Threads",
+  "Agents",
+] as const;
 
 export const FORK_MASTER_SEARCH_ID = "fork-features";
 
@@ -87,7 +95,8 @@ export const FORK_FEATURES = [
     section: "Chat",
     searchId: "fork-shared-worktree",
     title: "Shared worktree",
-    description: "Mark the thread header when other active threads use the same worktree.",
+    description:
+      "Mark the thread header, and tell the agent, when other active threads use the same worktree.",
     searchTerms: ["fork shared worktree threads commit stage paths header siblings"],
   },
   {
@@ -144,7 +153,7 @@ export const FORK_FEATURES = [
     section: "Thread details",
     searchId: "fork-published-ports",
     title: "Published ports",
-    description: "List the tailnet URLs agents published, with a stop control.",
+    description: "Let agents publish tailnet URLs, and list them with a stop control.",
     searchTerms: ["fork published ports tailnet tailscale serve url publish_port thread details"],
   },
   {
@@ -156,6 +165,48 @@ export const FORK_FEATURES = [
       "Add Continue in new thread to the thread menu. The agent writes a handoff and starts the new thread.",
     searchTerms: ["fork continue new thread handoff goal worktree child menu"],
   },
+  {
+    key: "orchestrationRules",
+    section: "Agents",
+    searchId: "fork-orchestration-rules",
+    title: "Orchestration rules",
+    description: "Add the fork's rules to the T3 Code instructions that agents get.",
+    searchTerms: ["fork orchestration rules instructions system prompt question tool subsession"],
+  },
+  {
+    key: "quietParentWake",
+    section: "Agents",
+    searchId: "fork-quiet-parent-wake",
+    title: "Quiet parent wake",
+    description:
+      "Do not wake the parent when you write in its child thread. Agents choose which child events wake them.",
+    searchTerms: ["fork notify parent wake child delegate finish question quiet"],
+  },
+  {
+    key: "holdRunningPrChecks",
+    section: "Agents",
+    searchId: "fork-hold-running-pr-checks",
+    title: "Hold running PR checks",
+    description:
+      "Wake a pull request watcher when the running checks finish, after 30 minutes at most, and once per conflict.",
+    searchTerms: ["fork pull request watch checks running hold batch conflict wake"],
+  },
+  {
+    key: "workflowRunWatch",
+    section: "Agents",
+    searchId: "fork-workflow-run-watch",
+    title: "Workflow run watch",
+    description: "Let agents watch a GitHub Actions run until it finishes.",
+    searchTerms: ["fork workflow run watch github actions ci release wake"],
+  },
+  {
+    key: "goalOnNewThreads",
+    section: "Agents",
+    searchId: "fork-goal-on-new-threads",
+    title: "Goal on new threads",
+    description: "Let agents start a delegated or launched thread with a /goal.",
+    searchTerms: ["fork goal delegate launch new thread child objective"],
+  },
 ] as const satisfies ReadonlyArray<{
   readonly key: string;
   readonly section: (typeof FORK_FEATURE_SECTIONS)[number];
@@ -166,12 +217,6 @@ export const FORK_FEATURES = [
 }>;
 
 export type ForkFeature = (typeof FORK_FEATURES)[number]["key"];
-
-export type ForkFeatures = Record<ForkFeature, boolean>;
-
-export const DEFAULT_FORK_FEATURES: ForkFeatures = Object.fromEntries(
-  FORK_FEATURES.map(({ key }) => [key, true]),
-) as ForkFeatures;
 
 export const FORK_SETTINGS_SEARCH_ITEMS = [
   {
@@ -188,66 +233,18 @@ export const FORK_SETTINGS_SEARCH_ITEMS = [
   })),
 ];
 
-interface ForkSettings {
-  master: boolean;
-  enabled: ForkFeatures;
-}
-
-interface ForkFeaturesState extends ForkSettings {
-  setMaster: (master: boolean) => void;
-  setEnabled: (feature: ForkFeature, enabled: boolean) => void;
-}
-
-export function mergePersistedForkSettings(persisted: unknown): ForkSettings {
-  const stored =
-    persisted !== null && typeof persisted === "object"
-      ? (persisted as Partial<Record<string, unknown>>)
-      : {};
-  return {
-    master: typeof stored.master === "boolean" ? stored.master : true,
-    enabled: mergeEnabled(stored.enabled),
-  };
-}
-
-function mergeEnabled(enabled: unknown): ForkFeatures {
-  if (enabled === null || typeof enabled !== "object") return DEFAULT_FORK_FEATURES;
-  const stored = enabled as Partial<Record<string, unknown>>;
-  return Object.fromEntries(
-    FORK_FEATURES.map(({ key }) => {
-      const value = stored[key];
-      return [key, typeof value === "boolean" ? value : DEFAULT_FORK_FEATURES[key]];
-    }),
-  ) as ForkFeatures;
-}
-
-export function isForkFeatureActive(settings: ForkSettings, feature: ForkFeature): boolean {
-  return settings.master && settings.enabled[feature];
-}
-
-export const useForkFeaturesStore = create<ForkFeaturesState>()(
-  persist(
-    (set) => ({
-      master: true,
-      enabled: DEFAULT_FORK_FEATURES,
-      setMaster: (master) => set({ master }),
-      setEnabled: (feature, enabled) =>
-        set((state) => ({ enabled: { ...state.enabled, [feature]: enabled } })),
-    }),
-    {
-      name: "t3code:fork:features:v1",
-      storage: createJSONStorage(() =>
-        resolveStorage(typeof window !== "undefined" ? window.localStorage : undefined),
-      ),
-      partialize: ({ master, enabled }) => ({ master, enabled }),
-      merge: (persisted, current) => ({ ...current, ...mergePersistedForkSettings(persisted) }),
-    },
+const forkFeatureAtom = Atom.family((feature: ForkFeature) =>
+  Atom.make((get) => isForkFeatureOn(get(primaryServerSettingsAtom).forkFeatures, feature)).pipe(
+    Atom.withLabel(`fork-feature:${feature}`),
   ),
 );
 
+export const goalWaitingEnabledAtom = forkFeatureAtom("goalWaiting");
+
 export function useForkFeature(feature: ForkFeature): boolean {
-  return useForkFeaturesStore((state) => isForkFeatureActive(state, feature));
+  return useAtomValue(forkFeatureAtom(feature));
 }
 
 export function isForkFeatureEnabled(feature: ForkFeature): boolean {
-  return isForkFeatureActive(useForkFeaturesStore.getState(), feature);
+  return appAtomRegistry.get(forkFeatureAtom(feature));
 }

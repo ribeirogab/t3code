@@ -397,7 +397,7 @@ import {
 } from "./ChatView.logic";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { useComposerHandleContext } from "../composerHandleContext";
-import { activeParent, isSubagentLineage } from "../fork/parentLink";
+import { isSubagentLineage, parentLinkTitle } from "../fork/parentLink";
 import { useForkFeature } from "../fork/forkFeatures";
 import { clampFileAttachmentUploadBytes } from "@t3tools/client-runtime/state/attachments";
 import { appAtomRegistry } from "../rpc/atomRegistry";
@@ -918,8 +918,9 @@ export default function ChatView(props: ChatViewProps) {
   const canResume =
     serverProjection !== null &&
     canResumeThread(serverProjection, resumableRunId, hasHeldQueuedRuns);
+  const nestedThreads = useForkFeature("nestedThreads");
   const parentSubagentThreadId =
-    activeThread && isSubagentLineage(activeThread.lineage)
+    activeThread && isSubagentLineage(activeThread.lineage, nestedThreads)
       ? activeThread.lineage.parentThreadId
       : null;
   const parentSubagentEnvironmentId = activeThread?.environmentId ?? null;
@@ -929,7 +930,10 @@ export default function ChatView(props: ChatViewProps) {
     }
     return scopeThreadRef(parentSubagentEnvironmentId, parentSubagentThreadId);
   })();
-  const parentSubagentThread = activeParent(useQuietThreadShell(parentSubagentThreadRef));
+  const parentSubagentTitle = parentLinkTitle(
+    useQuietThreadShell(parentSubagentThreadRef),
+    nestedThreads,
+  );
   // Workflow threads open with a script; their replacement plan lives on the parent's coordinator row.
   const workflowOpeningParentId =
     serverProjection === null
@@ -984,8 +988,8 @@ export default function ChatView(props: ChatViewProps) {
         },
       };
     }
-    if (parentSubagentThreadRef !== null && parentSubagentThread !== null) {
-      const title = parentSubagentThread.title;
+    if (parentSubagentThreadRef !== null && parentSubagentTitle !== null) {
+      const title = parentSubagentTitle;
       // Embedded in its parent's panel, the parent is the view around it.
       if (
         parentPanel !== undefined &&
@@ -1039,11 +1043,11 @@ export default function ChatView(props: ChatViewProps) {
   })();
   // The header's breadcrumb opens a parent in this environment only.
   const headerParentThreadLink =
-    parentSubagentThreadRef === null || parentSubagentThread === null
+    parentSubagentThreadRef === null || parentSubagentTitle === null
       ? null
       : {
           threadId: parentSubagentThreadRef.threadId,
-          title: parentSubagentThread.title,
+          title: parentSubagentTitle,
         };
   const { threadError, sessionDismissal: threadErrorSessionDismissal } = resolveThreadErrorBanner({
     isServerThread,
@@ -3039,7 +3043,8 @@ export default function ChatView(props: ChatViewProps) {
   usePasteToFocusComposer(embedded ? null : activeThreadId, composerRef);
   // A delegated task is a remote thread's subagent.
   const isSubagentThread =
-    (activeThread != null && isSubagentLineage(activeThread.lineage)) || delegatedFrom !== null;
+    (activeThread != null && isSubagentLineage(activeThread.lineage, nestedThreads)) ||
+    delegatedFrom !== null;
   // Side chats do not nest or start from subagents, and older servers would fork a listed thread.
   const sideChatsOffered =
     !embedded &&

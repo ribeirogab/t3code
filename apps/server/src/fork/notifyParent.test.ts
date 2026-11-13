@@ -1,8 +1,16 @@
 import { describe, expect, it } from "@effect/vitest";
-import { MessageId, NodeId, RunId, ThreadId, type ForkNotifyParent } from "@t3tools/contracts";
+import {
+  MessageId,
+  NodeId,
+  overrideForkFeatureSettings,
+  RunId,
+  ThreadId,
+  type ForkNotifyParent,
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 
 import {
+  askTheUserForChildQuestion,
   childEventWakesParent,
   isSlashCommandOnly,
   mayWakeParentOnFinish,
@@ -58,6 +66,30 @@ describe("childEventWakesParent", () => {
       expect(childEventWakesParent({ notifyParent, event, starter })).toBe(wakes);
     },
   );
+
+  it.each([
+    { master: false, features: {} },
+    { master: true, features: { quietParentWake: false } },
+  ])("wakes the parent for every child event, as upstream does, with %o", (settings) => {
+    using _settings = overrideForkFeatureSettings(settings);
+    for (const [notifyParent, event, starter] of cases) {
+      expect(childEventWakesParent({ notifyParent, event, starter })).toBe(true);
+    }
+    expect(mayWakeParentOnFinish({ notifyParent: "never" })).toBe(true);
+    expect(
+      quietCompletion({ notifyParent: "never" }, { userMessageId: MessageId.make("m") }, [
+        { id: MessageId.make("m"), ...owner },
+      ]),
+    ).toEqual({});
+  });
+});
+
+describe("askTheUserForChildQuestion", () => {
+  it("names the question tool only while Orchestration rules is on", () => {
+    expect(askTheUserForChildQuestion()).toBe("ask the user with your question tool");
+    using _settings = overrideForkFeatureSettings({ features: { orchestrationRules: false } });
+    expect(askTheUserForChildQuestion()).toBe("ask the user");
+  });
 });
 
 describe("isSlashCommandOnly", () => {

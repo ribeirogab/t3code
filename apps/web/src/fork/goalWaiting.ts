@@ -6,7 +6,7 @@ import type {
 } from "@t3tools/contracts";
 import { Atom } from "effect/reactivity";
 
-import { isForkFeatureEnabled, useForkFeaturesStore } from "./forkFeatures";
+import { goalWaitingEnabledAtom } from "./forkFeatures";
 
 type GoalWaitingThread = Pick<
   OrchestrationV2ThreadShell,
@@ -67,19 +67,6 @@ export function holdSnapshotForGoals<
   heldSnapshots.set(snapshot, held);
   return held;
 }
-
-const goalWaitingEnabledAtom = Atom.make((get) => {
-  let enabled = isForkFeatureEnabled("goalWaiting");
-  get.addFinalizer(
-    useForkFeaturesStore.subscribe(() => {
-      const next = isForkFeatureEnabled("goalWaiting");
-      if (next === enabled) return;
-      enabled = next;
-      get.setSelf(next);
-    }),
-  );
-  return enabled;
-}).pipe(Atom.withLabel("fork-goal-waiting-enabled"));
 
 export function withGoalWaiting(
   snapshotAtom: (environmentId: EnvironmentId) => Atom.Atom<OrchestrationV2ShellSnapshot | null>,

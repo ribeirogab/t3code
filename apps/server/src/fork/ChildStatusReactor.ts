@@ -1,5 +1,6 @@
 import {
   CommandId,
+  forkFeatureActive,
   isProviderNativeSubagentThread,
   ThreadId,
   type EventId,
@@ -172,6 +173,7 @@ const make = Effect.gen(function* () {
 
   const handle: ChildStatusReactor["Service"]["handle"] = Effect.fnUntraced(
     function* (event) {
+      if (!forkFeatureActive("nestedThreads")) return;
       if (PARENT_STATUS_EVENTS.has(event.type) || changesSnooze(event)) {
         const parent = yield* projections.getThread(event.threadId);
         for (const childId of yield* childIdsOf(parent.id)) {
