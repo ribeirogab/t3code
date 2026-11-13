@@ -41,6 +41,11 @@ vi.mock("../fork/NestedThreadsDialog", () => ({
 vi.mock("../fork/useContinueInNewThread", () => ({
   useContinueInNewThread: () => async () => recordEffect("continue-in-new-thread"),
 }));
+vi.mock("../fork/forkFeatures", () => ({ isForkFeatureEnabled: () => true }));
+vi.mock("../fork/parkedThreadActions", () => ({
+  readThreadParked: () => false,
+  setThreadParked: async () => recordEffect("park"),
+}));
 vi.mock("react", () => ({
   useCallback: (callback: unknown) => callback,
   useMemo: (factory: () => unknown) => factory(),

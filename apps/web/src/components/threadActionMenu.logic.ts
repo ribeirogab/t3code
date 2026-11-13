@@ -7,6 +7,7 @@ import {
   continueInNewThreadMenuItems,
   type ContinueInNewThreadMenuId,
 } from "../fork/continueInNewThread";
+import { parkedThreadMenuItems, type ParkedThreadMenuId } from "../fork/parkedThreads.logic";
 
 export type ThreadActionMenuId =
   | "find"
@@ -37,7 +38,8 @@ export type ThreadActionMenuId =
   | "copy-thread-id"
   | "archive"
   | "delete"
-  | ContinueInNewThreadMenuId;
+  | ContinueInNewThreadMenuId
+  | ParkedThreadMenuId;
 
 export type DraftActionMenuId =
   | "copy"
@@ -130,6 +132,7 @@ export interface ThreadActionMenuState {
   readonly canTurnIntoProject?: boolean;
   readonly canHideFromSidebar?: boolean;
   readonly canContinueInNewThread?: boolean;
+  readonly parked?: boolean | null;
 }
 
 /** Local navigation, read markers, and copying remain available to read-only clients. */
@@ -208,6 +211,7 @@ export function buildThreadActionMenuItems(
               },
         ]
       : []),
+    ...parkedThreadMenuItems(state.parked),
     { id: "rename", label: resolve(msg("Rename thread")), icon: "pencil", separatorBefore: true },
     ...(state.supports.titleRegeneration
       ? [
