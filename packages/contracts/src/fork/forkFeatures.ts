@@ -13,7 +13,8 @@ export type ForkServerFeature =
   | "quietParentWake"
   | "holdRunningPrChecks"
   | "workflowRunWatch"
-  | "goalOnNewThreads";
+  | "goalOnNewThreads"
+  | "parkedThreads";
 
 export const ForkFeatureSettings = Schema.Struct({
   master: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
