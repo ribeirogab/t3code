@@ -4,7 +4,7 @@ Personal fork of [pingdotgg/t3code](https://github.com/pingdotgg/t3code). The `c
 
 The fork is for the desktop app only. The desktop app renders `apps/web` and bundles `apps/server`, so fork code goes there. Do not change, build, or test the mobile app, the hosted web app, or any other app for the fork. In the surface checklist of `AGENTS.md`, only the desktop app applies.
 
-Fork-owned files: `FORK.md`, `.github/workflows/fork-release.yml`, `.github/workflows/fork-ci.yml`, `fork/`, `apps/web/src/fork/`, `apps/web/src/routes/_chat.settings.fork.tsx`, `apps/server/src/fork/`, `packages/contracts/src/fork/`, and `packages/provider-core/src/fork/`. Everything else is upstream, including the line in `AGENTS.md` that points here.
+Fork-owned files: `FORK.md`, `.github/workflows/fork-nightly.yml`, `.github/workflows/fork-ci.yml`, `fork/`, `apps/web/src/fork/`, `apps/web/src/routes/_chat.settings.fork.tsx`, `apps/server/src/fork/`, `packages/contracts/src/fork/`, and `packages/provider-core/src/fork/`. Everything else is upstream, including the line in `AGENTS.md` that points here.
 
 ## Local setup
 
@@ -46,10 +46,10 @@ Every change goes through a pull request into `custom`. Do not commit or push to
 
 Two paths make releases:
 
-- **Upstream nightlies:** `fork-release.yml` runs once a day. When `custom` does not contain the latest upstream nightly, it rebases `custom` onto it, pushes it, builds the macOS arm64 app and the Linux x64 AppImage and CLI archive, and publishes the prerelease, all in the same run. When `custom` already contains the nightly, the run does nothing, also when `custom` has fork merges without a release. Keep the workflow enabled.
+- **Upstream nightlies:** `fork-nightly.yml` runs once a day. When `custom` does not contain the latest upstream nightly, it rebases `custom` onto it, pushes it, builds the macOS arm64 app and the Linux x64 AppImage and CLI archive, and publishes the prerelease, all in the same run. When `custom` already contains the nightly, the run does nothing, also when `custom` has fork merges without a release. Keep the workflow enabled.
 - **Fork changes:** a merge into `custom` does not make a release. Make it with `fork/bin/release` on our own machines.
 
-To run the workflow again, for example after the hosted macOS runners had no capacity, run `gh workflow run fork-release.yml`. A manual run rebases like the daily run, and it also builds the head of `custom` when that head has no release. The `rebuild` input builds it again when it has one.
+To run the workflow again, for example after the hosted macOS runners had no capacity, run `gh workflow run fork-nightly.yml`. A manual run rebases like the daily run, and it also builds the head of `custom` when that head has no release. The `rebuild` input builds it again when it has one.
 
 ```sh
 fork/bin/release sync    # homelab: rebase custom onto the latest upstream nightly and push it
@@ -94,7 +94,7 @@ The daily run opens or updates the issue with the `fork-conflict` label, and `fo
 fork/bin/sync
 git rebase --continue
 git push --force-with-lease origin custom
-gh workflow run fork-release.yml
+gh workflow run fork-nightly.yml
 ```
 
 The daily run skips a `custom` that already contains the nightly, so the last command makes the release. The release closes the issue.
