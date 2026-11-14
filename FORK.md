@@ -44,7 +44,12 @@ Every change goes through a pull request into `custom`. Do not commit or push to
 
 ## Release flow
 
-`fork/bin/release` makes the releases on our own machines. GitHub Actions is not in the path: the hosted macOS runners often had no capacity, and `fork-release.yml` was found disabled several times. The workflow stays disabled as a fallback.
+Two paths make releases:
+
+- **Upstream nightlies:** `fork-release.yml` runs once a day. When `custom` does not contain the latest upstream nightly, it rebases `custom` onto it, pushes it, builds the macOS arm64 app and the Linux x64 AppImage and CLI archive, and publishes the prerelease, all in the same run. When `custom` already contains the nightly, the run does nothing, also when `custom` has fork merges without a release. Keep the workflow enabled.
+- **Fork changes:** a merge into `custom` does not make a release. Make it with `fork/bin/release` on our own machines.
+
+To run the workflow again, for example after the hosted macOS runners had no capacity, run `gh workflow run fork-release.yml`. A manual run rebases like the daily run, and it also builds the head of `custom` when that head has no release. The `rebuild` input builds it again when it has one.
 
 ```sh
 fork/bin/release sync    # homelab: rebase custom onto the latest upstream nightly and push it
@@ -83,13 +88,16 @@ Do not use **Settings → About → Update track**. It reads upstream npm versio
 
 ## Rebase conflicts
 
-`fork/bin/release sync` stops and lists the files. The last release keeps working. To fix:
+The daily run opens or updates the issue with the `fork-conflict` label, and `fork/bin/release sync` stops. Both list the files. The last release keeps working. To fix:
 
 ```sh
 fork/bin/sync
 git rebase --continue
 git push --force-with-lease origin custom
+gh workflow run fork-release.yml
 ```
+
+The daily run skips a `custom` that already contains the nightly, so the last command makes the release. The release closes the issue.
 
 `rerere` is on in the local clone, so Git repeats a conflict resolution it already knows.
 
