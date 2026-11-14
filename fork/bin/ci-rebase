@@ -21,6 +21,12 @@ push_branch() {
   rm -f "$key_path"
 }
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+git config merge.fork-budget-sum.driver "${script_dir}/merge-budget %O %A %B"
+attributes="$(git rev-parse --git-path info/attributes)"
+mkdir -p "$(dirname "$attributes")"
+printf 'apps/server/src/provider/agentContextBudget.json merge=fork-budget-sum\n' >> "$attributes"
+
 git config user.name "github-actions[bot]"
 git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 git fetch --no-tags "https://github.com/${upstream_repository}.git" "+refs/tags/${base_tag}:refs/tags/${base_tag}" >&2
