@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+base="$1"
+ours="$2"
+theirs="$3"
+
+merged="$(
+  jq -n --slurpfile base "$base" --slurpfile ours "$ours" --slurpfile theirs "$theirs" '
+    $base[0] as $b | $ours[0] as $o | $theirs[0] as $t
+    | ($o + $t)
+    | with_entries(.value = (($o[.key] // $b[.key] // 0) + ($t[.key] // $b[.key] // 0) - ($b[.key] // 0)))'
+)"
+printf '%s\n' "$merged" > "$ours"
