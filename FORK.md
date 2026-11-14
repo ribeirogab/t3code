@@ -99,6 +99,8 @@ gh workflow run fork-release.yml
 
 The daily run skips a `custom` that already contains the nightly, so the last command makes the release. The release closes the issue.
 
+Most nightlies change `apps/server/src/provider/agentContextBudget.json`, and so do fork changes. The workflow's rebase merges that file with `fork/bin/merge-budget`: each value becomes ours + theirs − base. In a local rebase, merge it by hand the same way.
+
 `rerere` is on in the local clone, so Git repeats a conflict resolution it already knows.
 
 ## Secrets
