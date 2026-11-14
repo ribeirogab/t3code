@@ -3,12 +3,6 @@ name: Fork release
 on:
   schedule:
     - cron: "23 8 * * *"
-  push:
-    branches:
-      - custom
-    paths-ignore:
-      - FORK.md
-      - .github/workflows/fork-ci.yml
   workflow_dispatch:
     inputs:
       rebuild:
@@ -29,7 +23,7 @@ env:
   FORK_BRANCH: custom
   UPSTREAM_REPOSITORY: pingdotgg/t3code
   RELEASE_KEEP_COUNT: "20"
-  MAC_RUNNER: macos-26
+  MAC_RUNNER: macos-15
 
 jobs:
   plan:
@@ -39,7 +33,7 @@ jobs:
     outputs:
       action: ${{ steps.result.outputs.action }}
       version: ${{ steps.result.outputs.version }}
-      ref: ${{ steps.plan.outputs.branch_sha }}
+      ref: ${{ steps.rebase.outputs.ref || steps.plan.outputs.branch_sha }}
       base_tag: ${{ steps.plan.outputs.base_tag }}
       base_sha: ${{ steps.plan.outputs.base_sha }}
       mac_runner: ${{ env.MAC_RUNNER }}
@@ -73,7 +67,7 @@ jobs:
 
       - name: Plan
         id: plan
-        run: fork/bin/plan "$GITHUB_REPOSITORY" "$FORK_BRANCH" "${{ inputs.rebuild || 'false' }}" | tee -a "$GITHUB_OUTPUT"
+        run: fork/bin/plan "$GITHUB_REPOSITORY" "$FORK_BRANCH" "${{ inputs.rebuild || 'false' }}" "$GITHUB_EVENT_NAME" | tee -a "$GITHUB_OUTPUT"
 
       - name: Checkout full history
         if: steps.plan.outputs.action == 'rebase'
@@ -104,10 +98,11 @@ jobs:
         id: result
         env:
           PLAN_ACTION: ${{ steps.plan.outputs.action }}
+          REBASE_RESULT: ${{ steps.rebase.outputs.result }}
           BASE_TAG: ${{ steps.plan.outputs.base_tag }}
         run: |
           set -euo pipefail
-          if [[ "$PLAN_ACTION" != "build" ]]; then
+          if [[ "$PLAN_ACTION" != "build" && "$REBASE_RESULT" != "rebased" ]]; then
             echo "action=skip" >> "$GITHUB_OUTPUT"
             exit 0
           fi
