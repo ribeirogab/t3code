@@ -1,7 +1,9 @@
 import {
   forkFeatureActive,
+  isRequestedAttention,
   type ForkNotifyParent,
   type NodeId,
+  type OrchestrationV2AppThread,
   type OrchestrationV2ConversationMessage,
   type OrchestrationV2ExecutionNode,
   type OrchestrationV2Run,
@@ -13,6 +15,7 @@ import {
 import * as Effect from "effect/Effect";
 
 import type { ProjectionStoreV2Error } from "../orchestration-v2/ProjectionStore.ts";
+import { startsAgentGoal } from "./threadHandoff/goalQuestion.ts";
 
 export type ChildWakeEvent = "finish" | "question";
 
@@ -37,7 +40,9 @@ function typedInChildByOwner(starter: TurnStarter): boolean {
 
 function turnStaysInChild(starter: TurnStarter | undefined): boolean {
   return (
-    starter !== undefined && (typedInChildByOwner(starter) || isSlashCommandOnly(starter.text))
+    starter !== undefined &&
+    !startsAgentGoal(starter) &&
+    (typedInChildByOwner(starter) || isSlashCommandOnly(starter.text))
   );
 }
 
@@ -48,6 +53,7 @@ function optionWakesParent(notifyParent: ForkNotifyParent, event: ChildWakeEvent
     case "on_question":
       return event === "question";
     case "never":
+    case "on_close":
       return false;
   }
 }
@@ -70,6 +76,9 @@ export function mayWakeParentOnFinish(task: Pick<OrchestrationV2Subagent, "notif
 }
 
 export function askTheUserForChildQuestion(): string {
+  if (forkFeatureActive("requestAttention")) {
+    return "ask the user in your reply, call t3_request_attention, end your turn";
+  }
   return forkFeatureActive("orchestrationRules")
     ? "ask the user with your question tool"
     : "ask the user";
@@ -83,7 +92,13 @@ export function quietCompletion(
   task: Pick<OrchestrationV2Subagent, "notifyParent">,
   childRun: Pick<OrchestrationV2Run, "userMessageId">,
   childMessages: ReadonlyArray<Pick<OrchestrationV2ConversationMessage, "id"> & TurnStarter>,
+  outcome: OrchestrationV2Subagent["status"],
+  child: Pick<OrchestrationV2AppThread, "forkAttention">,
 ): Partial<Pick<OrchestrationV2Subagent, "completionDelivery">> {
+  if (outcome === "failed") return {};
+  if (forkFeatureActive("requestAttention") && isRequestedAttention(child.forkAttention)) {
+    return QUIET_COMPLETION;
+  }
   const starter = childMessages.find((message) => message.id === childRun.userMessageId);
   return childEventWakesParent({ notifyParent: task.notifyParent, event: "finish", starter })
     ? {}

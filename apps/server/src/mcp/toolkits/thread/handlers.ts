@@ -22,6 +22,7 @@ import {
 import * as ThreadSearch from "../../../orchestration-v2/ThreadSearch.ts";
 import * as ScheduledTasks from "../../../scheduledTasks/ScheduledTaskService.ts";
 import { queuedRunsInDeliveryOrder } from "../../../orchestration-v2/QueuedRunOrder.ts";
+import { archiveAfterTurn } from "../../../fork/archiveAfterTurn.ts";
 import { ThreadToolkit } from "./tools.ts";
 
 function queueEntry(
@@ -346,6 +347,10 @@ export const layer = McpToolAccess.toLayer(ThreadToolkit, {
     Effect.gen(function* () {
       const { threads, projection, caller } = yield* readThread(input.threadId);
       const common = { commandId: yield* newCommandId(), threadId: projection.thread.id };
+      const archiveLater = yield* archiveAfterTurn(threads, input.action, common).pipe(
+        Effect.mapError(dispatchFailure),
+      );
+      if (archiveLater !== null) return archiveLater;
       if (input.action === "settle") {
         return yield* threads
           .settleThread({ ...common, byOwnAgent: caller?.id === projection.thread.id })
