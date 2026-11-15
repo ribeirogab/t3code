@@ -1,10 +1,12 @@
 name: Fork nightly
 
 on:
-  schedule:
-    - cron: "23 8 * * *"
   workflow_dispatch:
     inputs:
+      upstream_only:
+        description: Release only a new upstream nightly, as the daily trigger does
+        type: boolean
+        default: false
       rebuild:
         description: Build a new release even when the branch head already has one
         type: boolean
@@ -67,7 +69,7 @@ jobs:
 
       - name: Plan
         id: plan
-        run: fork/bin/plan "$GITHUB_REPOSITORY" "$FORK_BRANCH" "${{ inputs.rebuild || 'false' }}" "$GITHUB_EVENT_NAME" | tee -a "$GITHUB_OUTPUT"
+        run: fork/bin/plan "$GITHUB_REPOSITORY" "$FORK_BRANCH" "${{ inputs.rebuild || 'false' }}" "${{ inputs.upstream_only || 'false' }}" | tee -a "$GITHUB_OUTPUT"
 
       - name: Checkout full history
         if: steps.plan.outputs.action == 'rebase'
