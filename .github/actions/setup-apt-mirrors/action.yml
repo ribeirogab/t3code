@@ -5,6 +5,7 @@ runs:
   steps:
     - shell: bash
       run: |
+        [ "$RUNNER_ENVIRONMENT" = github-hosted ] && exit 0
         # Replace the existing Blacksmith mirror list as well as direct sources.
         printf '%s\tpriority:%s\n' \
           https://archive.ubuntu.com/ubuntu 1 \
