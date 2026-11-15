@@ -132,6 +132,15 @@ export const FORK_FEATURES = [
     searchTerms: ["fork goal waiting working shelf done completed sidebar"],
   },
   {
+    key: "waitingDetail",
+    section: "Sidebar",
+    searchId: "fork-waiting-detail",
+    title: "What a thread waits for",
+    description:
+      "Say what a Waiting thread waits for and for how long, such as PR checks or a workflow run.",
+    searchTerms: ["fork waiting status pull request checks workflow run ci command child duration"],
+  },
+  {
     key: "goalPause",
     section: "Chat",
     searchId: "fork-goal-pause",

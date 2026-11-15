@@ -4,6 +4,8 @@ import {
   type OrchestrationV2ThreadStreamItem,
 } from "@t3tools/contracts";
 
+import { withWorkflowRunWaits } from "./workflowRunWatch/workflowRunWaits.ts";
+
 interface LineageHolder {
   readonly lineage: OrchestrationV2AppThreadLineage;
 }
@@ -30,7 +32,7 @@ function withoutNesting(lineage: OrchestrationV2AppThreadLineage): Orchestration
 
 export function wireThread<Thread extends LineageHolder>(thread: Thread): Thread {
   const lineage = wireLineage(thread.lineage);
-  return lineage === thread.lineage ? thread : { ...thread, lineage };
+  return withWorkflowRunWaits(lineage === thread.lineage ? thread : { ...thread, lineage });
 }
 
 export function wireThreads<Thread extends LineageHolder>(

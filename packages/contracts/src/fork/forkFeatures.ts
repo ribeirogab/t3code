@@ -13,6 +13,7 @@ export type ForkServerFeature =
   | "quietParentWake"
   | "holdRunningPrChecks"
   | "workflowRunWatch"
+  | "waitingDetail"
   | "goalOnNewThreads"
   | "parkedThreads";
 
