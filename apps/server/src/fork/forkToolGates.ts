@@ -1,6 +1,5 @@
 import {
   forkFeatureActive,
-  forkFeaturesOn,
   OrchestratorMcpFailure,
   type ForkServerFeature,
 } from "@t3tools/contracts";
@@ -22,7 +21,7 @@ const FORK_TOOLS: Readonly<Record<string, ForkServerFeature>> = {
   t3_request_attention: "requestAttention",
 };
 
-const FORK_PARAMETERS: Readonly<
+export const FORK_PARAMETERS: Readonly<
   Record<string, ReadonlyArray<readonly [parameter: string, feature: ForkServerFeature]>>
 > = {
   delegate_task: [
@@ -33,6 +32,7 @@ const FORK_PARAMETERS: Readonly<
   ],
   t3_thread_launch: [["goal", "goalOnNewThreads"]],
   t3_thread_send: [["wake", "quietThreadSend"]],
+  t3_thread_update: [["listed", "nestedThreads"]],
 };
 
 export function forkToolVisible(toolName: string): boolean {
@@ -79,7 +79,10 @@ export function withForkToolGates<Handlers extends object>(handlers: Handlers): 
           const refusal = inactiveForkAction(name, params);
           if (refusal !== null) return Effect.fail(refusal);
           const input = withoutInactiveForkParameters(name, withOwnerFacing(name, params));
-          return allowingIdleCaller(name, forkFeaturesOn() ? withResolvedIds(input) : plain(input));
+          return allowingIdleCaller(
+            name,
+            forkFeatureActive("threadIdRepair") ? withResolvedIds(input) : plain(input),
+          );
         });
       return [name, gated];
     }),

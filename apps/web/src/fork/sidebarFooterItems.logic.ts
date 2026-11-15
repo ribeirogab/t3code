@@ -4,16 +4,16 @@ import type { ForkFeature } from "./forkFeatures";
 
 export type SidebarFooterItem = "fork" | "pullRequests" | "usage";
 
-const SIDEBAR_FOOTER_FEATURES = {
-  fork: "sidebarFooterFork",
-  pullRequests: "sidebarFooterPullRequests",
-  usage: "sidebarFooterUsage",
-} as const satisfies Record<SidebarFooterItem, ForkFeature>;
+const HIDDEN_SIDEBAR_FOOTER_ITEMS = {
+  pullRequests: "hideSidebarFooterPullRequests",
+  usage: "hideSidebarFooterUsage",
+} as const satisfies Record<Exclude<SidebarFooterItem, "fork">, ForkFeature>;
 
 export function sidebarFooterItemVisible(
   settings: ForkFeatureSettings,
   item: SidebarFooterItem,
 ): boolean {
-  const enabled = isForkFeatureOn(settings, SIDEBAR_FOOTER_FEATURES[item]);
-  return item === "fork" ? enabled : enabled || !settings.master;
+  return item === "fork"
+    ? isForkFeatureOn(settings, "sidebarFooterFork")
+    : !isForkFeatureOn(settings, HIDDEN_SIDEBAR_FOOTER_ITEMS[item]);
 }

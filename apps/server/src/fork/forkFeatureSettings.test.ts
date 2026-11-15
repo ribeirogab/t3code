@@ -2,7 +2,6 @@ import { assert, it } from "@effect/vitest";
 import {
   forkAgentLanguage,
   forkFeatureActive,
-  forkFeaturesOn,
   overrideAgentLanguage,
   overrideForkFeatureSettings,
 } from "@t3tools/contracts";
@@ -35,7 +34,6 @@ it.effect("reads the fork switches from the server settings when the server star
         Layer.provide(Layer.succeed(OrchestrationEventStore.OrchestrationEventStore, events)),
       ),
     );
-    assert.isTrue(forkFeaturesOn());
     assert.isFalse(forkFeatureActive("sharedWorktree"));
     assert.isTrue(forkFeatureActive("nestedThreads"));
     assert.equal(forkAgentLanguage(), "Brazilian Portuguese");

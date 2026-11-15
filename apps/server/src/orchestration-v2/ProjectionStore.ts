@@ -102,7 +102,7 @@ import {
   forkLatestTodoListStepsColumn,
   forkPlanProgressFromStepsJson,
 } from "../fork/planProgress.ts";
-import { forkAttentionForShell } from "../fork/goalStatus/goalStatusRules.ts";
+import { forkShellFields } from "../fork/forkShellFields.ts";
 import { listedThreadsFilter } from "../fork/threadNesting.ts";
 import {
   isFoldableWorkItem,
@@ -1900,7 +1900,7 @@ export function threadShellFromProjection(
       projection.providerThreads,
       projection.thread.activeProviderThreadId,
     ),
-    forkAttention: forkAttentionForShell(projection.thread),
+    ...forkShellFields(projection.thread),
     itemCount: activeLocalTurnItems(projection).length,
     visibleItemCount: projection.visibleTurnItems.length,
     createdAt: projection.thread.createdAt,
@@ -2203,8 +2203,7 @@ function shellFromState(input: {
     pendingBackgroundTasks: input.state.pendingBackgroundTasks,
     providerInstanceHistory: input.state.providerInstanceHistory,
     goal: input.state.goal,
-    forkPlanProgress: input.state.forkPlanProgress,
-    forkAttention: forkAttentionForShell(input.state.thread),
+    ...forkShellFields(input.state.thread, input.state.forkPlanProgress),
     itemCount: input.state.itemCount,
     visibleItemCount: input.visibleItemCount,
     createdAt: input.state.thread.createdAt,

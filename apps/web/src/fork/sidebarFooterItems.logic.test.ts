@@ -8,10 +8,12 @@ describe("sidebarFooterItemVisible", () => {
     [true, { sidebarFooterFork: false }, "fork", false],
     [false, {}, "fork", false],
     [true, {}, "usage", true],
+    [true, { hideSidebarFooterUsage: true }, "usage", false],
+    [false, { hideSidebarFooterUsage: true }, "usage", true],
     [true, { sidebarFooterUsage: false }, "usage", false],
-    [false, { sidebarFooterUsage: false }, "usage", true],
-    [true, { sidebarFooterPullRequests: false }, "pullRequests", false],
-    [false, { sidebarFooterPullRequests: false }, "pullRequests", true],
+    [true, {}, "pullRequests", true],
+    [true, { hideSidebarFooterPullRequests: true }, "pullRequests", false],
+    [false, { hideSidebarFooterPullRequests: true }, "pullRequests", true],
   ] as const)("master %s, features %j: %s visible is %s", (master, features, item, expected) => {
     expect(sidebarFooterItemVisible({ master, features }, item)).toBe(expected);
   });

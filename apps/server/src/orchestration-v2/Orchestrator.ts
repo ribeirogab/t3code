@@ -214,6 +214,7 @@ import { queuedGoalEvents } from "../fork/threadHandoff/goalTiming.ts";
 import { attentionPatch } from "../fork/goalStatus/goalStatusRules.ts";
 import { goalMessagePlan } from "../fork/goalStatus/goalMessagePlan.ts";
 import { settledTaskQuestionIsStale } from "../fork/threadHandoff/goalQuestion.ts";
+import { archiveBatchField, withoutArchiveBatch } from "../fork/archiveBatch.ts";
 
 const isMessageQuestionAnswer = Schema.is(
   Schema.Union([TrimmedNonEmptyString, Schema.NonEmptyArray(TrimmedNonEmptyString)]),
@@ -4704,14 +4705,14 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           return {
             ...thread,
             archivedAt: now,
-            archiveBatchId: command.archiveBatchId ?? null,
+            ...archiveBatchField(command),
             titleRegeneration: null,
             guestShare: null,
             pullRequests: thread.pullRequests?.map((link) => withPullRequestWatch(link, undefined)),
             updatedAt: now,
           };
         case "thread.unarchive":
-          return { ...thread, archivedAt: null, archiveBatchId: null, updatedAt: now };
+          return { ...withoutArchiveBatch(thread), archivedAt: null, updatedAt: now };
         case "thread.settle": {
           const wasPinned = thread.pinnedAt != null;
           const alreadySettled =

@@ -739,7 +739,6 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   GoalStatusLayer.layer,
   CompactAndContinue.layer.pipe(Layer.provide(ProjectionStoreV2.layer)),
   PublishedPorts.layer,
-  ForkFeatureSettings.layer,
   ProviderUsageLimitsIngestion.layer,
   layerProviderInstallationRefresh,
   ProviderInstallation.layer,
@@ -747,6 +746,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   Layer.effectDiscard(ProjectSettingsOverrideSweep.sweep),
 ).pipe(
   Layer.provideMerge(layerOrchestrationApplication),
+  Layer.provideMerge(ForkFeatureSettings.layer),
   Layer.provideMerge(RuntimeLayer.layerEventInfrastructure),
   Layer.provideMerge(Layer.merge(ProjectStore.layer, ThreadSearch.layer)),
   Layer.provideMerge(SecretCheck.layer),

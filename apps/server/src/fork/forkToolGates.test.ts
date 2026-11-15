@@ -51,6 +51,10 @@ describe("withoutInactiveForkParameters", () => {
         notifyParent: "never",
       });
       assert.deepEqual(kept("t3_thread_launch", { goal: "Ship it" }), {});
+      assert.deepEqual(kept("t3_thread_update", { action: "rename", title: "New", listed: true }), {
+        action: "rename",
+        title: "New",
+      });
     }
     using _master = overrideForkFeatureSettings({ master: false });
     assert.deepEqual(kept("delegate_task", delegation), {
@@ -72,7 +76,7 @@ describe("inactiveForkAction", () => {
 describe("withForkToolGates", () => {
   const delegatedId = "thread:delegated-task:mcp:delegate:thread:parent:1";
 
-  it.effect("resolves thread ids only while Fork features is on", () =>
+  it.effect("resolves thread ids only while Repair thread ids is on", () =>
     Effect.gen(function* () {
       const candidate = delegatedTaskThreadId(delegatedId);
       assert.isNotNull(candidate);
@@ -89,11 +93,16 @@ describe("withForkToolGates", () => {
         .t3_thread_read({ threadId: delegatedId })
         .pipe(Effect.provideService(ThreadManagement.ThreadManagementService, threads));
       yield* read;
+      {
+        using _feature = overrideForkFeatureSettings({ features: { threadIdRepair: false } });
+        yield* read;
+      }
       using _master = overrideForkFeatureSettings({ master: false });
       yield* read;
       yield* gated.delegate_task(delegation);
       assert.deepEqual(seen, [
         { threadId: candidate },
+        { threadId: delegatedId },
         { threadId: delegatedId },
         { task: "Review" },
       ]);
