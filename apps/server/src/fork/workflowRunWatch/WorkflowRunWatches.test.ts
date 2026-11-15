@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest";
-import { ThreadId } from "@t3tools/contracts";
+import { overrideForkFeatureSettings, ThreadId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 
 import { ForkGitHubCliError, type WorkflowRun, type WorkflowRunQuery } from "../gitHubCli.ts";
@@ -84,7 +84,7 @@ describe("WorkflowRunWatches", () => {
     }),
   );
 
-  it.effect("wakes once when the runs end and forgets the watch", () =>
+  it.effect("wakes once when the runs end and forgets the watch, not while the toggle is off", () =>
     Effect.gen(function* () {
       let runs: ReadonlyArray<WorkflowRun> = [
         { ...finished, status: "in_progress", conclusion: "" },
@@ -98,6 +98,11 @@ describe("WorkflowRunWatches", () => {
       yield* watches.sweep;
       assert.deepEqual(wakes, []);
       runs = [finished];
+      {
+        using _settings = overrideForkFeatureSettings({ features: { workflowRunWatch: false } });
+        yield* watches.sweep;
+        assert.deepEqual(wakes, []);
+      }
       yield* watches.sweep;
       yield* watches.sweep;
       assert.deepEqual(wakes, ["Deploy: workflow passed"]);

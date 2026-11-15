@@ -6,6 +6,7 @@ import {
   DEFAULT_FORK_FEATURE_SETTINGS,
   forkFeatureActive,
   isForkFeatureOn,
+  onForkFeatureSettingsChange,
   overrideForkFeatureSettings,
 } from "./forkFeatures.ts";
 
@@ -24,12 +25,30 @@ describe("isForkFeatureOn", () => {
     expect(isForkFeatureOn(settings, "nestedThreads")).toBe(true);
   });
 
-  it("restores the active settings when an override ends", () => {
+  it("keeps a feature that hides an upstream control off until it is stored as true", () => {
+    const hidesUsage = (features: Record<string, boolean>) =>
+      isForkFeatureOn({ master: true, features }, "hideSidebarFooterUsage");
+    expect(hidesUsage({})).toBe(false);
+    expect(hidesUsage({ hideSidebarFooterUsage: true })).toBe(true);
+    expect(hidesUsage({ sidebarFooterUsage: false })).toBe(true);
+    expect(hidesUsage({ sidebarFooterUsage: false, hideSidebarFooterUsage: false })).toBe(false);
+    expect(
+      isForkFeatureOn(
+        { master: false, features: { hideSidebarFooterUsage: true } },
+        "hideSidebarFooterUsage",
+      ),
+    ).toBe(false);
+  });
+
+  it("restores the active settings when an override ends, and tells the listeners each time", () => {
+    let changes = 0;
+    using _listener = onForkFeatureSettingsChange(() => changes++);
     {
       using _settings = overrideForkFeatureSettings({ master: false });
       expect(forkFeatureActive("nestedThreads")).toBe(false);
     }
     expect(forkFeatureActive("nestedThreads")).toBe(true);
+    expect(changes).toBe(2);
   });
 });
 

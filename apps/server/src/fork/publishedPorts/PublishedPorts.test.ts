@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { ForkPublishedPortError, ThreadId } from "@t3tools/contracts";
+import { ForkPublishedPortError, overrideForkFeatureSettings, ThreadId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 
 import type { HostRewriteProxy } from "./hostRewriteProxy.ts";
@@ -202,6 +202,40 @@ describe("PublishedPorts", () => {
       yield* ports.reconcile;
       expect(fixture.turnedOff).toEqual([5173]);
       expect((yield* ports.list).map((port) => port.port)).toEqual([8080]);
+    }),
+  );
+
+  it.effect("stops every published port when Published ports turns off", () =>
+    Effect.gen(function* () {
+      const fixture = setup({ served: [[443, "http://127.0.0.1:8090"]] });
+      const ports = yield* make(fixture.deps);
+      yield* ports.publish({ threadId: threadA, port: 5173, hostRewrite: false });
+      yield* ports.publish({ threadId: threadB, port: 3000, hostRewrite: true });
+      using _settings = overrideForkFeatureSettings({ features: { publishedPorts: false } });
+      expect(fixture.turnedOff.toSorted()).toEqual([3000, 5173]);
+      expect(fixture.closedProxies).toEqual([41000]);
+      expect(fixture.saved()).toEqual([]);
+      expect(yield* ports.list).toEqual([]);
+      expect(fixture.served.get(443)).toBe("http://127.0.0.1:8090");
+    }),
+  );
+
+  it.effect("after a restart while Published ports is off, stops the ports T3 published", () =>
+    Effect.gen(function* () {
+      const fixture = setup({
+        saved: [savedRecord(5173, threadA), savedRecord(3000, threadA, 45000)],
+        served: [
+          [5173, "http://127.0.0.1:5173"],
+          [3000, "http://127.0.0.1:45000"],
+        ],
+      });
+      const ports = yield* make(fixture.deps);
+      using _settings = overrideForkFeatureSettings({ master: false });
+      yield* ports.reconcile;
+      expect(fixture.turnedOff.toSorted()).toEqual([3000, 5173]);
+      expect(fixture.closedProxies).toEqual([]);
+      expect(fixture.saved()).toEqual([]);
+      expect(yield* ports.list).toEqual([]);
     }),
   );
 

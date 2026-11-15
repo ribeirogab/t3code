@@ -13,15 +13,21 @@ interface LineageHolder {
 export function wireLineage(
   lineage: OrchestrationV2AppThreadLineage,
 ): OrchestrationV2AppThreadLineage {
-  if (!forkFeatureActive("nestedThreads")) return withoutNesting(lineage);
-  if (lineage.detached === true) {
-    return lineage.parentThreadId === null && lineage.relationshipToParent === null
-      ? lineage
-      : { ...lineage, parentThreadId: null, relationshipToParent: null };
+  const nested = forkFeatureActive("nestedThreads");
+  const wired = nested ? lineage : withoutNesting(lineage);
+  if (lineage.detached === true && (nested || lineage.relationshipToParent !== "subagent")) {
+    return withoutParent(wired);
   }
+  if (!nested) return wired;
   return lineage.relationshipToParent === "subagent" && lineage.listed === true
     ? { ...lineage, relationshipToParent: null }
     : lineage;
+}
+
+function withoutParent(lineage: OrchestrationV2AppThreadLineage): OrchestrationV2AppThreadLineage {
+  return lineage.parentThreadId === null && lineage.relationshipToParent === null
+    ? lineage
+    : { ...lineage, parentThreadId: null, relationshipToParent: null };
 }
 
 function withoutNesting(lineage: OrchestrationV2AppThreadLineage): OrchestrationV2AppThreadLineage {

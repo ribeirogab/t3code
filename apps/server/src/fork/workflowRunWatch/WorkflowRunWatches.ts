@@ -1,5 +1,6 @@
 import {
   CommandId,
+  forkFeatureActive,
   isProviderNativeSubagentThread,
   MessageId,
   type OrchestrationV2AppThread,
@@ -165,6 +166,7 @@ export const make = Effect.fn("WorkflowRunWatches.make")(function* (
   });
 
   const sweep = Effect.gen(function* () {
+    if (!forkFeatureActive("workflowRunWatch")) return;
     const now = yield* Clock.currentTimeMillis;
     const ended = new Set<string>();
     yield* Effect.forEach(

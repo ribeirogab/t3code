@@ -1,4 +1,4 @@
-import type { ForkFeatureSettings } from "@t3tools/contracts";
+import { forkFeatureChoice, type ForkFeatureSettings } from "@t3tools/contracts";
 import { SearchIcon } from "lucide-react";
 import { useState } from "react";
 
@@ -98,7 +98,7 @@ export function ForkSettingsPanel() {
                 description={feature.description}
                 control={
                   <Switch
-                    checked={forkFeatures.features[feature.key] !== false}
+                    checked={forkFeatureChoice(forkFeatures.features, feature.key)}
                     disabled={!forkFeatures.master}
                     onCheckedChange={(checked) =>
                       save(

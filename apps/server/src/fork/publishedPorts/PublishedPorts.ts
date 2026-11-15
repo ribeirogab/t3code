@@ -1,5 +1,7 @@
 import {
   ForkPublishedPortError,
+  forkFeatureActive,
+  onForkFeatureSettingsChange,
   type ForkPublishedPort,
   type ForkPublishedPorts,
   type OrchestrationV2DomainEvent,
@@ -203,17 +205,12 @@ export const make = Effect.fn("PublishedPorts.make")(function* (deps: PublishedP
       }),
     );
 
-  const releaseThreadUnlocked = Effect.fn("PublishedPorts.releaseThread")(function* (
-    threadId: ThreadId,
-  ) {
-    const entries = [...(yield* SubscriptionRef.get(state)).values()].filter(
-      (entry) => entry.record.threadId === threadId,
-    );
+  const releaseEach = Effect.fn("PublishedPorts.releaseEach")(function* (entries: Iterable<Entry>) {
     for (const entry of entries) {
       yield* release(entry).pipe(
         Effect.catch((error) =>
-          Effect.logWarning("a published port of a released thread stayed open", {
-            threadId,
+          Effect.logWarning("a released published port stayed open", {
+            threadId: entry.record.threadId,
             port: entry.record.port,
             detail: error.detail,
           }),
@@ -222,7 +219,21 @@ export const make = Effect.fn("PublishedPorts.make")(function* (deps: PublishedP
     }
   });
 
+  const releaseThreadUnlocked = Effect.fn("PublishedPorts.releaseThread")(function* (
+    threadId: ThreadId,
+  ) {
+    yield* releaseEach(
+      [...(yield* SubscriptionRef.get(state)).values()].filter(
+        (entry) => entry.record.threadId === threadId,
+      ),
+    );
+  });
+
   const releaseThread = (threadId: ThreadId) => locked(releaseThreadUnlocked(threadId));
+
+  const releaseAll = locked(
+    SubscriptionRef.get(state).pipe(Effect.flatMap((entries) => releaseEach(entries.values()))),
+  );
 
   const handle = (event: Pick<OrchestrationV2DomainEvent, "type" | "threadId">) =>
     PORT_RELEASE_EVENTS.has(event.type) ? releaseThread(event.threadId) : Effect.void;
@@ -241,6 +252,11 @@ export const make = Effect.fn("PublishedPorts.make")(function* (deps: PublishedP
   const reconcileUnlocked = Effect.gen(function* () {
     const records = yield* deps.store.load;
     if (records.length === 0) return;
+    if (!forkFeatureActive("publishedPorts")) {
+      const entries = new Map(records.map((record) => [record.port, { record, proxy: null }]));
+      yield* SubscriptionRef.set(state, entries);
+      return yield* releaseEach(entries.values());
+    }
     const served = yield* deps.tailnet.servedProxies.pipe(Effect.option);
     if (served._tag === "None") {
       yield* Effect.logWarning(
@@ -285,6 +301,15 @@ export const make = Effect.fn("PublishedPorts.make")(function* (deps: PublishedP
       })),
       Stream.changesWith(samePorts),
     );
+
+  const services = yield* Effect.context<never>();
+  yield* Effect.acquireDisposable(
+    Effect.sync(() =>
+      onForkFeatureSettingsChange(() => {
+        if (!forkFeatureActive("publishedPorts")) Effect.runForkWith(services)(releaseAll);
+      }),
+    ),
+  );
 
   return {
     publish: (input) => locked(publishUnlocked(input)),

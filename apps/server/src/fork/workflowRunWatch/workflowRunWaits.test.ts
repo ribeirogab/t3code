@@ -40,10 +40,10 @@ describe("withWorkflowRunWaits", () => {
     assert.strictEqual(withWorkflowRunWaits(other), other);
     const appThread = { id: threadId, status: "completed" };
     assert.strictEqual(withWorkflowRunWaits(appThread), appThread);
-    {
-      using _settings = overrideForkFeatureSettings({ features: { waitingDetail: false } });
+    for (const feature of ["waitingDetail", "workflowRunWatch"]) {
+      using _settings = overrideForkFeatureSettings({ features: { [feature]: false } });
       const settled = shell();
-      assert.strictEqual(withWorkflowRunWaits(settled), settled);
+      assert.strictEqual(withWorkflowRunWaits(settled), settled, feature);
     }
     publishWorkflowRunWaits([]);
     const ended = shell();
