@@ -283,6 +283,8 @@ import { removeWithNested } from "../fork/nestedThreadRemoval";
 import { useDetachThread } from "../fork/useDetachThread";
 import { continueInNewThreadPlacement } from "../fork/continueInNewThread";
 import { useContinueInNewThread } from "../fork/useContinueInNewThread";
+import { isCompactAndContinueAction } from "../fork/compactAndContinue";
+import { readCanCompactAndContinue, useCompactAndContinue } from "../fork/useCompactAndContinue";
 import { useForkFeature } from "../fork/forkFeatures";
 import { useSetThreadListed } from "../fork/useSetThreadListed";
 import { readThreadParked, setThreadParked } from "../fork/parkedThreadActions";
@@ -1019,6 +1021,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const setThreadListed = useSetThreadListed();
   const detachThread = useDetachThread();
   const continueInNewThread = useContinueInNewThread();
+  const compactAndContinue = useCompactAndContinue();
   const continueInNewThreadEnabled = useForkFeature("continueInNewThread");
   const nestedThreadsEnabled = useForkFeature("nestedThreads");
   const { copyToClipboard: copyPathToClipboard } = useCopyToClipboard<{ path: string }>({
@@ -2755,6 +2758,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
               canTurnIntoProject: canTurnThreadIntoProject(threadRef),
               canHideFromSidebar: nestedThreadsEnabled && thread.lineage.parentThreadId !== null,
               canContinueInNewThread: continueInNewThreadEnabled,
+              canCompactAndContinue: readCanCompactAndContinue(threadRef),
               parked: readThreadParked(threadRef, thread),
               supports: {
                 settlement: configLoaded,
@@ -2774,6 +2778,10 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         const handoffPlacement = continueInNewThreadPlacement(clicked.value);
         if (handoffPlacement !== null) {
           await continueInNewThread(threadRef, handoffPlacement);
+          return;
+        }
+        if (isCompactAndContinueAction(clicked.value)) {
+          await compactAndContinue(threadRef);
           return;
         }
         const parkTarget = parkedThreadMenuTarget(clicked.value);

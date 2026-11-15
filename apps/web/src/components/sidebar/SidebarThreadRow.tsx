@@ -139,6 +139,8 @@ import { useSidebarCardDisplay } from "~/fork/sidebarCardDisplay";
 import { useForkFeature } from "~/fork/forkFeatures";
 import { SidebarTitleProviderIcon } from "~/fork/SidebarTitleProviderIcon";
 import { SidebarPlanProgress } from "~/fork/PlanProgress";
+import { ForkWaitingDuration, useForkWaitingLabel } from "~/fork/WaitingDetail";
+import { FORK_NEEDS_YOU_PILL, forkNeedsYou } from "~/fork/goalStatus.logic";
 
 // The fields thread rows show. Provider status pushes refresh `checkedAt`,
 // status and auth on every provider; leaving those out keeps each
@@ -755,6 +757,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
 
   const isUnread = hasUnseenCompletion({ ...thread, lastVisitedAt });
   const status = resolveSidebarRowStatus({ ...thread, lastVisitedAt });
+  const forkWaitingLabel = useForkWaitingLabel(thread);
   const lastVisitedDate = lastVisitedAt === undefined ? null : parseTimestampDate(lastVisitedAt);
   const wokeAtDate = props.wokeAt === null ? null : parseTimestampDate(props.wokeAt);
   const isWoke =
@@ -782,7 +785,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
         }
       : status === "waiting"
         ? {
-            label: "Waiting",
+            label: forkWaitingLabel ?? "Waiting",
             icon: "waiting" as const,
             className: "text-muted-foreground",
           }
@@ -794,7 +797,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
             }
           : status === "input"
             ? {
-                label: "Input",
+                label: forkNeedsYou(thread) ? FORK_NEEDS_YOU_PILL.label : "Input",
                 icon: "input" as const,
                 className: "text-indigo-600 dark:text-indigo-300",
               }
@@ -1617,6 +1620,11 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
                                 startedAt={resolveWorkingStartedAt(thread)}
                               />
                             </span>
+                          ) : status === "waiting" && forkWaitingLabel !== null ? (
+                            <ForkWaitingDuration
+                              environmentId={thread.environmentId}
+                              startedAt={thread.latestRun?.completedAt ?? null}
+                            />
                           ) : status === "waiting" ? (
                             <span aria-hidden>
                               <WorkingDuration

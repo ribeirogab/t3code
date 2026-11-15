@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+bin_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../bin" && pwd)"
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+failures=0
+
+mkdir -p "$work/bin" "$work/path"
+cp "$bin_dir/use" "$work/bin/use"
+cat > "$work/bin/active-turns" <<'STUB'
+#!/usr/bin/env bash
+[[ -z "${STUB_ACTIVE_TURNS:-}" ]] || printf '%s\n' "$STUB_ACTIVE_TURNS"
+STUB
+for installer in install-mac install-linux; do
+  printf '#!/usr/bin/env bash\necho installed >> "%s/installed"\n' "$work" > "$work/bin/$installer"
+done
+printf '#!/usr/bin/env bash\nexit 0\n' > "$work/path/gh"
+chmod +x "$work/bin/"* "$work/path/gh"
+
+run_use() {
+  rm -f "$work/installed"
+  PATH="$work/path:$PATH" T3CODE_FORK_SERVER="" "$work/bin/use" fork v1.2.3 "$@"
+}
+
+run_use_in_terminal() {
+  local answer="$1" command
+  shift
+  command="PATH='$work/path':\$PATH T3CODE_FORK_SERVER= '$work/bin/use' fork v1.2.3 $*"
+  rm -f "$work/installed"
+  if [[ "$(uname -s)" == Darwin ]]; then
+    printf '%s\n' "$answer" | script -q /dev/null bash -c "$command"
+  else
+    printf '%s\n' "$answer" | script -qec "$command" /dev/null
+  fi
+}
+
+check() {
+  local name="$1" expected_status="$2" expected_installed="$3" expected_text="$4" output="$5" status="$6"
+  local installed=no
+  [[ ! -f "$work/installed" ]] || installed=yes
+  if [[ "$status" == "$expected_status" && "$installed" == "$expected_installed" && "$output" == *"$expected_text"* ]]; then
+    echo "ok - $name"
+  else
+    echo "not ok - $name (status $status, installed $installed)"
+    printf '%s\n' "$output" | sed 's/^/  | /'
+    failures=$((failures + 1))
+  fi
+}
+
+status=0
+output="$(STUB_ACTIVE_TURNS="" run_use < /dev/null 2>&1)" || status=$?
+check "no active turns installs without a question" 0 yes "Switching to fork v1.2.3." "$output" "$status"
+
+turns=$'Release batch\nAgent language\nFix the checkout errors'
+
+status=0
+output="$(STUB_ACTIVE_TURNS="$turns" run_use_in_terminal n 2>&1)" || status=$?
+check "active turns and the answer n cancel" 1 no "Install v1.2.3 anyway? [y/N]" "$output" "$status"
+check "the warning names each thread" 1 no $'3 threads have an active turn:\r\n  Release batch\r\n  Agent language\r\n  Fix the checkout errors\r\nInstalling now restarts the server and stops them.' "$output" "$status"
+
+status=0
+output="$(STUB_ACTIVE_TURNS="$turns" run_use_in_terminal y 2>&1)" || status=$?
+check "active turns and the answer y install" 0 yes "Switching to fork v1.2.3." "$output" "$status"
+
+status=0
+output="$(STUB_ACTIVE_TURNS="$turns" run_use < /dev/null 2>&1)" || status=$?
+check "no terminal without --yes refuses" 1 no "Pass --yes to install anyway." "$output" "$status"
+
+status=0
+output="$(STUB_ACTIVE_TURNS="$turns" run_use --yes < /dev/null 2>&1)" || status=$?
+check "no terminal with --yes installs" 0 yes "Switching to fork v1.2.3." "$output" "$status"
+
+status=0
+output="$(STUB_ACTIVE_TURNS="Only one" run_use --yes < /dev/null 2>&1)" || status=$?
+check "one active turn reads as one thread" 0 yes "1 thread has an active turn:" "$output" "$status"
+
+rm -f "$work/installed"
+home="$work/home"
+mkdir -p "$home/userdata"
+if command -v node > /dev/null; then
+  cat > "$work/fixture.sql" <<'SQL'
+CREATE TABLE orchestration_v2_projection_threads (thread_id TEXT, title TEXT, updated_at TEXT, archived_at TEXT, deleted_at TEXT);
+CREATE TABLE orchestration_v2_projection_runs (run_id TEXT, thread_id TEXT, status TEXT);
+INSERT INTO orchestration_v2_projection_threads VALUES
+  ('a', 'Running', '2026-01-03', NULL, NULL),
+  ('b', 'Preparing', '2026-01-02', NULL, NULL),
+  ('c', 'Completed', '2026-01-04', NULL, NULL),
+  ('d', 'Archived', '2026-01-05', '2026-01-05', NULL),
+  ('e', 'Waiting', '2026-01-06', NULL, NULL);
+INSERT INTO orchestration_v2_projection_runs VALUES
+  ('1', 'a', 'completed'), ('2', 'a', 'running'), ('3', 'b', 'preparing'),
+  ('4', 'c', 'completed'), ('5', 'd', 'running'), ('6', 'e', 'waiting');
+SQL
+  node --no-warnings -e '
+    const { DatabaseSync } = require("node:sqlite");
+    const { readFileSync } = require("node:fs");
+    new DatabaseSync(process.argv[1]).exec(readFileSync(process.argv[2], "utf8"));
+  ' "$home/userdata/statev2.sqlite" "$work/fixture.sql"
+  status=0
+  output="$(T3CODE_HOME="$home" "$bin_dir/active-turns" 2>&1)" || status=$?
+  check "active-turns lists the threads with a running turn, newest first" 0 no $'Running\nPreparing' "$output" "$status"
+  [[ "$output" == $'Running\nPreparing' ]] || {
+    echo "not ok - active-turns lists only those threads"
+    failures=$((failures + 1))
+  }
+fi
+
+status=0
+output="$(T3CODE_HOME="$work/missing" "$bin_dir/active-turns" 2>&1)" || status=$?
+check "active-turns prints nothing without a database" 0 no "" "$output" "$status"
+
+((failures == 0))
