@@ -35,7 +35,7 @@ jobs:
     outputs:
       action: ${{ steps.result.outputs.action }}
       version: ${{ steps.result.outputs.version }}
-      ref: ${{ steps.rebase.outputs.ref || steps.plan.outputs.branch_sha }}
+      ref: ${{ steps.plan.outputs.branch_sha }}
       base_tag: ${{ steps.plan.outputs.base_tag }}
       base_sha: ${{ steps.plan.outputs.base_sha }}
       mac_runner: ${{ env.MAC_RUNNER }}
@@ -71,40 +71,14 @@ jobs:
         id: plan
         run: fork/bin/plan "$GITHUB_REPOSITORY" "$FORK_BRANCH" "${{ inputs.rebuild || 'false' }}" "${{ inputs.upstream_only || 'false' }}" | tee -a "$GITHUB_OUTPUT"
 
-      - name: Checkout full history
-        if: steps.plan.outputs.action == 'rebase'
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ steps.plan.outputs.branch_sha }}
-          path: fork-repo
-          fetch-depth: 0
-
-      - name: Rebase onto the upstream nightly
-        id: rebase
-        if: steps.plan.outputs.action == 'rebase'
-        working-directory: fork-repo
-        env:
-          FORK_DEPLOY_KEY: ${{ secrets.FORK_DEPLOY_KEY }}
-        run: |
-          "$GITHUB_WORKSPACE/fork/bin/ci-rebase" \
-            "${{ steps.plan.outputs.base_tag }}" \
-            "${{ steps.plan.outputs.branch_sha }}" \
-            "$GITHUB_REPOSITORY" \
-            "$FORK_BRANCH" | tee -a "$GITHUB_OUTPUT"
-
-      - name: Report rebase conflict
-        if: steps.rebase.outputs.result == 'conflict'
-        run: fork/bin/report-conflict "${{ steps.plan.outputs.base_tag }}" "${{ steps.rebase.outputs.conflicts }}"
-
       - name: Resolve build
         id: result
         env:
           PLAN_ACTION: ${{ steps.plan.outputs.action }}
-          REBASE_RESULT: ${{ steps.rebase.outputs.result }}
           BASE_TAG: ${{ steps.plan.outputs.base_tag }}
         run: |
           set -euo pipefail
-          if [[ "$PLAN_ACTION" != "build" && "$REBASE_RESULT" != "rebased" ]]; then
+          if [[ "$PLAN_ACTION" == "skip" ]]; then
             echo "action=skip" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -112,7 +86,7 @@ jobs:
             sed -n "s/^$1=//p" .env.example
           }
           {
-            echo "action=build"
+            echo "action=$PLAN_ACTION"
             echo "version=$(fork/bin/next-version "$BASE_TAG" "https://github.com/${GITHUB_REPOSITORY}.git")"
             echo "clerk_publishable_key=$(read_public_config T3CODE_CLERK_PUBLISHABLE_KEY)"
             echo "clerk_jwt_template=$(read_public_config T3CODE_CLERK_JWT_TEMPLATE)"
@@ -120,12 +94,82 @@ jobs:
             echo "relay_url=$(read_public_config T3CODE_RELAY_URL)"
           } | tee -a "$GITHUB_OUTPUT"
 
-  bundle:
-    name: Build JS bundle
+  rebase:
+    name: Rebase and check
     needs: plan
-    if: needs.plan.outputs.action == 'build'
+    if: needs.plan.outputs.action == 'rebase'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    outputs:
+      ref: ${{ steps.push.outputs.ref }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BASE_TAG: ${{ needs.plan.outputs.base_tag }}
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          fetch-depth: 0
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Keep the fork scripts of this run
+        run: cp -R fork/bin "$RUNNER_TEMP/fork-bin"
+
+      - name: Rebase onto the upstream nightly
+        id: rebase
+        run: |
+          "$RUNNER_TEMP/fork-bin/ci-rebase" "$BASE_TAG" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Report rebase conflict
+        if: steps.rebase.outputs.result == 'conflict'
+        env:
+          CONFLICTS: ${{ steps.rebase.outputs.conflicts }}
+        run: |
+          "$RUNNER_TEMP/fork-bin/report-conflict" "$BASE_TAG" "$CONFLICTS"
+
+      - name: Setup dependencies
+        if: steps.rebase.outputs.result == 'rebased'
+        uses: ./.github/actions/setup-ci-deps
+        with:
+          install-args: --filter=t3... --filter=@t3tools/web...
+
+      - name: Typecheck the server
+        if: steps.rebase.outputs.result == 'rebased'
+        working-directory: apps/server
+        run: vp run typecheck
+
+      - name: Typecheck the web app
+        if: steps.rebase.outputs.result == 'rebased'
+        working-directory: apps/web
+        run: vp run typecheck
+
+      - name: Start the MCP tools and check the agent context budget
+        if: steps.rebase.outputs.result == 'rebased'
+        working-directory: apps/server
+        run: vp test run src/provider/AgentContextBudget.test.ts
+
+      - name: Push the rebased branch
+        id: push
+        if: steps.rebase.outputs.result == 'rebased'
+        env:
+          FORK_DEPLOY_KEY: ${{ secrets.FORK_DEPLOY_KEY }}
+          BRANCH_SHA: ${{ needs.plan.outputs.ref }}
+        run: |
+          "$RUNNER_TEMP/fork-bin/ci-push" "$BRANCH_SHA" "$GITHUB_REPOSITORY" "$FORK_BRANCH" | tee -a "$GITHUB_OUTPUT"
+
+  bundle:
+    name: Build JS bundle
+    needs: [plan, rebase]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.plan.outputs.action == 'build' || needs.rebase.outputs.ref != '') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      ref: ${{ needs.rebase.outputs.ref || needs.plan.outputs.ref }}
     env:
       T3CODE_CLERK_PUBLISHABLE_KEY: ${{ needs.plan.outputs.clerk_publishable_key }}
       T3CODE_CLERK_JWT_TEMPLATE: ${{ needs.plan.outputs.clerk_jwt_template }}
@@ -135,7 +179,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          ref: ${{ needs.plan.outputs.ref }}
+          ref: ${{ needs.rebase.outputs.ref || needs.plan.outputs.ref }}
           sparse-checkout: |
             /*
             !/.repos/
@@ -167,11 +211,10 @@ jobs:
   desktop_mac:
     name: Desktop macOS arm64
     needs: [plan, bundle]
-    if: needs.plan.outputs.action == 'build'
     uses: ./.github/workflows/release-desktop.yml
     with:
       version: ${{ needs.plan.outputs.version }}
-      ref: ${{ needs.plan.outputs.ref }}
+      ref: ${{ needs.bundle.outputs.ref }}
       release_channel: nightly
       relay_client_tracing: false
       clerk_publishable_key: ${{ needs.plan.outputs.clerk_publishable_key }}
@@ -191,11 +234,10 @@ jobs:
   desktop_linux:
     name: Desktop Linux x64
     needs: [plan, bundle]
-    if: needs.plan.outputs.action == 'build'
     uses: ./.github/workflows/release-desktop.yml
     with:
       version: ${{ needs.plan.outputs.version }}
-      ref: ${{ needs.plan.outputs.ref }}
+      ref: ${{ needs.bundle.outputs.ref }}
       release_channel: nightly
       relay_client_tracing: false
       clerk_publishable_key: ${{ needs.plan.outputs.clerk_publishable_key }}
@@ -214,14 +256,14 @@ jobs:
 
   sign_mac:
     name: Sign macOS app
-    needs: [plan, desktop_mac]
+    needs: [plan, bundle, desktop_mac]
     runs-on: ${{ needs.plan.outputs.mac_runner }}
     timeout-minutes: 30
     steps:
       - name: Checkout fork scripts
         uses: actions/checkout@v6
         with:
-          ref: ${{ needs.plan.outputs.ref }}
+          ref: ${{ needs.bundle.outputs.ref }}
           sparse-checkout: |
             /fork/
           sparse-checkout-cone-mode: false
@@ -273,7 +315,7 @@ jobs:
 
   release:
     name: Publish release
-    needs: [plan, sign_mac, desktop_linux]
+    needs: [plan, bundle, sign_mac, desktop_linux]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -283,7 +325,7 @@ jobs:
       - name: Checkout fork scripts
         uses: actions/checkout@v6
         with:
-          ref: ${{ needs.plan.outputs.ref }}
+          ref: ${{ needs.bundle.outputs.ref }}
           sparse-checkout: |
             /fork/
           sparse-checkout-cone-mode: false
@@ -317,7 +359,7 @@ jobs:
         run: |
           fork/bin/publish-release \
             "${{ needs.plan.outputs.version }}" \
-            "${{ needs.plan.outputs.ref }}" \
+            "${{ needs.bundle.outputs.ref }}" \
             "${{ needs.plan.outputs.base_tag }}" \
             "${{ needs.plan.outputs.base_sha }}" \
             release-assets
