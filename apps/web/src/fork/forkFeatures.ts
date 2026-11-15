@@ -322,6 +322,30 @@ export const FORK_FEATURES = [
       "When an agent archives a thread with a running turn, archive it when the turn ends.",
     searchTerms: ["fork archive organize thread running turn wait end child coordinator"],
   },
+  {
+    key: "sidebarFooterFork",
+    section: "Sidebar",
+    searchId: "fork-sidebar-footer-fork",
+    title: "Fork in sidebar footer",
+    description: "Add a Fork button next to Settings in the sidebar footer.",
+    searchTerms: ["fork sidebar footer button icon settings shortcut"],
+  },
+  {
+    key: "sidebarFooterPullRequests",
+    section: "Sidebar",
+    searchId: "fork-sidebar-footer-pull-requests",
+    title: "Pull requests in sidebar footer",
+    description: "Show the Pull requests button in the sidebar footer.",
+    searchTerms: ["fork sidebar footer button icon pull requests hide show"],
+  },
+  {
+    key: "sidebarFooterUsage",
+    section: "Sidebar",
+    searchId: "fork-sidebar-footer-usage",
+    title: "Usage in sidebar footer",
+    description: "Show the Usage button in the sidebar footer.",
+    searchTerms: ["fork sidebar footer button icon usage limits hide show"],
+  },
 ] as const satisfies ReadonlyArray<{
   readonly key: string;
   readonly section: (typeof FORK_FEATURE_SECTIONS)[number];

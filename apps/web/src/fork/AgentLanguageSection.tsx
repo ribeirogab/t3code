@@ -4,7 +4,7 @@ import { SettingResetButton, SettingsRow } from "~/components/settings/settingsL
 import { Input } from "~/components/ui/input";
 import { usePrimarySettings, useUpdatePrimarySettings } from "~/hooks/useSettings";
 
-import { AGENT_LANGUAGE_SEARCH_ID } from "./agentLanguage";
+import { AGENT_LANGUAGE_SEARCH_ID, AGENT_LANGUAGE_SETTING } from "./agentLanguage";
 
 export function AgentLanguageRow() {
   const agentLanguage = usePrimarySettings((settings) => settings.agentLanguage);
@@ -13,8 +13,8 @@ export function AgentLanguageRow() {
   return (
     <SettingsRow
       id={AGENT_LANGUAGE_SEARCH_ID}
-      title="Agent language"
-      description="Agents answer in this language, also after PR updates, wakes, and compactions."
+      title={AGENT_LANGUAGE_SETTING.title}
+      description={AGENT_LANGUAGE_SETTING.description}
       serverScoped
       settingKeys={["agentLanguage"]}
       resetAction={
