@@ -112,10 +112,6 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           fetch-depth: 0
-          sparse-checkout: |
-            /*
-            !/.repos/
-          sparse-checkout-cone-mode: false
 
       - name: Keep the fork scripts of this run
         run: cp -R fork/bin "$RUNNER_TEMP/fork-bin"
