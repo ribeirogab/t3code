@@ -1,5 +1,6 @@
 import { OrchestratorMcpFailure, TrimmedNonEmptyString } from "@t3tools/contracts";
 import * as SecureRandom from "effect/crypto/SecureRandom";
+import * as McpSchema from "effect/ai/McpSchema";
 import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/ai";
 
@@ -41,6 +42,7 @@ const CompactAndContinueTool = Tool.make("t3_thread_compact_and_continue", {
   .annotate(Tool.Readonly, false)
   .annotate(Tool.Destructive, false)
   .annotate(Tool.Idempotent, false)
-  .annotate(Tool.OpenWorld, false);
+  .annotate(Tool.OpenWorld, false)
+  .annotate(McpSchema.EnabledWhen, McpInvocationContext.hiddenFromOutsideClients);
 
 export const CompactAndContinueToolkit = Toolkit.make(CompactAndContinueTool);

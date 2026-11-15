@@ -54,6 +54,6 @@ const WatchWorkflowRunTool = Tool.make("watch_workflow_run", {
   .annotate(Tool.Destructive, false)
   .annotate(Tool.Idempotent, true)
   .annotate(Tool.OpenWorld, true)
-  .annotate(McpSchema.EnabledWhen, McpInvocationContext.hiddenFromSubagents);
+  .annotate(McpSchema.EnabledWhen, McpInvocationContext.hiddenFromOutsideClients);
 
 export const WorkflowRunWatchToolkit = Toolkit.make(WatchWorkflowRunTool);
