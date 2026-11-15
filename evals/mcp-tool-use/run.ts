@@ -40,6 +40,7 @@ import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/http";
 import { taskPrompt } from "../../apps/server/src/mcp/delegatedTaskModes.ts";
 import { withGoalNote } from "../../apps/server/src/fork/threadHandoff/goalTiming.ts";
 import { GoalStatusToolkit } from "../../apps/server/src/fork/goalStatus/tools.ts";
+import { CompactAndContinueToolkit } from "../../apps/server/src/fork/compactAndContinue/tools.ts";
 import * as McpInvocationContext from "../../apps/server/src/mcp/McpInvocationContext.ts";
 import { advertisedJsonSchema } from "../../apps/server/src/mcp/advertisedJsonSchema.ts";
 import * as Contracts from "@t3tools/contracts";
@@ -464,6 +465,7 @@ const t3SourceTools: ReadonlyArray<Tool.Any> = [
   HtmlToolkit,
   MessageToolkit,
   GoalStatusToolkit,
+  CompactAndContinueToolkit,
 ].flatMap((toolkit): ReadonlyArray<Tool.Any> => Object.values(toolkit.tools));
 // McpHttpServer decodes arguments with each tool's JSON codec, which drops undeclared keys.
 const t3InputDecoders = new Map(

@@ -166,6 +166,15 @@ export const FORK_FEATURES = [
     searchTerms: ["fork continue new thread handoff goal worktree child menu"],
   },
   {
+    key: "compactAndContinue",
+    section: "Threads",
+    searchId: "fork-compact-and-continue",
+    title: "Compact and continue",
+    description:
+      "Add Compact and continue to the thread menu. The thread compacts, then the agent goes on in the same thread. Claude and Codex only.",
+    searchTerms: ["fork compact continue same thread menu context resume"],
+  },
+  {
     key: "orchestrationRules",
     section: "Agents",
     searchId: "fork-orchestration-rules",
@@ -223,6 +232,23 @@ export const FORK_FEATURES = [
     title: "Pause goal for your question",
     description: "A message that ends with ? pauses the goal, so the agent answers first.",
     searchTerms: ["fork goal question pause steer answer first ask"],
+  },
+  {
+    key: "useAsGoal",
+    section: "Chat",
+    searchId: "fork-use-as-goal",
+    title: "Use as goal",
+    description:
+      "Add Use as goal to code blocks, and show Compact in the composer on demand. Use as goal turns Compact on. Claude and Codex only.",
+    searchTerms: ["fork use as goal code block composer compact before send"],
+  },
+  {
+    key: "compactAndContinueTool",
+    section: "Agents",
+    searchId: "fork-compact-and-continue-tool",
+    title: "Compact and continue tool",
+    description: "Let agents compact their thread and go on in it with a message or a /goal.",
+    searchTerms: ["fork compact continue goal agent tool t3_thread_compact_and_continue"],
   },
   {
     key: "parkedThreads",

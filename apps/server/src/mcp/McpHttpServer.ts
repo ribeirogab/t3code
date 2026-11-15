@@ -95,6 +95,8 @@ import * as PublishedPortsHandlers from "../fork/publishedPorts/handlers.ts";
 import { PublishedPortsToolkit } from "../fork/publishedPorts/tools.ts";
 import * as GoalStatusHandlers from "../fork/goalStatus/handlers.ts";
 import { GoalStatusToolkit } from "../fork/goalStatus/tools.ts";
+import * as CompactAndContinueHandlers from "../fork/compactAndContinue/handlers.ts";
+import { CompactAndContinueToolkit } from "../fork/compactAndContinue/tools.ts";
 import * as ForkThreadHandoffHandlers from "../fork/threadHandoff/handlers.ts";
 import { ForkThreadHandoffToolkit } from "../fork/threadHandoff/tools.ts";
 import { forkToolVisible } from "../fork/forkToolGates.ts";
@@ -1361,6 +1363,7 @@ export const layerTools = Layer.mergeAll(
   layerMessageToolkit,
   toolkitRegistration(PublishedPortsToolkit, PublishedPortsHandlers.layer),
   toolkitRegistration(GoalStatusToolkit, GoalStatusHandlers.layer),
+  toolkitRegistration(CompactAndContinueToolkit, CompactAndContinueHandlers.layer),
   McpServer.visibility(({ target }) => Effect.succeed(forkToolVisible(target)), { global: true }),
 );
 

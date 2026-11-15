@@ -453,6 +453,17 @@ blocks twice with no tool call between, and marks Done when the judge meets the
 goal. A user message that ends with `?` during an active goal pauses it and runs
 after the `/goal clear` (`apps/server/src/fork/goalStatus/`).
 
+### `t3_thread_compact_and_continue` (fork)
+
+Queues `/compact`, then `message`, then `/goal <goal>` behind the caller's
+running turn, in the caller's own thread, so the thread keeps its link,
+artifacts, and children. The messages are agent messages from `mcp`, so the
+timeline shows a plain compaction, not an idle one. Only Claude and Codex
+threads take it; the check reads the driver of the active provider thread
+(`apps/server/src/fork/compactAndContinue/`). The thread menu's Compact and
+continue and the composer's Compact toggle send from the client instead,
+through the same `/compact` path as compacting before a send.
+
 ### `t3_thread_list`
 
 Lists durable thread shells in one project, newest first: `projectId` when
