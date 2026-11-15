@@ -46,10 +46,12 @@ Every change goes through a pull request into `custom`. Do not commit or push to
 
 Two paths make releases:
 
-- **Upstream nightlies:** `fork-nightly.yml` runs once a day with `upstream_only`. When `custom` does not contain the latest upstream nightly, it rebases `custom` onto it, pushes it, builds the macOS arm64 app and the Linux x64 AppImage and CLI archive, and publishes the prerelease, all in the same run. When `custom` already contains the nightly, the run does nothing, also when `custom` has fork merges without a release. Keep the workflow enabled.
+- **Upstream nightlies:** `fork-nightly.yml` runs once a day with `upstream_only`. When `custom` does not contain the latest upstream nightly, it rebases `custom` onto it, pushes it, builds the macOS arm64 app and the Linux x64 AppImage and CLI archive, and publishes the prerelease, all in the same run. Before it pushes `custom`, the run typechecks the server and the web app and starts the MCP tools; when a check fails, `custom` stays as it was and the run fails. When `custom` already contains the nightly, the run does nothing, also when `custom` has fork merges without a release. Keep the workflow enabled.
 - **Fork changes:** a merge into `custom` does not make a release. Make it with `fork/bin/release` on our own machines.
 
-GitHub disables scheduled workflows in a fork soon after they run, so `fork-nightly.yml` has no `schedule`. The daily run comes from the private repository `ribeirogab/t3code-nightly`, which is not a fork. Its scheduled workflow enables `fork-nightly.yml` and runs it with `upstream_only`. It uses the secret `T3CODE_FORK_TOKEN`, a fine-grained token with Actions read and write on this repository. When the token expires, the trigger run fails and GitHub emails the owner; put a new token in that secret.
+GitHub disables `fork-nightly.yml` soon after a run that uses macOS runners, and it rarely fires `schedule` for this account, so the workflow has no `schedule`. The daily run comes from the Cloudflare Worker `t3code-nightly-trigger` ([`fork/nightly-trigger/worker.js`](fork/nightly-trigger/worker.js)). At 08:23 UTC, its Cron Trigger enables `fork-nightly.yml` and runs it with `upstream_only`. Its secret `GITHUB_TOKEN` is a fine-grained token, with no expiration, that has Actions read and write on this repository.
+
+To deploy the Worker, run `fork/bin/deploy-nightly-trigger` with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` set. Pipe a GitHub token on stdin to replace the secret; without stdin, the secret stays. An optional argument replaces the cron.
 
 To run the workflow again, for example after the hosted macOS runners had no capacity, run `gh workflow run fork-nightly.yml`. A manual run rebases like the daily run, and it also builds the head of `custom` when that head has no release. The `rebuild` input builds it again when it has one.
 
