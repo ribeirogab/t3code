@@ -117,6 +117,7 @@ import { CompactAndContinueToolkit } from "../fork/compactAndContinue/tools.ts";
 import * as ForkThreadHandoffHandlers from "../fork/threadHandoff/handlers.ts";
 import { ForkThreadHandoffToolkit } from "../fork/threadHandoff/tools.ts";
 import { forkToolVisible } from "../fork/forkToolGates.ts";
+import { followForkToolListing } from "../fork/forkToolListing.ts";
 import { requestUrl } from "../requestUrl.ts";
 
 const mcpResourceMetadataUrl = (request: HttpServerRequest.HttpServerRequest) =>
@@ -1485,6 +1486,12 @@ export const layerTools = Layer.mergeAll(
   toolkitRegistration(GoalStatusToolkit, GoalStatusHandlers.layer),
   toolkitRegistration(CompactAndContinueToolkit, CompactAndContinueHandlers.layer),
   McpServer.visibility(({ target }) => Effect.succeed(forkToolVisible(target)), { global: true }),
+).pipe(
+  Layer.tap(() =>
+    Effect.flatMap(McpServer.McpServer, (server) =>
+      followForkToolListing(server.tools, (registration) => server.addTool(registration)),
+    ),
+  ),
 );
 
 const layerToolExposure = Layer.effect(

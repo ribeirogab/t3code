@@ -106,13 +106,15 @@ describe("withAgentLanguage", () => {
     );
   });
 
-  it("keeps every wake as it is without a language or while Fork features is off", () => {
+  it("keeps every wake as it is without a language or while the toggle is off", () => {
     for (const [, input] of serverWakes) {
       assert.strictEqual(withAgentLanguage(input, ""), input);
     }
-    using _settings = overrideForkFeatureSettings({ master: false });
-    for (const [, input] of serverWakes) {
-      assert.strictEqual(withAgentLanguage(input, language), input);
+    for (const settings of [{ master: false }, { features: { agentLanguage: false } }]) {
+      using _settings = overrideForkFeatureSettings(settings);
+      for (const [, input] of serverWakes) {
+        assert.strictEqual(withAgentLanguage(input, language), input);
+      }
     }
   });
 
@@ -144,10 +146,11 @@ describe("session instructions", () => {
   });
 
   it.each([
-    ["without a language", "", true],
-    ["while Fork features is off", language, false],
-  ] as const)("keep the instructions as they are %s", (_case, setting, master) => {
-    using _settings = overrideForkFeatureSettings({ master });
+    ["without a language", "", {}],
+    ["while Fork features is off", language, { master: false }],
+    ["while Agent language is off", language, { features: { agentLanguage: false } }],
+  ] as const)("keep the instructions as they are %s", (_case, setting, settings) => {
+    using _settings = overrideForkFeatureSettings(settings);
     const instructions = forkOrchestrationInstructions();
     const sections = forkOrchestrationSections();
     using _language = overrideAgentLanguage(setting);
