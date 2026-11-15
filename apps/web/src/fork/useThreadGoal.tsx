@@ -16,8 +16,12 @@ import { threadEnvironment } from "~/state/threads";
 import { useOrchestrationCommand } from "~/state/use-orchestration-command";
 
 import { useForkFeature } from "./forkFeatures";
-import type { GoalCardModel } from "./GoalComposerCard";
-import { resolveGoalStatusCard, type GoalStatusCard } from "./goalStatus.logic";
+import type { ForkComposerCardModel, GoalCardModel } from "./GoalComposerCard";
+import {
+  resolveGoalStatusCard,
+  resolveNeedsYouBanner,
+  type GoalStatusCard,
+} from "./goalStatus.logic";
 import {
   pauseGoal,
   resolveGoalPauseView,
@@ -208,14 +212,37 @@ function scopedThreadRef(threadKey: string, threadId: ThreadId | null): ScopedTh
   }
 }
 
-export function useThreadGoal(input: {
+interface ThreadGoalInput {
   readonly threadKey: string;
   readonly threadId: ThreadId | null;
   readonly goal: OrchestrationV2ProviderGoal | null;
   readonly attention?: ForkThreadAttention | null | undefined;
   readonly isWorking: boolean;
   readonly onSendCommand: SendCommand;
-}): { readonly now: ThreadNowItem | null; readonly card: GoalCardModel | null } {
+}
+
+export function useThreadGoal(input: ThreadGoalInput): {
+  readonly now: ThreadNowItem | null;
+  readonly card: ForkComposerCardModel | null;
+} {
+  const goalItems = useGoalItems(input);
+  const needsYouEnabled = useForkFeature("requestAttention");
+  const summary = resolveNeedsYouBanner({
+    enabled: needsYouEnabled && input.threadId !== null,
+    attention: input.attention,
+    showsGoal: goalItems.now !== null || goalItems.card !== null,
+  });
+  if (summary === null) return goalItems;
+  return {
+    now: goalItems.now,
+    card: { kind: "needsYou", id: `needs-you:${input.threadKey}`, summary },
+  };
+}
+
+function useGoalItems(input: ThreadGoalInput): {
+  readonly now: ThreadNowItem | null;
+  readonly card: GoalCardModel | null;
+} {
   const { threadKey, threadId, goal, isWorking, onSendCommand } = input;
   const pauseEnabled = useForkFeature("goalPause");
   const cardEnabled = useForkFeature("goalComposerCard");

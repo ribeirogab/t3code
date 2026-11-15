@@ -34,6 +34,9 @@ const ownerOnMobile: TurnStarter = { ...owner, creationSource: "mobile" };
 const ownerFromParent: TurnStarter = { ...owner, senderThreadId: parentThreadId };
 const answer: TurnStarter = { createdBy: "user", creationSource: "server", text: "Use main." };
 const slashFromParent: TurnStarter = { ...parentAgent, text: "/reload-skills" };
+const waitingOnUser = {
+  forkAttention: { status: "needs_user", reason: "Approve the deploy" },
+} as const;
 
 describe("childEventWakesParent", () => {
   const cases: ReadonlyArray<
@@ -77,18 +80,24 @@ describe("childEventWakesParent", () => {
     }
     expect(mayWakeParentOnFinish({ notifyParent: "never" })).toBe(true);
     expect(
-      quietCompletion({ notifyParent: "never" }, { userMessageId: MessageId.make("m") }, [
-        { id: MessageId.make("m"), ...owner },
-      ]),
+      quietCompletion(
+        { notifyParent: "never" },
+        { userMessageId: MessageId.make("m") },
+        [{ id: MessageId.make("m"), ...owner }],
+        {},
+      ),
     ).toEqual({});
   });
 });
 
 describe("askTheUserForChildQuestion", () => {
-  it("names the question tool only while Orchestration rules is on", () => {
-    expect(askTheUserForChildQuestion()).toBe("ask the user with your question tool");
-    using _settings = overrideForkFeatureSettings({ features: { orchestrationRules: false } });
-    expect(askTheUserForChildQuestion()).toBe("ask the user");
+  it.each([
+    [{}, "ask the user in your reply, call t3_request_attention, end your turn"],
+    [{ requestAttention: false }, "ask the user with your question tool"],
+    [{ requestAttention: false, orchestrationRules: false }, "ask the user"],
+  ])("with %o: %s", (features, text) => {
+    using _settings = overrideForkFeatureSettings({ features });
+    expect(askTheUserForChildQuestion()).toBe(text);
   });
 });
 
@@ -126,25 +135,41 @@ describe("quietCompletion", () => {
   ];
 
   it("keeps the wake for a run the parent started", () => {
-    expect(quietCompletion({}, { userMessageId: starterId }, message(parentAgent))).toEqual({});
+    expect(quietCompletion({}, { userMessageId: starterId }, message(parentAgent), {})).toEqual({});
   });
 
   it("disposes the delivery of a run the owner started in the child", () => {
-    expect(quietCompletion({}, { userMessageId: starterId }, message(owner))).toEqual({
+    expect(quietCompletion({}, { userMessageId: starterId }, message(owner), {})).toEqual({
       completionDelivery: { state: "disposed", observedByRunId: null },
     });
   });
 
   it("disposes the delivery of a slash command turn", () => {
-    expect(quietCompletion({}, { userMessageId: starterId }, message(slashFromParent))).toEqual({
+    expect(quietCompletion({}, { userMessageId: starterId }, message(slashFromParent), {})).toEqual(
+      {
+        completionDelivery: { state: "disposed", observedByRunId: null },
+      },
+    );
+  });
+
+  it("follows the option when the starter message is not loaded", () => {
+    expect(
+      quietCompletion({ notifyParent: "never" }, { userMessageId: starterId }, [], {}),
+    ).toEqual({
       completionDelivery: { state: "disposed", observedByRunId: null },
     });
   });
 
-  it("follows the option when the starter message is not loaded", () => {
-    expect(quietCompletion({ notifyParent: "never" }, { userMessageId: starterId }, [])).toEqual({
+  it("disposes the delivery of a run that ends waiting on the user", () => {
+    expect(
+      quietCompletion({}, { userMessageId: starterId }, message(parentAgent), waitingOnUser),
+    ).toEqual({
       completionDelivery: { state: "disposed", observedByRunId: null },
     });
+    using _settings = overrideForkFeatureSettings({ features: { requestAttention: false } });
+    expect(
+      quietCompletion({}, { userMessageId: starterId }, message(parentAgent), waitingOnUser),
+    ).toEqual({});
   });
 });
 

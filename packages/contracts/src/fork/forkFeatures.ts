@@ -16,7 +16,8 @@ export type ForkServerFeature =
   | "goalOnNewThreads"
   | "parkedThreads"
   | "goalStatus"
-  | "goalQuestionPause";
+  | "goalQuestionPause"
+  | "requestAttention";
 
 export const ForkFeatureSettings = Schema.Struct({
   master: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),

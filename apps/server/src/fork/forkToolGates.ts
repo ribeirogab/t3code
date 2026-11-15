@@ -15,6 +15,7 @@ const FORK_TOOLS: Readonly<Record<string, ForkServerFeature>> = {
   unpublish_port: "publishedPorts",
   watch_workflow_run: "workflowRunWatch",
   t3_goal_update: "goalStatus",
+  t3_request_attention: "requestAttention",
 };
 
 const FORK_PARAMETERS: Readonly<

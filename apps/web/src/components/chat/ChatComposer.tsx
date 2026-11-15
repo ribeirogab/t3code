@@ -122,7 +122,7 @@ import { ComposerBanner } from "./ComposerBanner";
 import { ComposerSurface } from "./ComposerSurface";
 import { CollapsedComposerPromptPreview } from "./CollapsedComposerPromptPreview";
 import { ComposerBannerStack, type ComposerBannerStackItem } from "./ComposerBannerStack";
-import { GoalComposerCard, type GoalCardModel } from "../../fork/GoalComposerCard";
+import { GoalComposerCard, type ForkComposerCardModel } from "../../fork/GoalComposerCard";
 import {
   attachmentsToReleaseOnUploadCapabilityLoss,
   composerOtherFilesForPresentation,
@@ -382,7 +382,7 @@ export interface ChatComposerProps {
   isPreparingWorktree: boolean;
   canSteer: boolean;
   bannerItems: readonly ComposerBannerStackItem[];
-  goalCard?: GoalCardModel | null;
+  goalCard?: ForkComposerCardModel | null;
   resumeCompactionTokens: number | null;
   keepFullHistory: boolean;
   onToggleKeepFullHistory: () => void;

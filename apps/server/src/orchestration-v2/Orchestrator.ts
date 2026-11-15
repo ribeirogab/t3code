@@ -14473,7 +14473,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
               completionDelivery: { state: "disposed" as const, observedByRunId: null },
             }
           : {}),
-        ...quietCompletion(task, childRun, childControls.messages),
+        ...quietCompletion(task, childRun, childControls.messages, childControls.thread),
       };
       const completionPlan = yield* planDelegatedCompletionDelivery({
         parentProjection,

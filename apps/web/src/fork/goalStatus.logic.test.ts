@@ -13,7 +13,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { resolveSidebarThreadStatus, resolveThreadStatusPill } from "~/components/Sidebar.logic";
 
-import { goalResultLink, resolveGoalStatusCard } from "./goalStatus.logic";
+import { goalResultLink, resolveGoalStatusCard, resolveNeedsYouBanner } from "./goalStatus.logic";
 
 const OBJECTIVE = "Release v0.0.26-fork.4 published for Linux and Mac";
 
@@ -104,6 +104,27 @@ describe("resolveGoalStatusCard", () => {
   });
 });
 
+describe("resolveNeedsYouBanner", () => {
+  const SUMMARY = "Send the Mac login password to sign the Mac release";
+  const requested: ForkThreadAttention = { status: "needs_user", reason: SUMMARY };
+
+  it.each([
+    ["shows the summary on a thread without a goal", true, requested, false, SUMMARY],
+    ["leaves a thread with a goal to the goal card", true, requested, true, null],
+    ["hides after the owner replies", true, null, false, null],
+    [
+      "leaves a goal's Needs you to the goal card",
+      true,
+      { ...requested, goal: OBJECTIVE },
+      false,
+      null,
+    ],
+    ["acts like upstream with Request attention off", false, requested, false, null],
+  ] as const)("%s", (_name, enabled, attention, showsGoal, summary) => {
+    expect(resolveNeedsYouBanner({ enabled, attention, showsGoal })).toBe(summary);
+  });
+});
+
 describe("goalResultLink", () => {
   it.each([
     ["https://github.com/acme/app/pull/57", { label: "PR #57" }],
@@ -166,7 +187,8 @@ describe("Needs you in the sidebar", () => {
   it.each([
     ["needs you", { status: "needs_user", reason: "Approve the deploy", goal: OBJECTIVE }],
     ["blocked", { status: "blocked", reason: "CI is out of memory", goal: OBJECTIVE }],
-  ] as const)("marks a %s goal Needs you", (_name, forkAttention) => {
+    ["requested", { status: "needs_user", reason: "Approve the deploy" }],
+  ] as const)("marks a %s thread Needs you", (_name, forkAttention) => {
     expect(sidebar(shell({ forkAttention }))).toEqual({ status: "input", pill: "Needs you" });
   });
 

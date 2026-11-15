@@ -453,6 +453,17 @@ blocks twice with no tool call between, and marks Done when the judge meets the
 goal. A user message that ends with `?` during an active goal pauses it and runs
 after the `/goal clear` (`apps/server/src/fork/goalStatus/`).
 
+### `t3_request_attention` (fork)
+
+Marks the caller's thread Needs you with a one-line `summary` and no form: the
+same `forkAttention` as `t3_goal_update`, without a goal, so the sidebar pill,
+the "Input needed" notification and a composer banner show it. The next message
+from the user, or from the thread's parent, clears it. In a thread with an
+active goal it acts as `t3_goal_update` `needs_user`. A child the user does not
+see (not `listed`, not a side chat) also wakes its parent with the summary, as a
+child's question does, and its finished run does not wake the parent a second
+time.
+
 ### `t3_thread_list`
 
 Lists durable thread shells in one project, newest first: `projectId` when

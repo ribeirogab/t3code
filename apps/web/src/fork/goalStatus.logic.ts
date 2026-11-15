@@ -1,4 +1,6 @@
 import {
+  forkAttentionFeature,
+  isRequestedAttention,
   threadNeedsYou,
   type ForkThreadAttention,
   type OrchestrationV2ProviderGoal,
@@ -102,5 +104,20 @@ export interface ForkNeedsYouInput {
 }
 
 export function forkNeedsYou(thread: ForkNeedsYouInput): boolean {
-  return threadNeedsYou(thread.source?.forkAttention) && isForkFeatureEnabled("goalStatus");
+  const attention = thread.source?.forkAttention;
+  return (
+    attention != null &&
+    threadNeedsYou(attention) &&
+    isForkFeatureEnabled(forkAttentionFeature(attention))
+  );
+}
+
+export function resolveNeedsYouBanner(input: {
+  readonly enabled: boolean;
+  readonly attention: ForkThreadAttention | null | undefined;
+  readonly showsGoal: boolean;
+}): string | null {
+  const { attention } = input;
+  if (!input.enabled || input.showsGoal || !isRequestedAttention(attention)) return null;
+  return attention?.reason ?? null;
 }

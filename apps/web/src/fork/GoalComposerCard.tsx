@@ -16,6 +16,7 @@ import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 import { cn } from "~/lib/utils";
 
 import type { GoalChip, GoalChipTone, GoalResultLink } from "./goalStatus.logic";
+import { NeedsYouComposerBanner, type NeedsYouCardModel } from "./NeedsYouComposerBanner";
 
 export interface GoalCardModel {
   readonly id: string;
@@ -118,7 +119,13 @@ function GoalCardResult({
   );
 }
 
-export function GoalComposerCard({ goal }: { readonly goal: GoalCardModel }) {
+export type ForkComposerCardModel = GoalCardModel | NeedsYouCardModel;
+
+export function GoalComposerCard({ goal }: { readonly goal: ForkComposerCardModel }) {
+  return "kind" in goal ? <NeedsYouComposerBanner banner={goal} /> : <GoalCard goal={goal} />;
+}
+
+function GoalCard({ goal }: { readonly goal: GoalCardModel }) {
   const [expanded, setExpanded] = useState(false);
   const canExpand = goal.onDismiss == null;
   const showsBody = expanded && canExpand;

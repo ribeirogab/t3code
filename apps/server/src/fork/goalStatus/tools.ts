@@ -46,4 +46,28 @@ const GoalUpdateTool = Tool.make("t3_goal_update", {
   .annotate(Tool.Idempotent, false)
   .annotate(Tool.OpenWorld, false);
 
-export const GoalStatusToolkit = Toolkit.make(GoalUpdateTool);
+const RequestAttentionTool = Tool.make("t3_request_attention", {
+  description:
+    "Tell the user that the next step is theirs: an answer, an ok, a login, or an action on their machine. The thread leaves Working, shows Needs you with `summary`, and notifies the user, with no form. Put the full request in your reply too, then end your turn; the user's next message clears it. Not for a status that needs nothing from the user.",
+  parameters: Schema.Struct({
+    summary: ForkAttentionReason.annotate({
+      description: "One line for the user: what they must do or decide.",
+    }),
+  }),
+  success: Schema.Struct({ next: Schema.String }),
+  failure: OrchestratorMcpFailure,
+  failureMode: "return",
+  dependencies: [
+    McpInvocationContext.McpInvocationContext,
+    ThreadManagementService.ThreadManagementService,
+    GoalStatus.GoalStatus,
+    SecureRandom.SecureRandom,
+  ],
+})
+  .annotate(Tool.Title, "Request attention")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, false)
+  .annotate(Tool.OpenWorld, false);
+
+export const GoalStatusToolkit = Toolkit.make(GoalUpdateTool, RequestAttentionTool);

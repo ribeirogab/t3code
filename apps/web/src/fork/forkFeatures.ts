@@ -217,6 +217,17 @@ export const FORK_FEATURES = [
     searchTerms: ["fork goal status needs you blocked done pause stop hook loop t3_goal_update"],
   },
   {
+    key: "requestAttention",
+    section: "Agents",
+    searchId: "fork-request-attention",
+    title: "Request attention",
+    description:
+      "Let agents mark a thread Needs you with a one-line summary, with no form. Your next message clears it.",
+    searchTerms: [
+      "fork request attention needs you notify owner working question form t3_request_attention",
+    ],
+  },
+  {
     key: "goalQuestionPause",
     section: "Chat",
     searchId: "fork-goal-question-pause",

@@ -416,3 +416,146 @@ it.effect("the judge's verdict turns the goal card into Done without a /goal cle
     assert.deepEqual([state.attention, state.queued], [{ status: "done", goal: OBJECTIVE }, []]);
   }).pipe(Effect.provide(layerTest)),
 );
+
+const SUMMARY = "Send the Mac login password to sign the Mac release";
+
+it.effect("t3_request_attention marks Needs you, and the owner's reply clears it", () =>
+  Effect.gen(function* () {
+    const goals = yield* GoalStatus.GoalStatus;
+    yield* startGoalRun;
+
+    const outcome = yield* goals.request({
+      commandId: CommandId.make("mcp:request-attention"),
+      threadId,
+      summary: SUMMARY,
+    });
+
+    const expected = { status: "needs_user", reason: SUMMARY } as const;
+    const state = yield* goalState;
+    assert.equal(outcome, "thread");
+    assert.deepEqual(
+      [state.attention, state.shellAttention, state.stopped],
+      [expected, expected, []],
+    );
+
+    yield* userSends("reply", "mandei a senha");
+
+    const cleared = yield* goalState;
+    assert.deepEqual([cleared.attention, cleared.shellAttention], [null, null]);
+  }).pipe(Effect.provide(layerTest)),
+);
+
+it.effect("t3_request_attention in an active goal pauses it like t3_goal_update", () =>
+  Effect.gen(function* () {
+    const goals = yield* GoalStatus.GoalStatus;
+    const { run } = yield* startGoalRun;
+    yield* goalUpdated("active", activeGoal(1));
+
+    const outcome = yield* goals.request({
+      commandId: CommandId.make("mcp:request-in-goal"),
+      threadId,
+      summary: SUMMARY,
+    });
+
+    const state = yield* goalState;
+    assert.equal(outcome, "goal");
+    assert.deepEqual(state.attention, { status: "needs_user", reason: SUMMARY, goal: OBJECTIVE });
+    assert.deepEqual([state.queued, state.stopped], [[GOAL_CLEAR_TEXT], [run.id]]);
+  }).pipe(Effect.provide(layerTest)),
+);
+
+const delegateChild = Effect.fn("test.delegateChild")(function* (listed: boolean) {
+  const orchestrator = yield* Orchestrator.OrchestratorV2;
+  const projections = yield* ProjectionStore.ProjectionStoreV2;
+  const { run } = yield* startGoalRun;
+  yield* orchestrator.dispatch({
+    type: "delegated_task.request",
+    commandId: CommandId.make("delegate-release-mac"),
+    parentThreadId: threadId,
+    parentRunId: run.id,
+    parentNodeId: run.rootNodeId!,
+    task: "Build and sign the Mac release.",
+    title: "Mac release",
+    completionWake: "always",
+    modelSelection,
+    runtimeMode: "full-access",
+    interactionMode: "default",
+    createdBy: "agent",
+    creationSource: "mcp",
+    listed,
+  });
+  const task = (yield* projections.getThreadProjection(threadId)).subagents[0]!;
+  return { task, childThreadId: task.childThreadId! };
+});
+
+const parentWakes = Effect.gen(function* () {
+  const projections = yield* ProjectionStore.ProjectionStoreV2;
+  const { messages } = yield* projections.getThreadRecords(threadId, ["messages"]);
+  return messages
+    .filter((message) => message.notification !== undefined)
+    .map((message) => ({ text: message.text, summary: message.notification?.summary }));
+});
+
+const childAttention = Effect.fn("test.childAttention")(function* (childThreadId: ThreadId) {
+  const projections = yield* ProjectionStore.ProjectionStoreV2;
+  return (yield* projections.getThread(childThreadId)).forkAttention ?? null;
+});
+
+it.effect("a hidden child's request reaches its parent, and the parent's reply clears it", () =>
+  Effect.gen(function* () {
+    const goals = yield* GoalStatus.GoalStatus;
+    const orchestrator = yield* Orchestrator.OrchestratorV2;
+    const { task, childThreadId } = yield* delegateChild(false);
+
+    const outcome = yield* goals.request({
+      commandId: CommandId.make("mcp:child-request"),
+      threadId: childThreadId,
+      summary: SUMMARY,
+    });
+
+    assert.equal(outcome, "parent");
+    assert.deepEqual(yield* childAttention(childThreadId), {
+      status: "needs_user",
+      reason: SUMMARY,
+    });
+    const [wake] = yield* parentWakes;
+    assert.equal(wake?.summary, 'Delegated task "Mac release" needs the user');
+    assert.include(wake?.text, `Delegated task ${task.id} needs the user: ${SUMMARY}`);
+    assert.include(wake?.text, `t3_thread_send to threadId ${childThreadId}`);
+
+    yield* orchestrator.dispatch({
+      type: "message.dispatch",
+      commandId: CommandId.make("parent-reply"),
+      threadId: childThreadId,
+      messageId: MessageId.make("message:parent-reply"),
+      senderThreadId: threadId,
+      text: "The password is in the vault entry Mac login.",
+      attachments: [],
+      dispatchMode: { type: "queue_after_active" },
+      createdBy: "agent",
+      creationSource: "mcp",
+    });
+
+    assert.isNull(yield* childAttention(childThreadId));
+  }).pipe(Effect.provide(layerTest)),
+);
+
+it.effect("a listed child's request stays on its own row", () =>
+  Effect.gen(function* () {
+    const goals = yield* GoalStatus.GoalStatus;
+    const { childThreadId } = yield* delegateChild(true);
+
+    const outcome = yield* goals.request({
+      commandId: CommandId.make("mcp:listed-child-request"),
+      threadId: childThreadId,
+      summary: SUMMARY,
+    });
+
+    assert.equal(outcome, "thread");
+    assert.deepEqual(yield* childAttention(childThreadId), {
+      status: "needs_user",
+      reason: SUMMARY,
+    });
+    assert.deepEqual(yield* parentWakes, []);
+  }).pipe(Effect.provide(layerTest)),
+);

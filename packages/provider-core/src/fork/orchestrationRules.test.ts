@@ -10,6 +10,7 @@ import {
   forkOrchestrationInstructions,
   forkOrchestrationSections,
   GOAL_WAITS_ON_THE_USER,
+  REQUEST_ATTENTION_WHEN_THE_NEXT_STEP_IS_THE_USERS,
 } from "./orchestrationRules.ts";
 
 const FORK_RULE = "- Recurring or timed work: `schedule_task`, not `CronCreate`.";
@@ -20,6 +21,10 @@ describe("fork orchestration rules", () => {
     expect(forkOrchestrationSections().join("\n")).toContain(FORK_RULE);
     expect(forkOrchestrationInstructions()).toContain(FORK_RULE);
     expect(forkOrchestrationInstructions()).toContain(GOAL_WAITS_ON_THE_USER);
+    expect(forkOrchestrationInstructions()).toContain(
+      REQUEST_ATTENTION_WHEN_THE_NEXT_STEP_IS_THE_USERS,
+    );
+    expect(forkOrchestrationInstructions()).not.toContain("with your question tool");
     expect(forkOrchestrationInstructions()).toContain(
       "never a background `Agent`. A thread the user asked to run apart: `delegate_task` with `listed:true`",
     );
@@ -50,5 +55,13 @@ describe("fork orchestration rules", () => {
     using _settings = overrideForkFeatureSettings({ features: { goalStatus: false } });
     expect(forkOrchestrationInstructions()).toContain(FORK_RULE);
     expect(forkOrchestrationInstructions()).not.toContain(GOAL_WAITS_ON_THE_USER);
+  });
+
+  it("keeps the question tool rule while Request attention is off", () => {
+    using _settings = overrideForkFeatureSettings({ features: { requestAttention: false } });
+    expect(forkOrchestrationInstructions()).toContain("with your question tool");
+    expect(forkOrchestrationInstructions()).not.toContain(
+      REQUEST_ATTENTION_WHEN_THE_NEXT_STEP_IS_THE_USERS,
+    );
   });
 });

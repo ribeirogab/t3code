@@ -22,7 +22,7 @@ interface ProviderThreadReader {
 export const goalMessagePlan = Effect.fn("fork.goalStatus.goalMessagePlan")(function* (
   reader: ProviderThreadReader,
   command: Extract<OrchestrationV2Command, { readonly type: "message.dispatch" }>,
-  thread: Pick<OrchestrationV2AppThread, "activeProviderThreadId" | "forkAttention">,
+  thread: Pick<OrchestrationV2AppThread, "activeProviderThreadId" | "forkAttention" | "lineage">,
 ) {
   const activeProviderThreadId = thread.activeProviderThreadId;
   const goalThread =
@@ -31,5 +31,10 @@ export const goalMessagePlan = Effect.fn("fork.goalStatus.goalMessagePlan")(func
           "providerThreads",
         ])).providerThreads.find((candidate) => candidate.id === activeProviderThreadId)
       : undefined;
-  return planGoalMessage({ command, attention: thread.forkAttention, goalThread });
+  return planGoalMessage({
+    command,
+    attention: thread.forkAttention,
+    lineage: thread.lineage,
+    goalThread,
+  });
 });

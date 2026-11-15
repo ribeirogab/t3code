@@ -32,6 +32,16 @@ export const ForkThreadAttention = Schema.Struct({
 });
 export type ForkThreadAttention = typeof ForkThreadAttention.Type;
 
+export function forkAttentionFeature(
+  attention: ForkThreadAttention,
+): "goalStatus" | "requestAttention" {
+  return attention.goal === undefined ? "requestAttention" : "goalStatus";
+}
+
+export function isRequestedAttention(attention: ForkThreadAttention | null | undefined): boolean {
+  return attention?.status === "needs_user" && attention.goal === undefined;
+}
+
 export function threadNeedsYou(attention: ForkThreadAttention | null | undefined): boolean {
   return attention?.status === "needs_user" || attention?.status === "blocked";
 }

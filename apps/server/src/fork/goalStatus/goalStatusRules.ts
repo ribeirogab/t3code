@@ -1,15 +1,21 @@
 import {
   CommandId,
+  forkAttentionFeature,
   forkFeatureActive,
+  isListedThreadLineage,
   MessageId,
   parseGoalCommand,
   type ForkGoalUpdateStatus,
   type ForkThreadAttention,
   type OrchestrationV2AppThread,
+  type OrchestrationV2AppThreadLineage,
   type OrchestrationV2Command,
   type OrchestrationV2ProviderThread,
+  type OrchestrationV2Subagent,
   type OrchestrationV2TurnItem,
+  type ThreadId,
 } from "@t3tools/contracts";
+import { reportLabel } from "@t3tools/provider-core/server/notification";
 
 type MessageCommand = Extract<OrchestrationV2Command, { readonly type: "message.dispatch" }>;
 type MetadataCommand = Extract<OrchestrationV2Command, { readonly type: "thread.metadata.update" }>;
@@ -31,10 +37,14 @@ const WORK_ITEM_TYPES: ReadonlySet<OrchestrationV2TurnItem["type"]> = new Set([
 
 export const GOAL_CLEAR_TEXT = "/goal clear";
 
+export function forkAttentionActive(attention: ForkThreadAttention | null | undefined): boolean {
+  return attention != null && forkFeatureActive(forkAttentionFeature(attention));
+}
+
 export function forkAttentionForShell(
   thread: Pick<OrchestrationV2AppThread, "forkAttention">,
 ): ForkThreadAttention | null {
-  return forkFeatureActive("goalStatus") ? (thread.forkAttention ?? null) : null;
+  return forkAttentionActive(thread.forkAttention) ? (thread.forkAttention ?? null) : null;
 }
 
 export function attentionPatch(
@@ -123,11 +133,59 @@ export function goalUpdateAttention(input: {
   };
 }
 
+export function requestedAttention(summary: string): ForkThreadAttention {
+  return { status: "needs_user", reason: shortReason(summary.trim()) };
+}
+
+export function ownerWatchesThread(lineage: OrchestrationV2AppThreadLineage): boolean {
+  return (
+    lineage.parentThreadId === null || lineage.sideChat === true || isListedThreadLineage(lineage)
+  );
+}
+
+export function parentAttentionWake(input: {
+  readonly commandId: string;
+  readonly parentThreadId: ThreadId;
+  readonly childThreadId: ThreadId;
+  readonly task: Pick<OrchestrationV2Subagent, "id" | "title" | "prompt">;
+  readonly summary: string;
+}): MessageCommand {
+  const { task, childThreadId } = input;
+  const label = reportLabel(task.title?.trim() || task.prompt);
+  return {
+    type: "message.dispatch",
+    commandId: CommandId.make(`${input.commandId}:parent-wake`),
+    threadId: input.parentThreadId,
+    messageId: MessageId.make(`${input.commandId}:parent-wake`),
+    text: `Delegated task ${task.id} needs the user: ${input.summary}\nIf the task or the user's instructions already answer it, reply with t3_thread_send to threadId ${childThreadId}. Otherwise call t3_request_attention with what the user must do, then pass the answer to that thread.`,
+    notification: {
+      source: { kind: "delegated_task", taskIds: [task.id], childThreadId },
+      outcome: "unknown",
+      summary: `Delegated task${label === undefined ? "" : ` "${label}"`} needs the user`,
+    },
+    attachments: [],
+    dispatchMode: { type: "queue_after_active" },
+    createdBy: "agent",
+    creationSource: "server",
+  };
+}
+
 function answersThread(command: MessageCommand): boolean {
   return (
     command.notification === undefined &&
     command.creationSource !== "server" &&
     command.creationSource !== "provider"
+  );
+}
+
+function answersRequest(
+  command: MessageCommand,
+  lineage: Pick<OrchestrationV2AppThreadLineage, "parentThreadId">,
+): boolean {
+  return (
+    answersThread(command) &&
+    (command.createdBy === "user" ||
+      (lineage.parentThreadId !== null && command.senderThreadId === lineage.parentThreadId))
   );
 }
 
@@ -209,11 +267,11 @@ function queued(command: MessageCommand): MessageCommand {
 export function planGoalMessage(input: {
   readonly command: MessageCommand;
   readonly attention: ForkThreadAttention | null | undefined;
+  readonly lineage: Pick<OrchestrationV2AppThreadLineage, "parentThreadId">;
   readonly goalThread: GoalThread | undefined;
 }): GoalMessagePlan {
   const { command, attention, goalThread } = input;
   const unchanged: GoalMessagePlan = { mutation: null, pause: null, message: command };
-  if (!forkFeatureActive("goalStatus")) return unchanged;
   const question = openQuestion(command.text);
   if (
     wantsGoalForMessage(command) &&
@@ -231,7 +289,13 @@ export function planGoalMessage(input: {
       message: queued(command),
     };
   }
-  if (attention == null || !answersThread(command)) return unchanged;
+  if (attention == null || !forkAttentionActive(attention)) return unchanged;
+  if (attention.goal === undefined) {
+    return answersRequest(command, input.lineage)
+      ? { ...unchanged, mutation: metadataUpdate(command, null) }
+      : unchanged;
+  }
+  if (!answersThread(command)) return unchanged;
   const next = answeredAttention(command, attention);
   return next === undefined ? unchanged : { ...unchanged, mutation: metadataUpdate(command, next) };
 }

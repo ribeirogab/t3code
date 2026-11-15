@@ -105,11 +105,15 @@ describe("planGoalMessage", () => {
     reason: "Send the Mac password",
     goal: "Ship the release",
   };
+  const parentThreadId = ThreadId.make("thread:parent");
+  const lineage = { parentThreadId };
+  const requested: ForkThreadAttention = { status: "needs_user", reason: "Approve the deploy" };
 
   it("pauses an active goal for the owner's question and queues the question after it", () => {
     const plan = planGoalMessage({
       command: message("esses checks rodam no CI?"),
       attention: null,
+      lineage,
       goalThread,
     });
     expect(plan.mutation?.forkAttention).toEqual({
@@ -133,7 +137,7 @@ describe("planGoalMessage", () => {
       { ...goalThread, driver: ProviderDriverKind.make("antigravity") },
     ],
   ])("leaves %s alone", (_name, command, thread) => {
-    expect(planGoalMessage({ command, attention: null, goalThread: thread })).toEqual({
+    expect(planGoalMessage({ command, attention: null, lineage, goalThread: thread })).toEqual({
       mutation: null,
       pause: null,
       message: command,
@@ -155,9 +159,21 @@ describe("planGoalMessage", () => {
     ],
     ["a /goal command ends the hold", message("/goal Ship it"), needsYou, null],
     ["a message after Done clears it", message("valeu"), { status: "done", goal: "x" }, null],
+    ["the owner's reply ends a request for attention", message("aprovado"), requested, null],
+    [
+      "the parent's reply ends its child's request",
+      message("approved", {
+        createdBy: "agent",
+        creationSource: "mcp",
+        senderThreadId: parentThreadId,
+      }),
+      requested,
+      null,
+    ],
   ] as const)("%s", (_name, command, attention, next) => {
     expect(
-      planGoalMessage({ command, attention, goalThread: undefined }).mutation?.forkAttention,
+      planGoalMessage({ command, attention, lineage, goalThread: undefined }).mutation
+        ?.forkAttention,
     ).toEqual(next);
   });
 
@@ -167,16 +183,36 @@ describe("planGoalMessage", () => {
       message("Background task completed", { createdBy: "agent", creationSource: "server" }),
     ],
     ["a paused goal", message("oi")],
+    [
+      "a request for attention and a sibling's message",
+      message("CI is green", {
+        createdBy: "agent",
+        creationSource: "mcp",
+        senderThreadId: ThreadId.make("thread:sibling"),
+      }),
+    ],
+    [
+      "a request for attention and a server wake",
+      message("Background task completed", { createdBy: "agent", creationSource: "server" }),
+    ],
   ])("keeps the attention for %s", (name, command) => {
     const attention: ForkThreadAttention =
-      name === "a paused goal" ? { status: "paused", goal: "Ship the release" } : needsYou;
-    expect(planGoalMessage({ command, attention, goalThread: undefined }).mutation).toBeNull();
+      name === "a paused goal"
+        ? { status: "paused", goal: "Ship the release" }
+        : name.startsWith("a request")
+          ? requested
+          : needsYou;
+    expect(
+      planGoalMessage({ command, attention, lineage, goalThread: undefined }).mutation,
+    ).toBeNull();
   });
 
-  it("acts like upstream with Goal status off", () => {
-    using _settings = overrideForkFeatureSettings({ features: { goalStatus: false } });
-    const command = message("esses checks rodam no CI?");
-    expect(planGoalMessage({ command, attention: needsYou, goalThread })).toEqual({
+  it.each([
+    ["Goal status", "goalStatus", needsYou, message("esses checks rodam no CI?")],
+    ["Request attention", "requestAttention", requested, message("aprovado")],
+  ] as const)("acts like upstream with %s off", (_name, feature, attention, command) => {
+    using _settings = overrideForkFeatureSettings({ features: { [feature]: false } });
+    expect(planGoalMessage({ command, attention, lineage, goalThread })).toEqual({
       mutation: null,
       pause: null,
       message: command,
