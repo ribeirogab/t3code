@@ -30,7 +30,7 @@ Every change goes through a pull request into `custom`. Do not commit or push to
 3. Run the typecheck, the lint, the format check, and the tests of the area you changed.
    `fork-ci.yml` runs `vp run check:changed` on every pull request into `custom`. This check replaces a local `vp run check:changed` as the gate before the merge.
 4. Push the branch and open a pull request into `custom` with the title `fork: <change>`.
-5. Stop and ask the owner to approve. Merge only after the approval.
+5. The owner gives standing approval. Merge when `Fork CI / Check changed` is green, then make the release.
 6. Rebase the branch onto the latest `custom` and squash merge it:
 
    ```sh
