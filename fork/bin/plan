@@ -4,7 +4,7 @@ set -euo pipefail
 fork_repository="$1"
 fork_branch="$2"
 force_rebuild="${3:-false}"
-trigger="${4:-workflow_dispatch}"
+upstream_only="${4:-false}"
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 upstream_repository="${UPSTREAM_REPOSITORY:-pingdotgg/t3code}"
@@ -25,7 +25,7 @@ released_tag="$(
 action="build"
 if [[ "$comparison" != "ahead" && "$comparison" != "identical" ]]; then
   action="rebase"
-elif [[ "$trigger" == "schedule" ]]; then
+elif [[ "$upstream_only" == "true" ]]; then
   action="skip"
 elif [[ -n "$released_tag" && "$force_rebuild" != "true" ]]; then
   action="skip"
