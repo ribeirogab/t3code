@@ -58,3 +58,25 @@ export function overrideForkFeatureSettings(settings: Partial<ForkFeatureSetting
     },
   };
 }
+
+export const agentLanguageLine = (language: string) => `Answer the user in ${language}.`;
+
+let activeAgentLanguage = "";
+
+export function setActiveAgentLanguage(language: string): void {
+  activeAgentLanguage = language;
+}
+
+export function forkAgentLanguage(): string {
+  return forkFeaturesOn() ? activeAgentLanguage : "";
+}
+
+export function overrideAgentLanguage(language: string): Disposable {
+  const previous = activeAgentLanguage;
+  activeAgentLanguage = language;
+  return {
+    [Symbol.dispose]: () => {
+      activeAgentLanguage = previous;
+    },
+  };
+}

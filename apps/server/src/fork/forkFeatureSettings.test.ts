@@ -1,5 +1,11 @@
 import { assert, it } from "@effect/vitest";
-import { forkFeatureActive, forkFeaturesOn, overrideForkFeatureSettings } from "@t3tools/contracts";
+import {
+  forkAgentLanguage,
+  forkFeatureActive,
+  forkFeaturesOn,
+  overrideAgentLanguage,
+  overrideForkFeatureSettings,
+} from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
@@ -17,10 +23,12 @@ const events = {
 it.effect("reads the fork switches from the server settings when the server starts", () =>
   Effect.gen(function* () {
     using _restore = overrideForkFeatureSettings({});
+    using _language = overrideAgentLanguage("");
     yield* Layer.build(
       ForkFeatureSettings.layer.pipe(
         Layer.provide(
           ServerSettings.layerTest({
+            agentLanguage: "Brazilian Portuguese",
             forkFeatures: { master: true, features: { sharedWorktree: false } },
           }),
         ),
@@ -30,6 +38,7 @@ it.effect("reads the fork switches from the server settings when the server star
     assert.isTrue(forkFeaturesOn());
     assert.isFalse(forkFeatureActive("sharedWorktree"));
     assert.isTrue(forkFeatureActive("nestedThreads"));
+    assert.equal(forkAgentLanguage(), "Brazilian Portuguese");
   }).pipe(Effect.scoped),
 );
 

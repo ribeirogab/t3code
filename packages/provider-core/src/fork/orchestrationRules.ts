@@ -1,4 +1,4 @@
-import { forkFeatureActive } from "@t3tools/contracts";
+import { agentLanguageLine, forkAgentLanguage, forkFeatureActive } from "@t3tools/contracts";
 
 import {
   T3_CODE_ORCHESTRATION_INSTRUCTIONS,
@@ -47,14 +47,25 @@ function withForkRules() {
   return withRules;
 }
 
+function agentLanguageSection(): string | undefined {
+  const language = forkAgentLanguage();
+  return language === ""
+    ? undefined
+    : `### Language\n\n- ${agentLanguageLine(language)} This holds for every reply, also after a notification, a compaction, a goal continuation, or long output in another language.`;
+}
+
 export function forkOrchestrationSections(): ReadonlyArray<string> {
-  return forkFeatureActive("orchestrationRules")
+  const sections = forkFeatureActive("orchestrationRules")
     ? withForkRules().sections
     : T3_CODE_ORCHESTRATION_SECTIONS;
+  const language = agentLanguageSection();
+  return language === undefined ? sections : [...sections, language];
 }
 
 export function forkOrchestrationInstructions(): string {
-  return forkFeatureActive("orchestrationRules")
+  const instructions = forkFeatureActive("orchestrationRules")
     ? withForkRules().instructions
     : T3_CODE_ORCHESTRATION_INSTRUCTIONS;
+  const language = agentLanguageSection();
+  return language === undefined ? instructions : `${instructions}\n${language}\n`;
 }
