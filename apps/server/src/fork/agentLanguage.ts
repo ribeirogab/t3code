@@ -1,4 +1,4 @@
-import { forkFeaturesOn } from "@t3tools/contracts";
+import { agentLanguageLine, forkFeaturesOn } from "@t3tools/contracts";
 import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -6,8 +6,6 @@ import * as Option from "effect/Option";
 import type * as ServerSettings from "../serverSettings.ts";
 
 type TurnMessage = ProviderAdapter.ProviderAdapterV2TurnMessage;
-
-export const agentLanguageLine = (language: string) => `Answer the user in ${language}.`;
 
 const isSlashCommand = (text: string) => text.trimStart().startsWith("/");
 

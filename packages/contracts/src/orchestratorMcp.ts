@@ -3,8 +3,9 @@ import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
 
 import { AuthMcpClientAccess } from "./auth.ts";
-import { ForkNotifyParentToolInput } from "./fork/notifyParent.ts";
+import { ForkNotifyParentToolInput, ForkOwnerFacingToolInput } from "./fork/notifyParent.ts";
 import { ForkGoal } from "./fork/threadHandoff.ts";
+import { ForkThreadSendWakeInput } from "./fork/threadSendWake.ts";
 import {
   ContextTransferId,
   EnvironmentId,
@@ -208,6 +209,7 @@ export const OrchestratorMcpDelegateTaskInput = Schema.Struct({
     }),
   ),
   notifyParent: Schema.optional(ForkNotifyParentToolInput),
+  ownerFacing: Schema.optional(ForkOwnerFacingToolInput),
   goal: Schema.optional(ForkGoal),
 });
 export type OrchestratorMcpDelegateTaskInput = typeof OrchestratorMcpDelegateTaskInput.Type;
@@ -578,6 +580,7 @@ export const OrchestratorMcpThreadSendInput = Schema.Struct({
     }),
   ),
   clientRequestId: Schema.optional(OrchestratorMcpClientRequestId),
+  wake: Schema.optional(ForkThreadSendWakeInput),
 });
 export type OrchestratorMcpThreadSendInput = typeof OrchestratorMcpThreadSendInput.Type;
 
