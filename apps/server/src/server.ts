@@ -784,7 +784,6 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   GoalStatusLayer.layer,
   CompactAndContinue.layer.pipe(Layer.provide(ProjectionStoreV2.layer)),
   PublishedPorts.layer,
-  ForkFeatureSettings.layer,
   ProviderUsageLimitsIngestion.layer,
   layerProviderInstallationRefresh,
   ProviderInstallation.layer,
@@ -792,6 +791,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   Layer.effectDiscard(ProjectSettingsOverrideSweep.sweep),
 ).pipe(
   Layer.provideMerge(layerOrchestrationApplication),
+  Layer.provideMerge(ForkFeatureSettings.layer),
   // One hub, which the feeders above and the workflow store inside the runtime publish to.
   Layer.provideMerge(MilestoneHub.layer),
   Layer.provideMerge(layerTaskFolders),

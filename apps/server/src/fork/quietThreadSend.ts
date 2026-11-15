@@ -41,7 +41,7 @@ export function heldNotesFor(
 ): ReadonlyArray<ForkHeldThreadNote> {
   const drainsProviderOutput =
     message.createdBy === "agent" && message.creationSource === "provider";
-  if (promptless || drainsProviderOutput) return [];
+  if (promptless || drainsProviderOutput || !forkFeatureActive("quietThreadSend")) return [];
   return heldNotes.filter((note) => note.threadId === threadId);
 }
 

@@ -56,6 +56,9 @@ describe("wireLineage", () => {
   it("is stable when applied to its own output", () => {
     const wired = wireLineage(lineage({ listed: true, detached: true }));
     expect(wireLineage(wired)).toBe(wired);
+    using _settings = overrideForkFeatureSettings({ master: false });
+    const upstream = wireLineage(lineage({ relationshipToParent: "fork", detached: true }));
+    expect(wireLineage(upstream)).toBe(upstream);
   });
 });
 
@@ -63,15 +66,19 @@ describe("wireLineage while Nested threads is off", () => {
   it.each([
     { master: false, features: {} },
     { master: true, features: { nestedThreads: false } },
-  ])("sends the stored lineage without the fork fields, as upstream does, with %o", (settings) => {
-    using _settings = overrideForkFeatureSettings(settings);
-    expect(wireLineage(lineage({ listed: true }))).toEqual(lineage({}));
-    expect(
-      wireLineage(lineage({ relationshipToParent: "fork", listed: false, detached: true })),
-    ).toEqual(lineage({ relationshipToParent: "fork" }));
-    const upstream = lineage({});
-    expect(wireLineage(upstream)).toBe(upstream);
-  });
+  ])(
+    "sends the lineage without the fork fields, and a detached fork without a parent, with %o",
+    (settings) => {
+      using _settings = overrideForkFeatureSettings(settings);
+      expect(wireLineage(lineage({ listed: true }))).toEqual(lineage({}));
+      expect(
+        wireLineage(lineage({ relationshipToParent: "fork", listed: false, detached: true })),
+      ).toEqual(lineage({ parentThreadId: null, relationshipToParent: null }));
+      expect(wireLineage(lineage({ listed: true, detached: true }))).toEqual(lineage({}));
+      const upstream = lineage({});
+      expect(wireLineage(upstream)).toBe(upstream);
+    },
+  );
 });
 
 describe("wireThreadLists", () => {

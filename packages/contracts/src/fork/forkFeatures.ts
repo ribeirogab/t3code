@@ -23,7 +23,9 @@ export type ForkServerFeature =
   | "goalStatus"
   | "goalQuestionPause"
   | "compactAndContinueTool"
-  | "requestAttention";
+  | "requestAttention"
+  | "agentLanguage"
+  | "threadIdRepair";
 
 export const ForkFeatureSettings = Schema.Struct({
   master: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
@@ -40,18 +42,40 @@ export const ForkFeatureSettingsPatch = Schema.Struct({
 
 export const DEFAULT_FORK_FEATURE_SETTINGS: ForkFeatureSettings = { master: true, features: {} };
 
+const DEFAULT_OFF_FORK_FEATURES: Readonly<Record<string, string>> = {
+  hideSidebarFooterPullRequests: "sidebarFooterPullRequests",
+  hideSidebarFooterUsage: "sidebarFooterUsage",
+};
+
+export function forkFeatureChoice(
+  features: ForkFeatureSettings["features"],
+  feature: string,
+): boolean {
+  const choice = features[feature];
+  if (choice !== undefined) return choice;
+  const replacedFeature = DEFAULT_OFF_FORK_FEATURES[feature];
+  return replacedFeature === undefined || features[replacedFeature] === false;
+}
+
 export function isForkFeatureOn(settings: ForkFeatureSettings, feature: string): boolean {
-  return settings.master && settings.features[feature] !== false;
+  return settings.master && forkFeatureChoice(settings.features, feature);
 }
 
 let activeForkFeatureSettings = DEFAULT_FORK_FEATURE_SETTINGS;
+const settingsListeners = new Set<() => void>();
 
 export function setActiveForkFeatureSettings(settings: ForkFeatureSettings): void {
   activeForkFeatureSettings = settings;
+  for (const listener of settingsListeners) listener();
 }
 
-export function forkFeaturesOn(): boolean {
-  return activeForkFeatureSettings.master;
+export function onForkFeatureSettingsChange(listener: () => void): Disposable {
+  settingsListeners.add(listener);
+  return {
+    [Symbol.dispose]: () => {
+      settingsListeners.delete(listener);
+    },
+  };
 }
 
 export function forkFeatureActive(feature: ForkServerFeature): boolean {
@@ -60,10 +84,10 @@ export function forkFeatureActive(feature: ForkServerFeature): boolean {
 
 export function overrideForkFeatureSettings(settings: Partial<ForkFeatureSettings>): Disposable {
   const previous = activeForkFeatureSettings;
-  activeForkFeatureSettings = { ...DEFAULT_FORK_FEATURE_SETTINGS, ...settings };
+  setActiveForkFeatureSettings({ ...DEFAULT_FORK_FEATURE_SETTINGS, ...settings });
   return {
     [Symbol.dispose]: () => {
-      activeForkFeatureSettings = previous;
+      setActiveForkFeatureSettings(previous);
     },
   };
 }
@@ -77,7 +101,7 @@ export function setActiveAgentLanguage(language: string): void {
 }
 
 export function forkAgentLanguage(): string {
-  return forkFeaturesOn() ? activeAgentLanguage : "";
+  return forkFeatureActive("agentLanguage") ? activeAgentLanguage : "";
 }
 
 export function overrideAgentLanguage(language: string): Disposable {

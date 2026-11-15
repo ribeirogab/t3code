@@ -1,4 +1,4 @@
-import { agentLanguageLine, forkFeaturesOn } from "@t3tools/contracts";
+import { agentLanguageLine, forkFeatureActive } from "@t3tools/contracts";
 import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -19,7 +19,8 @@ export function withAgentLanguage<Input extends { readonly message: TurnMessage 
   input: Input,
   language: string,
 ): Input {
-  if (language === "" || !forkFeaturesOn() || !isInjectedText(input.message)) return input;
+  if (language === "" || !forkFeatureActive("agentLanguage") || !isInjectedText(input.message))
+    return input;
   return {
     ...input,
     message: { ...input.message, text: `${input.message.text}\n\n${agentLanguageLine(language)}` },

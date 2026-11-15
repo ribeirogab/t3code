@@ -1610,7 +1610,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
         metaLineEmpty &&
           (titleFirst
             ? "[contain-intrinsic-size:auto_40px]"
-            : "[contain-intrinsic-size:auto_58px]"),
+            : "[contain-intrinsic-size:auto_60px]"),
         props.nesting && nestedListItemClassName,
         sortable?.isDragging && "relative z-20",
       )}
