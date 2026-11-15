@@ -98,6 +98,11 @@ it.layer(NodeServices.layer)("quiet thread send", (it) => {
       );
       assert.deepEqual(QuietThreadSend.heldNotesFor(hubId, userTurn, true), []);
       assert.deepEqual(QuietThreadSend.heldNotesFor(caseId, userTurn, false), []);
+      {
+        using _settings = overrideForkFeatureSettings({ features: { quietThreadSend: false } });
+        assert.deepEqual(QuietThreadSend.heldNotesFor(hubId, userTurn, false), []);
+      }
+      assert.lengthOf(QuietThreadSend.heldNotesFor(hubId, userTurn, false), 1);
 
       yield* QuietThreadSend.releaseHeldNotes(notes);
       assert.deepEqual(QuietThreadSend.heldNotesFor(hubId, userTurn, false), []);

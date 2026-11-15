@@ -1,7 +1,7 @@
 export const AGENT_LANGUAGE_SEARCH_ID = "fork-agent-language";
 
 export const AGENT_LANGUAGE_SETTING = {
-  title: "Agent language",
+  title: "Answer language",
   description: "Agents answer in this language, also after PR updates, wakes, and compactions.",
   searchTerms: ["fork agent language reply answer portuguese english locale injected messages"],
 };
