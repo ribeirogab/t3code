@@ -1,5 +1,6 @@
 import {
   forkFeatureActive,
+  setActiveAgentLanguage,
   setActiveForkFeatureSettings,
   type ForkFeatureSettings,
 } from "@t3tools/contracts";
@@ -38,14 +39,21 @@ export const layer = Layer.effectDiscard(
     const changes = yield* settings.subscribeChanges;
     yield* settings.getSettings.pipe(
       Effect.tap((current) =>
-        Effect.sync(() => setActiveForkFeatureSettings(current.forkFeatures)),
+        Effect.sync(() => {
+          setActiveForkFeatureSettings(current.forkFeatures);
+          setActiveAgentLanguage(current.agentLanguage);
+        }),
       ),
       Effect.catch((error) =>
         Effect.logWarning("fork feature settings could not be read", { error }),
       ),
     );
     yield* Effect.forkScoped(
-      Stream.runForEach(changes, (next) => applyForkFeatureSettings(events, next.forkFeatures)),
+      Stream.runForEach(changes, (next) =>
+        Effect.sync(() => setActiveAgentLanguage(next.agentLanguage)).pipe(
+          Effect.andThen(applyForkFeatureSettings(events, next.forkFeatures)),
+        ),
+      ),
     );
   }),
 );

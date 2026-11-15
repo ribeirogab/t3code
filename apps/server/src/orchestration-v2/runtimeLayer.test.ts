@@ -6974,6 +6974,8 @@ it.layer(layerTest)("OrchestrationV2LayerLive lifecycle", (it) => {
     "closed notice",
     "closed notice unlinked and relinked",
     "reopened",
+    "conflict resolved",
+    "conflict still open",
   ] as const)("revalidates a queued pull-request wake before promotion: %s", (mode) =>
     Effect.gen(function* () {
       const orchestrator = yield* Orchestrator.OrchestratorV2;
@@ -6984,8 +6986,15 @@ it.layer(layerTest)("OrchestrationV2LayerLive lifecycle", (it) => {
       );
       const finalNotice =
         mode === "closed notice" || mode === "closed notice unlinked and relinked";
+      const conflictNews = mode === "conflict resolved" || mode === "conflict still open";
+      const wakeSummary = finalNotice
+        ? "#7: closed, stopped watching"
+        : conflictNews
+          ? "#7: merge conflict"
+          : "#7: checks failed";
       const deliverable =
         mode === "still watching" ||
+        mode === "conflict still open" ||
         mode === "closed notice" ||
         mode === "reopened" ||
         mode === "comments then newer head" ||
@@ -7003,7 +7012,7 @@ it.layer(layerTest)("OrchestrationV2LayerLive lifecycle", (it) => {
         dispatchMode: { type: "start_immediately" },
       });
       const wakeMessageId = MessageId.make(`${threadId}-wake`);
-      const recordedWatch = { ...watch, headSha: "abc123", wakes: 1 };
+      const recordedWatch = { ...watch, headSha: "abc123", wakes: 1, conflicting: conflictNews };
       yield* orchestrator.dispatch({
         type: "thread.pull-request-watch.sync",
         commandId: CommandId.make(`${threadId}-wake`),
@@ -7017,7 +7026,7 @@ it.layer(layerTest)("OrchestrationV2LayerLive lifecycle", (it) => {
           notification: {
             source: { kind: "monitor" },
             outcome: "updated",
-            summary: finalNotice ? "#7: closed, stopped watching" : "#7: checks failed",
+            summary: wakeSummary,
           },
           ...(mode === "comments then newer head" || mode === "comment limit"
             ? { includesRemarks: true }
@@ -7137,6 +7146,15 @@ it.layer(layerTest)("OrchestrationV2LayerLive lifecycle", (it) => {
             includesRemarks: true,
           },
         });
+      } else if (mode === "conflict resolved") {
+        yield* orchestrator.dispatch({
+          type: "thread.pull-request-watch.sync",
+          commandId: CommandId.make(`${threadId}-mergeable`),
+          threadId,
+          ...key,
+          startedAt: watch.startedAt,
+          watch: { ...recordedWatch, conflicting: false },
+        });
       } else if (mode === "newer head" || mode === "comments then newer head") {
         yield* orchestrator.dispatch({
           type: "thread.pull-request-watch.sync",
@@ -7196,7 +7214,7 @@ it.layer(layerTest)("OrchestrationV2LayerLive lifecycle", (it) => {
         after.messages
           .filter((message) => message.id === wakeMessageId)
           .map((message) => message.notification?.summary),
-        [finalNotice ? "#7: closed, stopped watching" : "#7: checks failed"],
+        [wakeSummary],
       );
     }),
   );

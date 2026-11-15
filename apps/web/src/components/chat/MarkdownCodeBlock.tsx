@@ -1,6 +1,7 @@
 import { T, useGT } from "gt-react";
 import { PlayIcon, WrapTextIcon, CheckIcon, CopyIcon } from "lucide-react";
 import { toHtml } from "hast-util-to-html";
+import type { ScopedThreadRef } from "@t3tools/contracts";
 import React, { use, useEffect, useState, type ReactNode } from "react";
 
 import { useCopyToClipboard } from "../../hooks/useCopyToClipboard";
@@ -27,6 +28,7 @@ import {
 } from "./MarkdownCodeBlock.logic";
 import { reportMarkdownActionFailure } from "./markdownActionFailure";
 import { PierreEntryIcon } from "./PierreEntryIcon";
+import { UseAsGoalButton } from "../../fork/UseAsGoalButton";
 
 const MAX_HIGHLIGHT_CACHE_ENTRIES = 500;
 const MAX_HIGHLIGHT_CACHE_MEMORY_BYTES = 50 * 1024 * 1024;
@@ -141,6 +143,7 @@ export function MarkdownCodeBlock({
   viewToggle,
   canWrap = true,
   diagram = false,
+  threadRef,
   children,
 }: {
   code: string;
@@ -152,6 +155,7 @@ export function MarkdownCodeBlock({
   viewToggle?: ReactNode;
   canWrap?: boolean;
   diagram?: boolean;
+  threadRef?: ScopedThreadRef | undefined;
   children: ReactNode;
 }) {
   const gt = useGT();
@@ -270,6 +274,7 @@ export function MarkdownCodeBlock({
             </Tooltip>
           ) : null}
           {viewToggle}
+          {isStreaming ? null : <UseAsGoalButton threadRef={threadRef} code={code} />}
           {copyButton}
         </span>
       }
