@@ -211,6 +211,7 @@ jobs:
   desktop_mac:
     name: Desktop macOS arm64
     needs: [plan, bundle]
+    if: ${{ !cancelled() && needs.bundle.result == 'success' }}
     uses: ./.github/workflows/release-desktop.yml
     with:
       version: ${{ needs.plan.outputs.version }}
@@ -234,6 +235,7 @@ jobs:
   desktop_linux:
     name: Desktop Linux x64
     needs: [plan, bundle]
+    if: ${{ !cancelled() && needs.bundle.result == 'success' }}
     uses: ./.github/workflows/release-desktop.yml
     with:
       version: ${{ needs.plan.outputs.version }}
@@ -257,6 +259,7 @@ jobs:
   sign_mac:
     name: Sign macOS app
     needs: [plan, bundle, desktop_mac]
+    if: ${{ !cancelled() && needs.desktop_mac.result == 'success' }}
     runs-on: ${{ needs.plan.outputs.mac_runner }}
     timeout-minutes: 30
     steps:
@@ -316,6 +319,7 @@ jobs:
   release:
     name: Publish release
     needs: [plan, bundle, sign_mac, desktop_linux]
+    if: ${{ !cancelled() && needs.sign_mac.result == 'success' && needs.desktop_linux.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
