@@ -10,7 +10,7 @@ platform="$(uname -s)-$(uname -m)"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
-  echo "Usage: fork/bin/use <fork|official> [--only app|server] [--server <ssh-host>] [tag]" >&2
+  echo "Usage: fork/bin/use <fork|official> [--only app|server] [--server <ssh-host>] [--yes] [tag]" >&2
   exit 2
 }
 
@@ -24,6 +24,40 @@ latest_tag() {
   else
     "$script_dir/latest-upstream-nightly"
   fi
+}
+
+confirm_active_turns() {
+  local titles count answer warn="" plain=""
+  if ! titles="$("$script_dir/active-turns")"; then
+    echo "Could not check for threads with an active turn." >&2
+    return 0
+  fi
+  [[ -n "$titles" ]] || return 0
+  if [[ -t 1 ]]; then
+    warn=$'\033[33m'
+    plain=$'\033[0m'
+  fi
+  count="$(printf '%s\n' "$titles" | wc -l | tr -d ' ')"
+  if [[ "$count" == 1 ]]; then
+    echo "${warn}1 thread has an active turn:"
+  else
+    echo "${warn}${count} threads have an active turn:"
+  fi
+  printf '%s\n' "$titles" | sed 's/^/  /'
+  echo "Installing now restarts the server and stops them.${plain}"
+  [[ "$assume_yes" == false ]] || return 0
+  if [[ ! -t 0 ]]; then
+    echo "No terminal to confirm. Pass --yes to install anyway." >&2
+    exit 1
+  fi
+  read -r -p "Install ${tag} anyway? [y/N] " answer || answer=""
+  case "$answer" in
+    y | Y | yes | Yes | YES) ;;
+    *)
+      echo "Cancelled."
+      exit 1
+      ;;
+  esac
 }
 
 install_app() {
@@ -51,6 +85,7 @@ esac
 
 update_app=true
 update_server=true
+assume_yes=false
 tag=""
 while (($# > 0)); do
   case "$1" in
@@ -66,6 +101,10 @@ while (($# > 0)); do
       [[ -n "${2:-}" ]] || usage
       server_host="$2"
       shift 2
+      ;;
+    --yes)
+      assume_yes=true
+      shift
       ;;
     v*)
       tag="$1"
@@ -91,6 +130,9 @@ fi
 
 tag="${tag:-$(latest_tag)}"
 gh release view "$tag" --repo "$repository" --json tagName > /dev/null
+if [[ "$update_app" == true ]]; then
+  confirm_active_turns
+fi
 echo "Switching to ${source_name} ${tag}."
 
 if [[ "$update_server" == true ]]; then

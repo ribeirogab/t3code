@@ -3,6 +3,7 @@ import { overrideForkFeatureSettings, OrchestratorMcpFailure } from "@t3tools/co
 import * as Effect from "effect/Effect";
 
 import * as ThreadManagement from "../orchestration-v2/ThreadManagementService.ts";
+import { assertLiveCaller, type Caller } from "../mcp/threadAccess.ts";
 import {
   forkToolVisible,
   inactiveForkAction,
@@ -114,6 +115,45 @@ describe("withForkToolGates", () => {
         .pipe(Effect.flip);
       assert.instanceOf(failure, OrchestratorMcpFailure);
       assert.isFalse(called);
+    }),
+  );
+
+  it.effect("lets only unwatch_pull_request act for a caller whose turn ended", () =>
+    Effect.gen(function* () {
+      const instanceId = "claudeAgent";
+      const shell = {
+        archivedAt: null,
+        activeRunId: null,
+        providerInstanceId: instanceId,
+        pendingBackgroundTasks: [],
+      };
+      const callerOf = (overrides: object) =>
+        ({
+          caller: { ...shell, ...overrides },
+          scope: { thread: { providerInstanceId: instanceId } },
+        }) as unknown as Caller;
+      const idle = callerOf({});
+      const gated = withForkToolGates({
+        unwatch_pull_request: (_params: object) => assertLiveCaller(idle),
+        watch_pull_request: (_params: object) => assertLiveCaller(idle),
+        unlink_pull_request: (_params: object) =>
+          assertLiveCaller(callerOf({ archivedAt: "2026-11-11T02:00:00.000Z" })),
+      });
+      yield* gated.unwatch_pull_request({});
+      const refused = [
+        yield* gated.watch_pull_request({}).pipe(Effect.flip),
+        yield* gated.unlink_pull_request({}).pipe(Effect.flip),
+        yield* withForkToolGates({
+          unwatch_pull_request: (_params: object) =>
+            assertLiveCaller(callerOf({ archivedAt: "2026-11-11T02:00:00.000Z" })),
+        })
+          .unwatch_pull_request({})
+          .pipe(Effect.flip),
+      ];
+      for (const failure of refused) assert.strictEqual(failure.code, "parent_not_active");
+      using _settings = overrideForkFeatureSettings({ features: { stalePrWakes: false } });
+      const upstream = yield* gated.unwatch_pull_request({}).pipe(Effect.flip);
+      assert.strictEqual(upstream.code, "parent_not_active");
     }),
   );
 });

@@ -12,9 +12,18 @@ export type ForkServerFeature =
   | "orchestrationRules"
   | "quietParentWake"
   | "holdRunningPrChecks"
+  | "stalePrWakes"
   | "workflowRunWatch"
+  | "waitingDetail"
   | "goalOnNewThreads"
-  | "parkedThreads";
+  | "parkedThreads"
+  | "ownerFacingTasks"
+  | "quietThreadSend"
+  | "archiveAfterTurn"
+  | "goalStatus"
+  | "goalQuestionPause"
+  | "compactAndContinueTool"
+  | "requestAttention";
 
 export const ForkFeatureSettings = Schema.Struct({
   master: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
@@ -55,6 +64,28 @@ export function overrideForkFeatureSettings(settings: Partial<ForkFeatureSetting
   return {
     [Symbol.dispose]: () => {
       activeForkFeatureSettings = previous;
+    },
+  };
+}
+
+export const agentLanguageLine = (language: string) => `Answer the user in ${language}.`;
+
+let activeAgentLanguage = "";
+
+export function setActiveAgentLanguage(language: string): void {
+  activeAgentLanguage = language;
+}
+
+export function forkAgentLanguage(): string {
+  return forkFeaturesOn() ? activeAgentLanguage : "";
+}
+
+export function overrideAgentLanguage(language: string): Disposable {
+  const previous = activeAgentLanguage;
+  activeAgentLanguage = language;
+  return {
+    [Symbol.dispose]: () => {
+      activeAgentLanguage = previous;
     },
   };
 }

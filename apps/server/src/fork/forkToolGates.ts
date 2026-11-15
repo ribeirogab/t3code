@@ -7,6 +7,9 @@ import {
 import * as Effect from "effect/Effect";
 import * as Predicate from "effect/Predicate";
 
+import { allowingIdleCaller } from "./idleCallerTools.ts";
+import { withOwnerFacing } from "./ownerFacingTasks.ts";
+import { withQuietSend } from "./quietThreadSend.ts";
 import { withThreadIdResolution } from "./threadIdResolver.ts";
 
 const FORK_TOOLS: Readonly<Record<string, ForkServerFeature>> = {
@@ -14,6 +17,9 @@ const FORK_TOOLS: Readonly<Record<string, ForkServerFeature>> = {
   publish_port: "publishedPorts",
   unpublish_port: "publishedPorts",
   watch_workflow_run: "workflowRunWatch",
+  t3_goal_update: "goalStatus",
+  t3_thread_compact_and_continue: "compactAndContinueTool",
+  t3_request_attention: "requestAttention",
 };
 
 const FORK_PARAMETERS: Readonly<
@@ -22,9 +28,11 @@ const FORK_PARAMETERS: Readonly<
   delegate_task: [
     ["listed", "nestedThreads"],
     ["notifyParent", "quietParentWake"],
+    ["ownerFacing", "ownerFacingTasks"],
     ["goal", "goalOnNewThreads"],
   ],
   t3_thread_launch: [["goal", "goalOnNewThreads"]],
+  t3_thread_send: [["wake", "quietThreadSend"]],
 };
 
 export function forkToolVisible(toolName: string): boolean {
@@ -59,9 +67,10 @@ export function inactiveForkAction(
 type ToolHandler = (params: object) => Effect.Effect<unknown, OrchestratorMcpFailure>;
 
 export function withForkToolGates<Handlers extends object>(handlers: Handlers): Handlers {
-  const resolving = withThreadIdResolution(handlers) as Record<string, unknown>;
+  const ready = withQuietSend(handlers);
+  const resolving = withThreadIdResolution(ready) as Record<string, unknown>;
   return Object.fromEntries(
-    Object.entries(handlers).map(([name, handler]: [string, unknown]) => {
+    Object.entries(ready).map(([name, handler]: [string, unknown]) => {
       if (!Predicate.isFunction(handler)) return [name, handler];
       const plain = handler as ToolHandler;
       const withResolvedIds = resolving[name] as ToolHandler;
@@ -69,8 +78,8 @@ export function withForkToolGates<Handlers extends object>(handlers: Handlers): 
         Effect.suspend(() => {
           const refusal = inactiveForkAction(name, params);
           if (refusal !== null) return Effect.fail(refusal);
-          const input = withoutInactiveForkParameters(name, params);
-          return forkFeaturesOn() ? withResolvedIds(input) : plain(input);
+          const input = withoutInactiveForkParameters(name, withOwnerFacing(name, params));
+          return allowingIdleCaller(name, forkFeaturesOn() ? withResolvedIds(input) : plain(input));
         });
       return [name, gated];
     }),

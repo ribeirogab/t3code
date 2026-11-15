@@ -23,7 +23,7 @@ import * as ThreadMessageIntake from "../../orchestration-v2/ThreadMessageIntake
 import * as ProjectService from "../../project/ProjectService.ts";
 import * as ProviderRegistry from "../../provider/ProviderRegistry.ts";
 import * as GitVcsDriver from "../../vcs/GitVcsDriver.ts";
-import { queueGoal } from "./goalQueue.ts";
+import { queueGoal, withGoalNote } from "./goalQueue.ts";
 import { continuesFromSource, handoffProblem } from "./handoffRules.ts";
 import { ForkThreadHandoffToolkit, type ThreadHandoffParams } from "./tools.ts";
 
@@ -143,7 +143,7 @@ const handOffToNewThread = Effect.fn("fork.threadHandoff.newThread")(function* (
     initialMessage: {
       messageId,
       senderThreadId: source.thread.id,
-      text: input.handoff,
+      text: withGoalNote(input.handoff, input.goal),
       attachments: [],
     },
     createdBy: "agent",

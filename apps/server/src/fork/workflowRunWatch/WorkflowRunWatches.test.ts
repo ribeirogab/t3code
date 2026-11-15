@@ -7,6 +7,7 @@ import {
   WORKFLOW_RUN_READ_FAILURE_LIMIT,
   type WorkflowRunWatchRecord,
 } from "./workflowRunRules.ts";
+import type { WorkflowRunWait } from "./workflowRunWaits.ts";
 import { make, type WorkflowRunWatchesDependencies } from "./WorkflowRunWatches.ts";
 
 const threadId = ThreadId.make("thread-1");
@@ -14,6 +15,7 @@ const HEAD = "abcdef1234567890abcdef1234567890abcdef12";
 
 const finished: WorkflowRun = {
   databaseId: 7,
+  number: 12,
   workflowName: "Deploy",
   status: "completed",
   conclusion: "success",
@@ -31,6 +33,7 @@ function harness(
   const saved: Array<ReadonlyArray<WorkflowRunWatchRecord>> = [];
   const wakes: Array<string> = [];
   const queries: Array<WorkflowRunQuery> = [];
+  const published: Array<ReadonlyArray<WorkflowRunWait>> = [];
   let ids = 0;
   const deps: WorkflowRunWatchesDependencies = {
     cli: {
@@ -51,8 +54,9 @@ function harness(
         return options.delivers?.() ?? true;
       }),
     newId: Effect.sync(() => `watch-${++ids}`),
+    publish: (waits) => void published.push(waits),
   };
-  return { deps, saved, wakes, queries };
+  return { deps, saved, wakes, queries, published };
 }
 
 const input = {
@@ -85,9 +89,12 @@ describe("WorkflowRunWatches", () => {
       let runs: ReadonlyArray<WorkflowRun> = [
         { ...finished, status: "in_progress", conclusion: "" },
       ];
-      const { deps, saved, wakes } = harness({ runs: () => Effect.succeed(runs) });
+      const { deps, saved, wakes, published } = harness({ runs: () => Effect.succeed(runs) });
       const watches = yield* make(deps);
       yield* watches.watch(input);
+      assert.deepEqual(published.at(-1), [
+        { threadId, watchId: "watch-1", label: "Deploy run 12" },
+      ]);
       yield* watches.sweep;
       assert.deepEqual(wakes, []);
       runs = [finished];
@@ -95,6 +102,7 @@ describe("WorkflowRunWatches", () => {
       yield* watches.sweep;
       assert.deepEqual(wakes, ["Deploy: workflow passed"]);
       assert.deepEqual(saved.at(-1), []);
+      assert.deepEqual(published.at(-1), []);
     }),
   );
 

@@ -7,10 +7,11 @@ import * as ProcessRunner from "../processRunner.ts";
 
 const GH_TIMEOUT = "20 seconds";
 const STDERR_PREVIEW_LENGTH = 300;
-const RUN_FIELDS = "databaseId,workflowName,status,conclusion,url,createdAt";
+const RUN_FIELDS = "databaseId,number,workflowName,status,conclusion,url,createdAt";
 
 const WorkflowRun = Schema.Struct({
   databaseId: Schema.Number,
+  number: Schema.Number,
   workflowName: Schema.String,
   status: Schema.String,
   conclusion: Schema.String,

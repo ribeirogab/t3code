@@ -12,6 +12,12 @@ const ICON_PATHS: Record<string, ReadonlyArray<{ tag: string; attrs: Record<stri
     { tag: "path", attrs: { d: "M10 12h4" } },
   ],
   check: [{ tag: "path", attrs: { d: "M20 6 9 17l-5-5" } }],
+  "minimize-2": [
+    { tag: "path", attrs: { d: "m14 10 7-7" } },
+    { tag: "path", attrs: { d: "M20 10h-6V4" } },
+    { tag: "path", attrs: { d: "m3 21 7-7" } },
+    { tag: "path", attrs: { d: "M4 14h6v6" } },
+  ],
   "square-parking": [
     { tag: "rect", attrs: { width: "18", height: "18", x: "3", y: "3", rx: "2" } },
     { tag: "path", attrs: { d: "M9 17V7h4a3 3 0 0 1 0 6H9" } },

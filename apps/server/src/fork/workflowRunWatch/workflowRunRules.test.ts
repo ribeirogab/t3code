@@ -6,6 +6,7 @@ import {
   latestRunPerWorkflow,
   WORKFLOW_RUN_NO_RUN_MS,
   WORKFLOW_RUN_WATCH_LIMIT_MS,
+  workflowRunWaitLabel,
   workflowRunWake,
   type WorkflowRunWatchRecord,
 } from "./workflowRunRules.ts";
@@ -29,6 +30,7 @@ const run = (
   createdAt = "2026-11-11T10:00:00Z",
 ): WorkflowRun => ({
   databaseId: workflowName.length,
+  number: 3458,
   workflowName,
   status,
   conclusion,
@@ -42,6 +44,18 @@ describe("latestRunPerWorkflow", () => {
     const newer = run("Deploy", "in_progress", "", "2026-11-11T10:05:00Z");
     const ci = run("CI", "completed", "success");
     assert.deepEqual(latestRunPerWorkflow([older, ci, newer]), [ci, newer]);
+  });
+});
+
+describe("workflowRunWaitLabel", () => {
+  it("names the run once it started, else the watched workflow", () => {
+    assert.strictEqual(workflowRunWaitLabel(watch({ workflow: "CI" }), []), "CI run");
+    assert.strictEqual(workflowRunWaitLabel(watch(), []), "workflow runs");
+    assert.strictEqual(workflowRunWaitLabel(watch(), [run("CI", "queued")]), "CI run 3458");
+    assert.strictEqual(
+      workflowRunWaitLabel(watch(), [run("CI", "queued"), run("Lint", "in_progress")]),
+      "2 workflow runs",
+    );
   });
 });
 

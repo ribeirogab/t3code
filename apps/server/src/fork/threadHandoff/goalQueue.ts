@@ -11,6 +11,9 @@ import * as Effect from "effect/Effect";
 
 import type * as ThreadManagement from "../../orchestration-v2/ThreadManagementService.ts";
 import { goalCommandText, goalProblem } from "./handoffRules.ts";
+import { queuedGoalId } from "./goalTiming.ts";
+
+export { withGoalNote } from "./goalTiming.ts";
 
 interface ProviderDriver {
   readonly instanceId: ProviderInstanceId;
@@ -41,7 +44,7 @@ export function refuseRemoteGoal(
 }
 
 function goalCommandId(commandId: CommandId): CommandId {
-  return CommandId.make(`${commandId}:goal`);
+  return CommandId.make(queuedGoalId(commandId));
 }
 
 function goalNotQueued(error: unknown) {

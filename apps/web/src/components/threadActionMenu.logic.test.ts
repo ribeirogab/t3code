@@ -34,6 +34,7 @@ describe("buildThreadActionMenuItems", () => {
         ...baseState,
         canOperate: false,
         canContinueInNewThread: true,
+        canCompactAndContinue: true,
         isPinned: reversed,
         isSettled: reversed,
         isSnoozed: reversed,
@@ -41,6 +42,7 @@ describe("buildThreadActionMenuItems", () => {
       const expected = reversed
         ? [
             "continue-in-new-thread",
+            "compact-and-continue",
             "unpin",
             "unsettle",
             "unsnooze",
@@ -52,6 +54,7 @@ describe("buildThreadActionMenuItems", () => {
           ]
         : [
             "continue-in-new-thread",
+            "compact-and-continue",
             "pin",
             "settle",
             "snooze",

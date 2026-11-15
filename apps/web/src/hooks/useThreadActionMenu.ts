@@ -61,6 +61,8 @@ import { readThreadParked, setThreadParked } from "../fork/parkedThreadActions";
 import { parkedThreadMenuTarget } from "../fork/parkedThreads.logic";
 import { isForkFeatureEnabled } from "../fork/forkFeatures";
 import { useContinueInNewThread } from "../fork/useContinueInNewThread";
+import { isCompactAndContinueAction } from "../fork/compactAndContinue";
+import { readCanCompactAndContinue, useCompactAndContinue } from "../fork/useCompactAndContinue";
 
 function failureToast(title: string, error: unknown) {
   toastManager.add(
@@ -108,6 +110,7 @@ export function useThreadActionMenu(input: {
   });
   const handleNewThread = useNewThreadHandler();
   const continueInNewThread = useContinueInNewThread();
+  const compactAndContinue = useCompactAndContinue();
   const confirmThreadDelete = useClientSettings((s) => s.confirmThreadDelete);
   const confirmThreadArchive = useClientSettings((s) => s.confirmThreadArchive);
   const timestampFormat = useClientSettings((s) => s.timestampFormat);
@@ -162,6 +165,7 @@ export function useThreadActionMenu(input: {
       canShareWithGuest,
       canTurnIntoProject: canTurnThreadIntoProject(threadRef),
       canContinueInNewThread: isForkFeatureEnabled("continueInNewThread"),
+      canCompactAndContinue: readCanCompactAndContinue(threadRef),
       parked: readThreadParked(threadRef, thread),
     });
     const run = async (action: ThreadActionMenuId) => {
@@ -182,6 +186,10 @@ export function useThreadActionMenu(input: {
       const handoffPlacement = continueInNewThreadPlacement(action);
       if (handoffPlacement !== null) {
         await continueInNewThread(threadRef, handoffPlacement);
+        return;
+      }
+      if (isCompactAndContinueAction(action)) {
+        await compactAndContinue(threadRef);
         return;
       }
       const parkTarget = parkedThreadMenuTarget(action);

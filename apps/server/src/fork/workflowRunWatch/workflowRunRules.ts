@@ -48,6 +48,17 @@ export function latestRunPerWorkflow(runs: ReadonlyArray<WorkflowRun>): Readonly
   );
 }
 
+export function workflowRunWaitLabel(
+  watch: WorkflowRunWatchRecord,
+  runs: ReadonlyArray<WorkflowRun>,
+): string {
+  const latest = latestRunPerWorkflow(runs);
+  const [only] = latest;
+  if (latest.length === 1 && only !== undefined) return `${only.workflowName} run ${only.number}`;
+  if (latest.length > 1) return `${latest.length} workflow runs`;
+  return watch.workflow === null ? "workflow runs" : `${watch.workflow} run`;
+}
+
 const runsOf = (watch: WorkflowRunWatchRecord) =>
   `${watch.workflow === null ? "workflow runs" : `${watch.workflow} run`} for ${watch.branch} at ${watch.sha.slice(0, 7)} in ${watch.repository}`;
 
