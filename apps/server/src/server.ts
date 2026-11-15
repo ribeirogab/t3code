@@ -11,7 +11,10 @@ import * as PullRequestWatchBatching from "./fork/pullRequestWatchBatching.ts";
 import * as WorkflowRunWatches from "./fork/workflowRunWatch/WorkflowRunWatches.ts";
 import * as DelegatedTaskQuestionReactor from "./orchestration-v2/DelegatedTaskQuestionReactor.ts";
 import * as ChildStatusReactor from "./fork/ChildStatusReactor.ts";
+import * as QuietThreadSend from "./fork/quietThreadSend.ts";
 import * as PublishedPorts from "./fork/publishedPorts/PublishedPorts.ts";
+import * as GoalStatusLayer from "./fork/goalStatus/layer.ts";
+import * as CompactAndContinue from "./fork/compactAndContinue/CompactAndContinue.ts";
 import * as ForkFeatureSettings from "./fork/forkFeatureSettings.ts";
 // Effect wraps this raw Node HTTP server after its startup and write-error guards attach.
 // @effect-diagnostics nodeBuiltinImport:off
@@ -693,6 +696,7 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   KeepAwake.layer,
   DelegatedTaskAnalytics.layer,
   WorkflowRunWatches.layer,
+  QuietThreadSend.layer,
   Layer.effectDiscard(
     Effect.gen(function* () {
       const service = yield* PullRequestSyncReactor.PullRequestSyncReactor;
@@ -721,6 +725,8 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
     }),
   ).pipe(Layer.provide(DelegatedTaskQuestionReactor.layer), Layer.provide(ProjectionStoreV2.layer)),
   ChildStatusReactor.layerStarted,
+  GoalStatusLayer.layer,
+  CompactAndContinue.layer.pipe(Layer.provide(ProjectionStoreV2.layer)),
   PublishedPorts.layer,
   ForkFeatureSettings.layer,
   ProviderUsageLimitsIngestion.layer,

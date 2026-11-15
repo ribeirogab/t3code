@@ -54,6 +54,11 @@ import { isModelPickerOpen, subscribeToModelPickerVisibility } from "../modelPic
 import { shortcutModifierStore } from "../shortcutModifierState";
 import { selectThreadTerminalUiState, useTerminalUiStateStore } from "../terminalUiStateStore";
 import { selectActiveRightPanel, useRightPanelStore } from "../rightPanelStore";
+import {
+  FORK_NEEDS_YOU_PILL,
+  forkNeedsYou,
+  type ForkNeedsYouInput,
+} from "../fork/goalStatus.logic";
 
 export function shouldNavigateAfterThreadPark(input: {
   readonly threadKey: string;
@@ -672,7 +677,8 @@ export interface ThreadStatusPill {
     | "Awaiting Input"
     | "Guest Request"
     | "Waiting"
-    | "Plan Ready";
+    | "Plan Ready"
+    | "Needs you";
   colorClass: string;
   dotClass: string;
   pulse: boolean;
@@ -692,7 +698,7 @@ type ThreadStatusInput = Pick<
   lastVisitedAt?: string | null | undefined;
   pendingBackgroundTasks?: SidebarThreadSummary["pendingBackgroundTasks"] | undefined;
   blockedOnThreadWait?: boolean | undefined;
-};
+} & ForkNeedsYouInput;
 
 // Read at event time: subscribing Sidebar to terminal or modifier state re-renders every row.
 export function threadShortcutContext(routeThreadRef: ScopedThreadRef | null) {
@@ -953,7 +959,8 @@ type SidebarThreadStatusInput = Pick<
   | "pendingGuestMessageCount"
   | "runtime"
   | "blockedOnThreadWait"
->;
+> &
+  ForkNeedsYouInput;
 
 export function resolveSidebarThreadStatus(thread: SidebarThreadStatusInput): SidebarThreadStatus {
   if (thread.hasPendingApprovals || thread.pendingSubagentRequest === "approval") {
@@ -978,6 +985,7 @@ export function resolveSidebarThreadStatus(thread: SidebarThreadStatusInput): Si
   ) {
     return "working";
   }
+  if (forkNeedsYou(thread)) return "input";
   if (thread.runtime?.status === "idle") {
     return "waiting";
   }
@@ -1270,6 +1278,8 @@ export function resolveThreadStatusPill(input: {
       pulse: true,
     };
   }
+
+  if (forkNeedsYou(thread)) return FORK_NEEDS_YOU_PILL;
 
   if (
     (thread.runtime?.status === "running" && thread.blockedOnThreadWait === true) ||

@@ -132,6 +132,15 @@ export const FORK_FEATURES = [
     searchTerms: ["fork goal waiting working shelf done completed sidebar"],
   },
   {
+    key: "waitingDetail",
+    section: "Sidebar",
+    searchId: "fork-waiting-detail",
+    title: "What a thread waits for",
+    description:
+      "Say what a Waiting thread waits for and for how long, such as PR checks or a workflow run.",
+    searchTerms: ["fork waiting status pull request checks workflow run ci command child duration"],
+  },
+  {
     key: "goalPause",
     section: "Chat",
     searchId: "fork-goal-pause",
@@ -166,6 +175,15 @@ export const FORK_FEATURES = [
     searchTerms: ["fork continue new thread handoff goal worktree child menu"],
   },
   {
+    key: "compactAndContinue",
+    section: "Threads",
+    searchId: "fork-compact-and-continue",
+    title: "Compact and continue",
+    description:
+      "Add Compact and continue to the thread menu. The thread compacts, then the agent goes on in the same thread. Claude and Codex only.",
+    searchTerms: ["fork compact continue same thread menu context resume"],
+  },
+  {
     key: "orchestrationRules",
     section: "Agents",
     searchId: "fork-orchestration-rules",
@@ -179,8 +197,26 @@ export const FORK_FEATURES = [
     searchId: "fork-quiet-parent-wake",
     title: "Quiet parent wake",
     description:
-      "Do not wake the parent when you write in its child thread. Agents choose which child events wake them.",
-    searchTerms: ["fork notify parent wake child delegate finish question quiet"],
+      "Do not wake the parent when you write in its child thread. Agents choose which child events wake them. A failed child always wakes its parent.",
+    searchTerms: ["fork notify parent wake child delegate finish question quiet failure"],
+  },
+  {
+    key: "ownerFacingTasks",
+    section: "Agents",
+    searchId: "fork-owner-facing-tasks",
+    title: "Owner-facing children",
+    description:
+      "Let agents start a child that you handle directly. The parent wakes once, when you close the child.",
+    searchTerms: ["fork owner facing child delegate listed close case hub quiet parent"],
+  },
+  {
+    key: "quietThreadSend",
+    section: "Agents",
+    searchId: "fork-quiet-thread-send",
+    title: "Quiet thread send",
+    description:
+      "Let agents send news to a thread without starting a turn. It arrives with the next turn.",
+    searchTerms: ["fork thread send wake false quiet note receipt steer idle"],
   },
   {
     key: "holdRunningPrChecks",
@@ -190,6 +226,15 @@ export const FORK_FEATURES = [
     description:
       "Wake a pull request watcher when the running checks finish, after 30 minutes at most, and once per conflict.",
     searchTerms: ["fork pull request watch checks running hold batch conflict wake"],
+  },
+  {
+    key: "stalePrWakes",
+    section: "Agents",
+    searchId: "fork-stale-pr-wakes",
+    title: "Drop stale PR notices",
+    description:
+      "Drop a waiting conflict notice once the branch merges cleanly. Agents can stop a watch after their turn ends.",
+    searchTerms: ["fork pull request watch stale notice conflict unwatch queue wake"],
   },
   {
     key: "workflowRunWatch",
@@ -208,12 +253,74 @@ export const FORK_FEATURES = [
     searchTerms: ["fork goal delegate launch new thread child objective"],
   },
   {
+    key: "goalStatus",
+    section: "Agents",
+    searchId: "fork-goal-status",
+    title: "Goal status",
+    description:
+      "Let agents end or pause their goal with a reason. Pause a goal that waits on you and mark its thread Needs you.",
+    searchTerms: ["fork goal status needs you blocked done pause stop hook loop t3_goal_update"],
+  },
+  {
+    key: "requestAttention",
+    section: "Agents",
+    searchId: "fork-request-attention",
+    title: "Request attention",
+    description:
+      "Let agents mark a thread Needs you with a one-line summary, with no form. Your next message clears it.",
+    searchTerms: [
+      "fork request attention needs you notify owner working question form t3_request_attention",
+    ],
+  },
+  {
+    key: "goalQuestionPause",
+    section: "Chat",
+    searchId: "fork-goal-question-pause",
+    title: "Pause goal for your question",
+    description: "A message that ends with ? pauses the goal, so the agent answers first.",
+    searchTerms: ["fork goal question pause steer answer first ask"],
+  },
+  {
+    key: "useAsGoal",
+    section: "Chat",
+    searchId: "fork-use-as-goal",
+    title: "Use as goal",
+    description:
+      "Add Use as goal to code blocks, and show Compact in the composer on demand. Use as goal turns Compact on. Claude and Codex only.",
+    searchTerms: ["fork use as goal code block composer compact before send"],
+  },
+  {
+    key: "compactAndContinueTool",
+    section: "Agents",
+    searchId: "fork-compact-and-continue-tool",
+    title: "Compact and continue tool",
+    description: "Let agents compact their thread and go on in it with a message or a /goal.",
+    searchTerms: ["fork compact continue goal agent tool t3_thread_compact_and_continue"],
+  },
+  {
     key: "parkedThreads",
     section: "Sidebar",
     searchId: "fork-parked-threads",
     title: "Parked threads",
     description: "Park a thread to keep it in the Parked shelf, out of the list and auto-settle.",
     searchTerms: ["fork parked park unpark shelf hide keep long lived threads sidebar"],
+  },
+  {
+    key: "updateActiveTurnsWarning",
+    section: "Sidebar",
+    searchId: "fork-update-active-turns-warning",
+    title: "Name active turns before an update",
+    description: "Before an update restarts T3 Code, list the threads with an active turn.",
+    searchTerms: ["fork update install restart active turn running threads warning confirm"],
+  },
+  {
+    key: "archiveAfterTurn",
+    section: "Agents",
+    searchId: "fork-archive-after-turn",
+    title: "Archive after the turn",
+    description:
+      "When an agent archives a thread with a running turn, archive it when the turn ends.",
+    searchTerms: ["fork archive organize thread running turn wait end child coordinator"],
   },
 ] as const satisfies ReadonlyArray<{
   readonly key: string;

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+database="${T3CODE_HOME:-$HOME/.t3}/userdata/statev2.sqlite"
+query="SELECT t.title FROM orchestration_v2_projection_threads t
+WHERE t.archived_at IS NULL AND t.deleted_at IS NULL AND EXISTS (
+  SELECT 1 FROM orchestration_v2_projection_runs r
+  WHERE r.thread_id = t.thread_id AND r.status IN ('preparing', 'starting', 'running')
+)
+ORDER BY t.updated_at DESC;"
+read_with_node='
+const { DatabaseSync } = require("node:sqlite");
+const database = new DatabaseSync(process.argv[1], { readOnly: true });
+for (const row of database.prepare(process.argv[2]).all()) console.log(row.title);
+'
+
+[[ -f "$database" ]] || exit 0
+
+if command -v sqlite3 > /dev/null; then
+  sqlite3 -readonly "$database" "$query"
+elif command -v node > /dev/null; then
+  node --no-warnings -e "$read_with_node" "$database" "$query"
+else
+  echo "active-turns needs sqlite3 or Node.js." >&2
+  exit 1
+fi

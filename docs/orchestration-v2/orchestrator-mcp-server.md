@@ -251,9 +251,18 @@ and `never` not at all. A turn the user types in the child thread, and a turn
 that is only a slash command, never wake the parent.
 
 `goal` (fork) queues `/goal <goal>` in the child after its first message, as a
-run the child queues for itself, so the goal run belongs to the same task. It
-needs a Codex, Claude, or OpenCode child and is refused for a task in a linked
-environment. `t3_thread_launch` takes the same `goal`.
+run the child queues for itself, so the goal run belongs to the same task. The
+first message tells the child to ask with its question tool and to write the
+line `Goal met.` when that turn meets the goal. When a turn ends, the queue
+holds the goal while a question from that turn is open or another message
+waits, so the answer runs first, and cancels it when the reply has the
+`Goal met.` line (`apps/server/src/fork/threadHandoff/goalTiming.ts`). The next
+completed turn releases a held goal for the same check, and the queue's Resume
+starts it. A question the child asks in the goal run wakes the parent like a
+first-turn question, also after the task settled
+(`apps/server/src/fork/threadHandoff/goalQuestion.ts`). It needs a Codex,
+Claude, or OpenCode child and is refused for a task in a linked environment.
+`t3_thread_launch` takes the same `goal`.
 
 For local delegation, provider, model, runtime mode, and interaction mode inherit
 from the parent when omitted. A driver-only target inherits the parent's provider instance
@@ -375,14 +384,51 @@ Continues the caller's work in a new thread whose first message is the
 fork. `placement` picks where it runs: `same_worktree` (default) binds the
 caller's checkout, `new_worktree` creates a worktree from the caller's `HEAD`
 (optional `branch`), and `child` is a `delegate_task` with `listed: true`.
-`goal` queues `/goal <goal>` after the first turn. `settle` settles the caller
-when its turn ends; a child cannot take it, because it follows its parent's
-Settle status.
+`goal` queues `/goal <goal>` after the first turn, timed as in `delegate_task`.
+`settle` settles the caller when its turn ends; a child cannot take it, because
+it follows its parent's Settle status.
 
 A top-level handoff records the link three ways: the new thread's lineage names
 the caller as a detached fork in the caller's family (`thread.create`
 `continuesFrom`, set only by the server), its first message names the caller as
 the sender, and the caller's timeline gets a created-thread item.
+
+### `t3_goal_update` (fork)
+
+Ends or pauses the caller's `/goal` with `needs_user`, `blocked`, or `done`, a
+one-line `reason`, and for `done` a `result` link. The server stores the status
+on the thread (`forkAttention`, written by `thread.metadata.update`, so no
+migration), then sends `/goal clear` as a steer, which stops the running turn
+like the composer's Clear. The goal card shows the reason, and the sidebar marks
+`needs_user` and `blocked` threads Needs you. The next message from the user or
+another thread turns the status into a plain pause that keeps the objective for
+Resume; a user `/goal` command clears it. `GoalStallReactor` sets the same
+status when a Claude goal's Stop hook blocks a turn that ends on a question, or
+blocks twice with no tool call between, and marks Done when the judge meets the
+goal. A user message that ends with `?` during an active goal pauses it and runs
+after the `/goal clear` (`apps/server/src/fork/goalStatus/`).
+
+### `t3_thread_compact_and_continue` (fork)
+
+Queues `/compact`, then `message`, then `/goal <goal>` behind the caller's
+running turn, in the caller's own thread, so the thread keeps its link,
+artifacts, and children. The messages are agent messages from `mcp`, so the
+timeline shows a plain compaction, not an idle one. Only Claude and Codex
+threads take it; the check reads the driver of the active provider thread
+(`apps/server/src/fork/compactAndContinue/`). The thread menu's Compact and
+continue and the composer's Compact toggle send from the client instead,
+through the same `/compact` path as compacting before a send.
+
+### `t3_request_attention` (fork)
+
+Marks the caller's thread Needs you with a one-line `summary` and no form: the
+same `forkAttention` as `t3_goal_update`, without a goal, so the sidebar pill,
+the "Input needed" notification and a composer banner show it. The next message
+from the user, or from the thread's parent, clears it. In a thread with an
+active goal it acts as `t3_goal_update` `needs_user`. A child the user does not
+see (not `listed`, not a side chat) also wakes its parent with the summary, as a
+child's question does, and its finished run does not wake the parent a second
+time.
 
 ### `t3_thread_list`
 
