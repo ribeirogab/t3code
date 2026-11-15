@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+branch_sha="$1"
+fork_repository="$2"
+fork_branch="$3"
+
+key_path="${RUNNER_TEMP:-/tmp}/fork_deploy_key"
+install -m 600 /dev/null "$key_path"
+printf '%s\n' "$FORK_DEPLOY_KEY" > "$key_path"
+GIT_SSH_COMMAND="ssh -i ${key_path} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
+  git push \
+    --force-with-lease="refs/heads/${fork_branch}:${branch_sha}" \
+    "git@github.com:${fork_repository}.git" \
+    "HEAD:refs/heads/${fork_branch}" >&2
+rm -f "$key_path"
+
+printf 'ref=%s\n' "$(git rev-parse HEAD)"

@@ -2,26 +2,11 @@
 set -euo pipefail
 
 base_tag="$1"
-branch_sha="$2"
-fork_repository="$3"
-fork_branch="$4"
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 upstream_repository="${UPSTREAM_REPOSITORY:-pingdotgg/t3code}"
 rebase_log="${RUNNER_TEMP:-/tmp}/fork-rebase.log"
 
-push_branch() {
-  local key_path="${RUNNER_TEMP:-/tmp}/fork_deploy_key"
-  install -m 600 /dev/null "$key_path"
-  printf '%s\n' "$FORK_DEPLOY_KEY" > "$key_path"
-  GIT_SSH_COMMAND="ssh -i ${key_path} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new" \
-    git push \
-      --force-with-lease="refs/heads/${fork_branch}:${branch_sha}" \
-      "git@github.com:${fork_repository}.git" \
-      "HEAD:refs/heads/${fork_branch}" >&2
-  rm -f "$key_path"
-}
-
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 git config merge.fork-budget-sum.driver "${script_dir}/merge-budget %O %A %B"
 attributes="$(git rev-parse --git-path info/attributes)"
 mkdir -p "$(dirname "$attributes")"
@@ -40,6 +25,4 @@ if ! git rebase "$base_tag" > "$rebase_log" 2>&1; then
   exit 0
 fi
 
-push_branch
 printf 'result=rebased\n'
-printf 'ref=%s\n' "$(git rev-parse HEAD)"

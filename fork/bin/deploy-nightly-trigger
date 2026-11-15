@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_name="t3code-nightly-trigger"
+cron="${1:-23 8 * * *}"
+source_file="$(cd "$(dirname "${BASH_SOURCE[0]}")/../nightly-trigger" && pwd)/worker.js"
+api="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID:?}/workers/scripts/${script_name}"
+
+cf() {
+  local response
+  response="$(curl -sS -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN:?}" "$@")"
+  if [[ "$(jq -r '.success' <<< "$response")" != "true" ]]; then
+    jq -c '.errors' <<< "$response" >&2
+    exit 1
+  fi
+}
+
+github_token=""
+if [[ ! -t 0 ]]; then
+  IFS= read -r github_token || true
+fi
+
+cf -X PUT "$api" \
+  -F 'metadata={"main_module":"worker.js","compatibility_date":"2026-11-01","keep_bindings":["secret_text"]};type=application/json' \
+  -F "worker.js=@${source_file};type=application/javascript+module"
+
+if [[ -n "$github_token" ]]; then
+  jq -Rn '{name: "GITHUB_TOKEN", text: input, type: "secret_text"}' <<< "$github_token" \
+    | cf -X PUT "$api/secrets" -H "Content-Type: application/json" --data @-
+fi
+
+jq -n --arg cron "$cron" '[{cron: $cron}]' \
+  | cf -X PUT "$api/schedules" -H "Content-Type: application/json" --data @-
+cf -X POST "$api/subdomain" -H "Content-Type: application/json" \
+  --data '{"enabled":false,"previews_enabled":false}'
+
+printf 'Deployed %s with cron "%s"\n' "$script_name" "$cron"
