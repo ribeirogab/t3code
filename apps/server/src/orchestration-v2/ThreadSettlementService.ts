@@ -30,7 +30,11 @@ import * as GitManager from "../git/GitManager.ts";
 import * as ProjectSetupScriptRunner from "../project/ProjectSetupScriptRunner.ts";
 import * as PullRequestService from "../pullRequest/PullRequestService.ts";
 import * as ServerSettings from "../serverSettings.ts";
-import { isParkedThread } from "../fork/parkedThreads.ts";
+import {
+  isParkedThread,
+  parkedThreadsSettlementKey,
+  settleParkedThreads,
+} from "../fork/parkedThreads.ts";
 import { forkParked } from "../serverActivation.ts";
 import * as TerminalManager from "../terminal/Manager.ts";
 import * as GitVcsDriver from "../vcs/GitVcsDriver.ts";
@@ -351,6 +355,14 @@ export const make = Effect.gen(function* () {
     // A thread that is not a candidate now (still running) must not keep a merged PR's quiet entry.
     if (mergedPullRequest !== null) yield* pauseQuietReads();
     const settings = yield* settingsService.getSettings;
+    yield* settleParkedThreads({
+      settings,
+      threadId,
+      projections,
+      orchestrator,
+      random,
+      isIdle: isAutoSettlementCandidate,
+    });
     const automaticSettlementEnabled = autoSettlementConfigured(settings);
     const threads = yield* projections.getSettlementCandidates(threadId);
     if (threads.length === 0) return;
@@ -808,7 +820,8 @@ export const make = Effect.gen(function* () {
     const mergedPullRequests = yield* pullRequests.subscribeMerges;
     const events = orchestrator.streamDomainEvents;
     const initialSettings = yield* settingsService.getSettings.pipe(Effect.orDie);
-    let lastSettlementSettings = autoSettlementSettingsKey(initialSettings);
+    let lastSettlementSettings =
+      autoSettlementSettingsKey(initialSettings) + parkedThreadsSettlementKey(initialSettings);
     yield* forkParked(
       Effect.gen(function* () {
         yield* enqueueFullSweep();
@@ -817,7 +830,7 @@ export const make = Effect.gen(function* () {
     );
     yield* forkParked(
       Stream.runForEach(settingsChanges, (settings) => {
-        const key = autoSettlementSettingsKey(settings);
+        const key = autoSettlementSettingsKey(settings) + parkedThreadsSettlementKey(settings);
         if (key === lastSettlementSettings) {
           return Effect.void;
         }
