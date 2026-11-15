@@ -131,8 +131,6 @@ jobs:
       - name: Setup dependencies
         if: steps.rebase.outputs.result == 'rebased'
         uses: ./.github/actions/setup-ci-deps
-        with:
-          install-args: --filter=t3... --filter=@t3tools/web...
 
       - name: Typecheck the server
         if: steps.rebase.outputs.result == 'rebased'
