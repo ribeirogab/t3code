@@ -260,9 +260,15 @@ and `never` not at all. A turn the user types in the child thread, and a turn
 that is only a slash command, never wake the parent.
 
 `goal` (fork) queues `/goal <goal>` in the child after its first message, as a
-run the child queues for itself, so the goal run belongs to the same task. It
-needs a Codex, Claude, or OpenCode child and is refused for a task in a linked
-environment. `t3_thread_launch` takes the same `goal`.
+run the child queues for itself, so the goal run belongs to the same task. The
+first message tells the child to ask with its question tool and to write the
+line `Goal met.` when that turn meets the goal. When a turn ends, the queue
+holds the goal while a question from that turn is open or another message
+waits, so the answer runs first, and cancels it when the reply has the
+`Goal met.` line (`apps/server/src/fork/threadHandoff/goalTiming.ts`). The next
+completed turn releases a held goal for the same check, and the queue's Resume
+starts it. It needs a Codex, Claude, or OpenCode child and is refused for a task
+in a linked environment. `t3_thread_launch` takes the same `goal`.
 
 Provider, model, runtime mode, and interaction mode inherit from the parent
 when omitted. A driver-only target inherits the parent's provider instance
@@ -420,9 +426,9 @@ Continues the caller's work in a new thread whose first message is the
 fork. `placement` picks where it runs: `same_worktree` (default) binds the
 caller's checkout, `new_worktree` creates a worktree from the caller's `HEAD`
 (optional `branch`), and `child` is a `delegate_task` with `listed: true`.
-`goal` queues `/goal <goal>` after the first turn. `settle` settles the caller
-when its turn ends; a child cannot take it, because it follows its parent's
-Settle status.
+`goal` queues `/goal <goal>` after the first turn, timed as in `delegate_task`.
+`settle` settles the caller when its turn ends; a child cannot take it, because
+it follows its parent's Settle status.
 
 A top-level handoff records the link three ways: the new thread's lineage names
 the caller as a detached fork in the caller's family (`thread.create`

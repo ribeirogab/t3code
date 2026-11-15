@@ -206,6 +206,7 @@ import * as ServerSettings from "../serverSettings.ts";
 import { nestingPatch, nestingRejection, withListed } from "../fork/threadNesting.ts";
 import { quietCompletion } from "../fork/notifyParent.ts";
 import { createdThreadLineage } from "../fork/threadHandoff/handoffRules.ts";
+import { queuedGoalEvents } from "../fork/threadHandoff/goalTiming.ts";
 
 const isMessageQuestionAnswer = Schema.is(
   Schema.Union([TrimmedNonEmptyString, Schema.NonEmptyArray(TrimmedNonEmptyString)]),
@@ -2402,6 +2403,17 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           : projection.runs.find(
               (run) => run.id === options.queuedRunId && run.status === "queued",
             );
+      const goalEvents =
+        options?.userStarted === true
+          ? []
+          : yield* queuedGoalEvents(projectionStore, projection, storedQueuedRun, (run, now) =>
+              queuedRunCancellationEvents(projection, run, now),
+            );
+      if (goalEvents.length > 0) {
+        yield* writeSystemEvents(goalEvents);
+        projection = yield* readCommandProjection(threadId);
+        storedQueuedRun = nextQueuedRun(projection);
+      }
       while (
         storedQueuedRun !== undefined &&
         isStalePullRequestWatchWake(projection, storedQueuedRun)

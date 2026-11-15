@@ -141,6 +141,7 @@ import {
   queueGoal,
   refuseRemoteGoal,
   requireGoalSupport,
+  withGoalNote,
 } from "../fork/threadHandoff/goalQueue.ts";
 
 // Return recoverable handles before common MCP client timeouts expire.
@@ -2677,7 +2678,7 @@ const make = Effect.gen(function* () {
           parentThreadId: scope.thread.threadId,
           parentRunId: parentRun.id,
           parentNodeId: parentRun.rootNodeId,
-          task: taskPrompt(input),
+          task: withGoalNote(taskPrompt(input), input.goal),
           ...(input.title === undefined ? {} : { title: input.title }),
           modelSelection: target.modelSelection,
           runtimeMode,
