@@ -3,6 +3,7 @@ import { ForkNotifyParent } from "./fork/notifyParent.ts";
 import { forkFeatureActive } from "./fork/forkFeatures.ts";
 import { withRecordIdTable } from "./orchestrationV2IdTable.ts";
 import { ForkPlanProgress } from "./fork/planProgress.ts";
+import { ForkThreadAttention } from "./fork/goalStatus.ts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
@@ -592,6 +593,7 @@ export const OrchestrationV2AppThread = Schema.Struct({
       }),
     ),
   ),
+  forkAttention: Schema.optional(Schema.NullOr(ForkThreadAttention)),
   deletedAt: Schema.NullOr(Schema.DateTimeUtc),
 });
 export type OrchestrationV2AppThread = typeof OrchestrationV2AppThread.Type;
@@ -2459,6 +2461,7 @@ export const OrchestrationV2ThreadShell = Schema.Struct({
   ),
   goal: Schema.optional(Schema.NullOr(OrchestrationV2ProviderGoal)),
   forkPlanProgress: Schema.optional(Schema.NullOr(ForkPlanProgress)),
+  forkAttention: Schema.optional(Schema.NullOr(ForkThreadAttention)),
   itemCount: NonNegativeInt,
   visibleItemCount: NonNegativeInt,
   createdAt: Schema.DateTimeUtc,
@@ -3495,6 +3498,7 @@ export const OrchestrationV2Command = Schema.Union([
     linkedPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
     listed: Schema.optional(Schema.Boolean),
     detached: Schema.optional(Schema.Literal(true)),
+    forkAttention: Schema.optional(Schema.NullOr(ForkThreadAttention)),
   }),
   Schema.Struct({
     type: Schema.Literal("thread.pull-request.link"),

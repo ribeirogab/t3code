@@ -42,7 +42,11 @@ import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import * as OrchestrationMcp from "../../OrchestratorMcpService.ts";
 import { newCommandId, readCaller, resolveProjectId, unavailable } from "../../threadAccess.ts";
-import { queueGoal, requireGoalSupport } from "../../../fork/threadHandoff/goalQueue.ts";
+import {
+  queueGoal,
+  requireGoalSupport,
+  withGoalNote,
+} from "../../../fork/threadHandoff/goalQueue.ts";
 import { ProjectToolkit } from "./tools.ts";
 
 const isAboveCeilingError = Schema.is(OrchestratorRuntimeModeAboveCeilingError);
@@ -458,7 +462,7 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
                 initialMessage: {
                   messageId,
                   ...(caller === undefined ? {} : { senderThreadId: caller.id }),
-                  text: input.message ?? "",
+                  text: withGoalNote(input.message ?? "", input.goal),
                   attachments,
                   ...(input.outputSchema === undefined ? {} : { outputSchema: input.outputSchema }),
                 },

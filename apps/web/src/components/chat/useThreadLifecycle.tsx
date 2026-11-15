@@ -606,6 +606,7 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
     threadKey: routeThreadKey,
     threadId: activeThread?.id ?? null,
     goal: activeGoal,
+    attention: activeThreadShell?.source.forkAttention,
     isWorking,
     onSendCommand: sendStandaloneCommandStable,
   });

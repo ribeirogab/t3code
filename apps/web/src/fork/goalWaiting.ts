@@ -21,8 +21,10 @@ const RUNNING_STATUSES = new Set<OrchestrationV2ThreadShell["status"]>([
   "waiting",
 ]);
 
+export const GOAL_WAITING_TASK_ID = "fork-active-goal";
+
 const GOAL_WAITING_TASK = {
-  taskId: "fork-active-goal",
+  taskId: GOAL_WAITING_TASK_ID,
   description: "Pursuing goal",
   kind: "background_task",
   awaited: true,

@@ -7,6 +7,10 @@ import {
   continueInNewThreadMenuItems,
   type ContinueInNewThreadMenuId,
 } from "../fork/continueInNewThread";
+import {
+  compactAndContinueMenuItems,
+  type CompactAndContinueMenuId,
+} from "../fork/compactAndContinue";
 import { parkedThreadMenuItems, type ParkedThreadMenuId } from "../fork/parkedThreads.logic";
 
 export type ThreadActionMenuId =
@@ -39,6 +43,7 @@ export type ThreadActionMenuId =
   | "archive"
   | "delete"
   | ContinueInNewThreadMenuId
+  | CompactAndContinueMenuId
   | ParkedThreadMenuId;
 
 export type DraftActionMenuId =
@@ -136,6 +141,7 @@ export interface ThreadActionMenuState {
   readonly canTurnIntoProject?: boolean;
   readonly canHideFromSidebar?: boolean;
   readonly canContinueInNewThread?: boolean;
+  readonly canCompactAndContinue?: boolean;
   readonly parked?: boolean | null;
 }
 
@@ -173,6 +179,7 @@ export function buildThreadActionMenuItems(
         ]
       : []),
     ...continueInNewThreadMenuItems(state.canContinueInNewThread === true),
+    ...compactAndContinueMenuItems(state.canCompactAndContinue === true),
     ...(state.supports.pinning
       ? [
           state.isPinned
