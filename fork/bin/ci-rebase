@@ -19,7 +19,10 @@ git fetch --no-tags "https://github.com/${upstream_repository}.git" "+refs/tags/
 if ! git rebase "$base_tag" > "$rebase_log" 2>&1; then
   cat "$rebase_log" >&2
   conflicts="$(git diff --name-only --diff-filter=U | paste -sd, -)"
-  git rebase --abort
+  git rebase --abort || true
+  if [[ -z "$conflicts" ]]; then
+    exit 1
+  fi
   printf 'result=conflict\n'
   printf 'conflicts=%s\n' "$conflicts"
   exit 0
