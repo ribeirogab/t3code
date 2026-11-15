@@ -74,6 +74,7 @@ import {
   pendingRestartCancelledBackgroundWork,
   restartCancelledBackgroundWorkNote,
 } from "./RestartBackgroundNote.ts";
+import { heldNotesContext, heldNotesFor, releaseHeldNotes } from "../fork/quietThreadSend.ts";
 
 export class ProviderTurnStartError extends Schema.TaggedError<ProviderTurnStartError>()(
   "ProviderTurnStartError",
@@ -1866,7 +1867,17 @@ export const layer: Layer.Layer<
             sideChatHandoff === undefined || compact || goalCommand
               ? ""
               : sideChatHandoff.summaryText;
-          const context = [delivery.context, sideChatContext, restartNote]
+          const heldNotes = heldNotesFor(
+            projection.thread.id,
+            providerMessage,
+            compact || goalCommand,
+          );
+          const context = [
+            delivery.context,
+            sideChatContext,
+            restartNote,
+            heldNotesContext(heldNotes),
+          ]
             .filter((part) => part !== "")
             .join("\n\n");
           const { restartContinuationOfRunId: _resumedRunId, ...promptedInput } = turnInput;
@@ -1918,6 +1929,7 @@ export const layer: Layer.Layer<
           yield* Effect.forEach(
             [
               delivery.delivered,
+              releaseHeldNotes(heldNotes),
               ...(sideChatContext === "" || sideChatHandoff === undefined || nativeThreadId == null
                 ? []
                 : [

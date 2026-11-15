@@ -374,6 +374,7 @@ import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { useComposerHandleContext } from "../composerHandleContext";
 import { isSubagentLineage, parentLinkTitle } from "../fork/parentLink";
 import { useForkFeature } from "../fork/forkFeatures";
+import { useCompactOnDemand } from "../fork/compactOnDemand";
 import { clampFileAttachmentUploadBytes } from "@t3tools/client-runtime/state/attachments";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { assetEnvironment } from "../state/assets";
@@ -2547,7 +2548,7 @@ export default function ChatView(props: ChatViewProps) {
     pendingUserInputs.length > 0;
   const compactDisabled = compactThreadUnavailable;
   // The context window is the current conversation's, so a handoff destination never inherits it.
-  const resumeCompactionTokens =
+  const idleCompactionTokens =
     activeContextWindow &&
     pendingHandoff === null &&
     resolveIdleCompaction(
@@ -2571,8 +2572,8 @@ export default function ChatView(props: ChatViewProps) {
   const [fullHistoryThreadKeys, setFullHistoryThreadKeys] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
-  const keepFullHistory = fullHistoryThreadKeys.has(routeThreadKey);
-  const setKeepFullHistory = (threadKey: string, keep: boolean) => {
+  const keepIdleHistory = fullHistoryThreadKeys.has(routeThreadKey);
+  const setIdleKeepFullHistory = (threadKey: string, keep: boolean) => {
     setFullHistoryThreadKeys((current) => {
       if (current.has(threadKey) === keep) return current;
       const next = new Set(current);
@@ -2581,13 +2582,26 @@ export default function ChatView(props: ChatViewProps) {
       return next;
     });
   };
+  const { resumeCompactionTokens, keepFullHistory, setKeepFullHistory, toggleKeepFullHistory } =
+    useCompactOnDemand({
+      threadKey: routeThreadKey,
+      idleTokens: idleCompactionTokens,
+      keepIdleHistory,
+      setIdleKeepFullHistory,
+      contextTokens: activeContextWindow?.usedTokens,
+      driver: selectedProvider,
+      blocked:
+        pendingHandoff !== null ||
+        compactDisabled ||
+        hasHeldQueuedRuns ||
+        multipleModelSelections !== null,
+    });
   const freshSessionAvailable =
     activeMessageCount > 0 && serverConfig?.environment.capabilities.freshContext === true;
   // While a question or approval owns the composer, its text answers that, not the agent.
   const freshSessionCommandAvailable =
     freshSessionAvailable && activePendingApproval === null && pendingUserInputs.length === 0;
   const freshSessionArmed = useFreshSessionArmed(routeThreadKey);
-  const toggleKeepFullHistory = () => setKeepFullHistory(routeThreadKey, !keepFullHistory);
   const toggleKeepFullHistoryStable = useStableCallback(toggleKeepFullHistory);
   const armFreshSessionStable = useStableCallback(() => armFreshSession(routeThreadKey));
   const handleRestoreThreadBranch = () => {

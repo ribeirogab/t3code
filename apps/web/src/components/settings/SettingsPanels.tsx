@@ -44,10 +44,10 @@ import {
   canCheckForUpdate,
   getDesktopUpdateButtonTooltip,
   getDesktopUpdateDisabledReason,
-  getDesktopUpdateInstallConfirmationMessage,
   isDesktopUpdateButtonDisabled,
   resolveDesktopUpdateButtonAction,
 } from "../../components/desktopUpdate.logic";
+import { forkUpdateInstallConfirmation } from "../../fork/updateActiveTurns";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
 import { TraitsPicker } from "../chat/TraitsPicker";
 import { isElectron } from "../../env";
@@ -232,10 +232,9 @@ function AboutVersionSection() {
       let confirmed = false;
       try {
         confirmed = await ensureLocalApi().dialogs.confirm(
-          getDesktopUpdateInstallConfirmationMessage(
+          ...forkUpdateInstallConfirmation(
             updateState ?? { availableVersion: null, downloadedVersion: null },
           ),
-          { initialFocus: "confirm" },
         );
       } catch (error) {
         setIsUpdateActionPending(false);

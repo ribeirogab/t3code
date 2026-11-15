@@ -14,7 +14,7 @@ export function AgentLanguageRow() {
     <SettingsRow
       id={AGENT_LANGUAGE_SEARCH_ID}
       title="Agent language"
-      description="Agents answer the messages T3 Code sends them, such as PR updates, in this language."
+      description="Agents answer in this language, also after PR updates, wakes, and compactions."
       serverScoped
       settingKeys={["agentLanguage"]}
       resetAction={
