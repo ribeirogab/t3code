@@ -60,7 +60,12 @@ function settled(thread: WaitingShell): boolean {
 export function withWorkflowRunWaits<Thread extends object>(thread: Thread): Thread {
   if (!isWaitingShell(thread)) return thread;
   const waits = waitsByThread.get(thread.id);
-  if (waits === undefined || !settled(thread) || !forkFeatureActive("waitingDetail")) {
+  if (
+    waits === undefined ||
+    !settled(thread) ||
+    !forkFeatureActive("waitingDetail") ||
+    !forkFeatureActive("workflowRunWatch")
+  ) {
     return thread;
   }
   return {

@@ -2460,6 +2460,21 @@ it.effect(
         threadId: childId,
       });
       assert.isUndefined((yield* projections.getThreadShell(childId))?.archiveBatchId);
+      const storedChild = projections
+        .getThreadProjection(childId)
+        .pipe(Effect.map((projection) => projection.thread));
+      assert.notProperty(yield* storedChild, "archiveBatchId");
+      yield* orchestrator.dispatch({
+        type: "thread.archive",
+        commandId: CommandId.make("archive:listed-child-alone"),
+        threadId: childId,
+      });
+      assert.notProperty(yield* storedChild, "archiveBatchId");
+      yield* orchestrator.dispatch({
+        type: "thread.unarchive",
+        commandId: CommandId.make("unarchive:listed-child-alone"),
+        threadId: childId,
+      });
       const detach = (commandId: string, threadId: ThreadId) =>
         orchestrator.dispatch({
           type: "thread.metadata.update",
