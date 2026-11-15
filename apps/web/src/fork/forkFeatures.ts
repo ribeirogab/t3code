@@ -302,8 +302,8 @@ export const FORK_FEATURES = [
     section: "Sidebar",
     searchId: "fork-parked-threads",
     title: "Parked threads",
-    description: "Park a thread to keep it in the Parked shelf, out of the list and auto-settle.",
-    searchTerms: ["fork parked park unpark shelf hide keep long lived threads sidebar"],
+    description: "Park a thread to keep it settled, in the Parked shelf.",
+    searchTerms: ["fork parked park unpark shelf hide keep long lived threads sidebar settled"],
   },
   {
     key: "updateActiveTurnsWarning",

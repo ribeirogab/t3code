@@ -9,6 +9,7 @@ import type { ScopedThreadRef } from "@t3tools/contracts";
 import { stackedThreadToast, toastManager } from "~/components/ui/toast";
 import { appAtomRegistry } from "~/rpc/atomRegistry";
 import { serverEnvironment } from "~/state/server";
+import { threadEnvironment } from "~/state/threads";
 
 import { isForkFeatureEnabled } from "./forkFeatures";
 
@@ -31,7 +32,7 @@ export async function setThreadParked(threadRef: ScopedThreadRef, parked: boolea
     serverEnvironment.settingsValueAtom(threadRef.environmentId),
   );
   const others = (settings?.parkedThreadIds ?? []).filter((id) => id !== threadRef.threadId);
-  const result = await runAtomCommand(
+  const parkedResult = await runAtomCommand(
     appAtomRegistry,
     serverEnvironment.updateSettings,
     {
@@ -40,6 +41,18 @@ export async function setThreadParked(threadRef: ScopedThreadRef, parked: boolea
     },
     { reportFailure: false },
   );
+  const result =
+    parked || parkedResult._tag === "Failure"
+      ? parkedResult
+      : await runAtomCommand(
+          appAtomRegistry,
+          threadEnvironment.unsettle,
+          {
+            environmentId: threadRef.environmentId,
+            input: { threadId: threadRef.threadId, reason: "user" },
+          },
+          { reportFailure: false },
+        );
   if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
     const error = squashAtomCommandFailure(result);
     toastManager.add(
