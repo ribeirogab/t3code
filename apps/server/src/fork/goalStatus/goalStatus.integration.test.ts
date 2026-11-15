@@ -139,7 +139,7 @@ const goalState = Effect.gen(function* () {
     attention: thread.forkAttention ?? null,
     shellAttention: (yield* projections.getThreadShell(threadId))?.forkAttention ?? null,
     queued: runs
-      .filter((run) => run.status === "queued")
+      .filter((run) => run.status === "queued" || run.status === "starting")
       .toSorted((left, right) => (left.queuePosition ?? 0) - (right.queuePosition ?? 0))
       .map((run) => textOf(run.userMessageId)),
     stopped: turnItems
