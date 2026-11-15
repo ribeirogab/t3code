@@ -39,6 +39,7 @@ import * as Ref from "effect/Ref";
 import * as Stream from "effect/Stream";
 import { TestClock } from "effect/testing";
 
+import { parkedThreadSettleCommand } from "../fork/parkedThreads.ts";
 import * as GitManager from "../git/GitManager.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
 import * as ProjectSetupScriptRunner from "../project/ProjectSetupScriptRunner.ts";
@@ -722,6 +723,12 @@ const makeHarness = Effect.fn("makeThreadSettlementHarness")(function* (options:
                     : snapshot.threads.filter((thread) => thread.id === threadId),
                 ),
               ),
+          ),
+        ),
+      getThreadShell: (threadId) =>
+        Ref.get(snapshots).pipe(
+          Effect.map(
+            (snapshot) => snapshot.threads.find((thread) => thread.id === threadId) ?? null,
           ),
         ),
       getThread: (threadId) => {
@@ -2480,6 +2487,116 @@ describe("ThreadSettlementServiceV2 terminals", () => {
       }).pipe(Effect.provide(fixture.layer));
     }),
   );
+});
+
+describe("ThreadSettlementServiceV2 parked threads", () => {
+  const HOUR_MS = 60 * 60 * 1_000;
+  const parkedSettings = (threadIds: ReadonlyArray<ThreadId>): ContractServerSettings => ({
+    ...DEFAULT_SERVER_SETTINGS,
+    sidebarAutoSettleAfterDays: null,
+    sidebarAutoSettleOnMerge: false,
+    parkedThreadIds: threadIds,
+  });
+  const idleThread = (id: string, overrides: Partial<SettlementShell> = {}) =>
+    makeThread(id, {
+      status: "completed",
+      latestRunId: RunId.make(`run:${id}:1`),
+      latestUserMessageAt: DateTime.makeUnsafe(Date.parse(NOW) - HOUR_MS),
+      latestRunCompletedAt: DateTime.makeUnsafe(Date.parse(NOW) - HOUR_MS),
+      updatedAt: DateTime.makeUnsafe(Date.parse(NOW) - HOUR_MS),
+      pullRequests: [persistedLink("open", DateTime.makeUnsafe("2026-08-20T00:00:00.000Z"))],
+      ...overrides,
+    });
+
+  it.effect("settles an idle parked thread at once and again after its next turn", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(Date.parse(NOW));
+      const dispatched = yield* Queue.unbounded<AutoSettleCommand>();
+      const parked = idleThread("parked");
+      const other = idleThread("not-parked");
+      const fixture = yield* makeHarness({
+        snapshot: makeSnapshot([parked, other]),
+        settings: parkedSettings([parked.id]),
+        onDispatch: (command) => Queue.offer(dispatched, command),
+      });
+      yield* Effect.gen(function* () {
+        const service = yield* ThreadSettlementService.ThreadSettlementServiceV2;
+        yield* startHarness(service, fixture.activation, fixture.snapshotReads);
+        expect(yield* Queue.take(dispatched)).toMatchObject({
+          threadId: parked.id,
+          snapshotAt: parked.updatedAt,
+        });
+
+        const nextRunId = RunId.make("run:parked:2");
+        const afterTurn = {
+          ...parked,
+          latestRunId: nextRunId,
+          latestRunCompletedAt: DateTime.makeUnsafe(NOW),
+          updatedAt: DateTime.makeUnsafe(NOW),
+        };
+        yield* Ref.set(fixture.snapshots, makeSnapshot([afterTurn, other]));
+        yield* fixture.publishEvent({
+          type: "run.updated",
+          id: EventId.make("event:parked-run-completed"),
+          threadId: parked.id,
+          occurredAt: DateTime.makeUnsafe(NOW),
+          payload: {
+            id: nextRunId,
+            threadId: parked.id,
+            ordinal: 2,
+            providerInstanceId: ProviderInstanceId.make("codex"),
+            modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5" },
+            providerThreadId: null,
+            userMessageId: MessageId.make("message:parked:2"),
+            rootNodeId: null,
+            activeAttemptId: null,
+            status: "completed",
+            requestedAt: DateTime.makeUnsafe(NOW),
+            startedAt: DateTime.makeUnsafe(NOW),
+            completedAt: DateTime.makeUnsafe(NOW),
+            checkpointId: null,
+            contextHandoffId: null,
+          },
+        });
+        expect(yield* Queue.take(dispatched)).toMatchObject({
+          threadId: parked.id,
+          snapshotAt: afterTurn.updatedAt,
+        });
+        yield* service.drain;
+        expect((yield* Ref.get(fixture.commands)).map((command) => command.threadId)).toEqual([
+          parked.id,
+          parked.id,
+        ]);
+      }).pipe(Effect.provide(fixture.layer));
+    }),
+  );
+
+  it.effect("keeps a parked thread whose last run failed out of every settlement", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(Date.parse(NOW));
+      const failed = makeThread("parked-failed", { status: "failed" });
+      const fixture = yield* makeHarness({
+        snapshot: makeSnapshot([failed]),
+        settings: { ...parkedSettings([failed.id]), sidebarAutoSettleAfterDays: 1 },
+      });
+      yield* Effect.gen(function* () {
+        const service = yield* ThreadSettlementService.ThreadSettlementServiceV2;
+        yield* startHarness(service, fixture.activation, fixture.snapshotReads);
+        expect(yield* Ref.get(fixture.commands)).toEqual([]);
+      }).pipe(Effect.provide(fixture.layer));
+    }),
+  );
+
+  it("settles an un-settled parked thread explicitly and leaves busy or settled ones", () => {
+    const isIdle = (thread: OrchestrationV2ThreadShell) =>
+      ThreadSettlementService.isAutoSettlementCandidate(thread, NOW_MS);
+    expect(parkedThreadSettleCommand(shell(), isIdle)).toBe("thread.auto-settle");
+    expect(parkedThreadSettleCommand(shell({ settledOverride: "active" }), isIdle)).toBe(
+      "thread.settle",
+    );
+    expect(parkedThreadSettleCommand(shell({ settledOverride: "settled" }), isIdle)).toBeNull();
+    expect(parkedThreadSettleCommand(shell({ activityRunStatus: "running" }), isIdle)).toBeNull();
+  });
 });
 
 describe("isSnoozed", () => {
