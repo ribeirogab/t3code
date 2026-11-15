@@ -13,6 +13,7 @@ import {
 import * as Effect from "effect/Effect";
 
 import type { ProjectionStoreV2Error } from "../orchestration-v2/ProjectionStore.ts";
+import { startsAgentGoal } from "./threadHandoff/goalQuestion.ts";
 
 export type ChildWakeEvent = "finish" | "question";
 
@@ -37,7 +38,9 @@ function typedInChildByOwner(starter: TurnStarter): boolean {
 
 function turnStaysInChild(starter: TurnStarter | undefined): boolean {
   return (
-    starter !== undefined && (typedInChildByOwner(starter) || isSlashCommandOnly(starter.text))
+    starter !== undefined &&
+    !startsAgentGoal(starter) &&
+    (typedInChildByOwner(starter) || isSlashCommandOnly(starter.text))
   );
 }
 

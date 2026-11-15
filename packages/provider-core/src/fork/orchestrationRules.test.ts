@@ -6,7 +6,11 @@ import {
   T3_CODE_ORCHESTRATION_SECTIONS,
   t3OrchestrationPrompt,
 } from "../server/orchestrationInstructions.ts";
-import { forkOrchestrationInstructions, forkOrchestrationSections } from "./orchestrationRules.ts";
+import {
+  forkOrchestrationInstructions,
+  forkOrchestrationSections,
+  GOAL_WAITS_ON_THE_USER,
+} from "./orchestrationRules.ts";
 
 const FORK_RULE = "- Recurring or timed work: `schedule_task`, not `CronCreate`.";
 
@@ -15,6 +19,7 @@ describe("fork orchestration rules", () => {
     expect(forkOrchestrationSections()).toHaveLength(T3_CODE_ORCHESTRATION_SECTIONS.length);
     expect(forkOrchestrationSections().join("\n")).toContain(FORK_RULE);
     expect(forkOrchestrationInstructions()).toContain(FORK_RULE);
+    expect(forkOrchestrationInstructions()).toContain(GOAL_WAITS_ON_THE_USER);
     expect(forkOrchestrationInstructions()).toContain(
       "never a background `Agent`. A thread the user asked to run apart: `delegate_task` with `listed:true`",
     );
@@ -39,5 +44,11 @@ describe("fork orchestration rules", () => {
     });
     expect(prompt).toContain(T3_CODE_ORCHESTRATION_INSTRUCTIONS.trim());
     expect(prompt).not.toContain(FORK_RULE);
+  });
+
+  it("leaves out the goal rule while Goal status is off", () => {
+    using _settings = overrideForkFeatureSettings({ features: { goalStatus: false } });
+    expect(forkOrchestrationInstructions()).toContain(FORK_RULE);
+    expect(forkOrchestrationInstructions()).not.toContain(GOAL_WAITS_ON_THE_USER);
   });
 });

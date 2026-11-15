@@ -14,6 +14,7 @@ import {
 import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Result from "effect/Result";
@@ -56,6 +57,74 @@ const layerTest = DelegatedTaskQuestionReactor.layer.pipe(
   ),
 );
 
+const delegateWithGoal = Effect.gen(function* () {
+  const orchestrator = yield* Orchestrator.OrchestratorV2;
+  const projections = yield* ProjectionStore.ProjectionStoreV2;
+  const parentThreadId = ThreadId.make("thread:goal-parent");
+  yield* orchestrator.dispatch({
+    type: "thread.create",
+    commandId: CommandId.make("create-goal-parent"),
+    threadId: parentThreadId,
+    projectId: ProjectId.make("project:goal-timing"),
+    title: "Coordinator",
+    modelSelection,
+    runtimeMode: "full-access",
+    interactionMode: "default",
+    branch: null,
+    worktreePath: null,
+    createdBy: "user",
+    creationSource: "web",
+  });
+  yield* orchestrator.dispatch({
+    type: "message.dispatch",
+    commandId: CommandId.make("start-goal-parent"),
+    threadId: parentThreadId,
+    messageId: MessageId.make("message:goal-parent"),
+    text: "Delegate the fix",
+    attachments: [],
+    dispatchMode: { type: "start_immediately" },
+    createdBy: "user",
+    creationSource: "web",
+  });
+  const parentRun = (yield* projections.getThreadProjection(parentThreadId)).runs[0]!;
+  const delegation = CommandId.make("delegate-goal-task");
+  yield* orchestrator.dispatch({
+    type: "delegated_task.request",
+    commandId: delegation,
+    parentThreadId,
+    parentRunId: parentRun.id,
+    parentNodeId: parentRun.rootNodeId!,
+    task: "Fix the login bug. Send your questions first.",
+    completionWake: "always",
+    modelSelection,
+    runtimeMode: "full-access",
+    interactionMode: "default",
+    createdBy: "agent",
+    creationSource: "mcp",
+  });
+  const task = (yield* projections.getThreadProjection(parentThreadId)).subagents[0]!;
+  const childThreadId = task.childThreadId!;
+  const goalId = queuedGoalId(delegation);
+  yield* orchestrator.dispatch({
+    type: "message.dispatch",
+    commandId: CommandId.make(goalId),
+    threadId: childThreadId,
+    messageId: MessageId.make(goalId),
+    senderThreadId: childThreadId,
+    text: goalCommandText("The login test passes"),
+    attachments: [],
+    dispatchMode: { type: "queue_after_active" },
+    createdBy: "agent",
+    creationSource: "mcp",
+  });
+  const childRuns = () =>
+    projections
+      .getThreadRecords(childThreadId, ["runs"])
+      .pipe(Effect.map(({ runs }) => runs.toSorted((a, b) => a.ordinal - b.ordinal)));
+  const [firstRun, goalRun] = yield* childRuns();
+  return { parentThreadId, task, childThreadId, childRuns, firstRun: firstRun!, goalRun: goalRun! };
+});
+
 it.effect.each([
   { answer: "The fix is in.", goalRunStatus: "starting" },
   { answer: `The fix is in.\n\n${GOAL_MET_LINE}`, goalRunStatus: "cancelled" },
@@ -68,68 +137,8 @@ it.effect.each([
       const sink = yield* EventSink.EventSinkV2;
       const reactor = yield* DelegatedTaskQuestionReactor.DelegatedTaskQuestionReactor;
       const now = yield* DateTime.now;
-      const parentThreadId = ThreadId.make("thread:goal-parent");
-      yield* orchestrator.dispatch({
-        type: "thread.create",
-        commandId: CommandId.make("create-goal-parent"),
-        threadId: parentThreadId,
-        projectId: ProjectId.make("project:goal-timing"),
-        title: "Coordinator",
-        modelSelection,
-        runtimeMode: "full-access",
-        interactionMode: "default",
-        branch: null,
-        worktreePath: null,
-        createdBy: "user",
-        creationSource: "web",
-      });
-      yield* orchestrator.dispatch({
-        type: "message.dispatch",
-        commandId: CommandId.make("start-goal-parent"),
-        threadId: parentThreadId,
-        messageId: MessageId.make("message:goal-parent"),
-        text: "Delegate the fix",
-        attachments: [],
-        dispatchMode: { type: "start_immediately" },
-        createdBy: "user",
-        creationSource: "web",
-      });
-      const parentRun = (yield* projections.getThreadProjection(parentThreadId)).runs[0]!;
-      const delegation = CommandId.make("delegate-goal-task");
-      yield* orchestrator.dispatch({
-        type: "delegated_task.request",
-        commandId: delegation,
-        parentThreadId,
-        parentRunId: parentRun.id,
-        parentNodeId: parentRun.rootNodeId!,
-        task: "Fix the login bug. Send your questions first.",
-        completionWake: "always",
-        modelSelection,
-        runtimeMode: "full-access",
-        interactionMode: "default",
-        createdBy: "agent",
-        creationSource: "mcp",
-      });
-      const task = (yield* projections.getThreadProjection(parentThreadId)).subagents[0]!;
-      const childThreadId = task.childThreadId!;
-      const goalId = queuedGoalId(delegation);
-      yield* orchestrator.dispatch({
-        type: "message.dispatch",
-        commandId: CommandId.make(goalId),
-        threadId: childThreadId,
-        messageId: MessageId.make(goalId),
-        senderThreadId: childThreadId,
-        text: goalCommandText("The login test passes"),
-        attachments: [],
-        dispatchMode: { type: "queue_after_active" },
-        createdBy: "agent",
-        creationSource: "mcp",
-      });
-      const childRuns = () =>
-        projections
-          .getThreadRecords(childThreadId, ["runs"])
-          .pipe(Effect.map(({ runs }) => runs.toSorted((a, b) => a.ordinal - b.ordinal)));
-      const [firstRun, goalRun] = yield* childRuns();
+      const { parentThreadId, childThreadId, childRuns, firstRun, goalRun } =
+        yield* delegateWithGoal;
       const finalQuestion = {
         id: EventId.make("event:final-question"),
         type: "runtime-request.updated",
@@ -240,4 +249,82 @@ it.effect.each([
       yield* sink.write({ events: [runEnded(answerRun)] });
       assert.equal((yield* afterAnswer)?.status, goalRunStatus);
     }).pipe(Effect.provide(layerTest)),
+);
+
+it.effect("a question from a child's /goal turn reaches the parent after the task settled", () =>
+  Effect.gen(function* () {
+    const projections = yield* ProjectionStore.ProjectionStoreV2;
+    const sink = yield* EventSink.EventSinkV2;
+    const reactor = yield* DelegatedTaskQuestionReactor.DelegatedTaskQuestionReactor;
+    const now = yield* DateTime.now;
+    const { parentThreadId, task, childThreadId, firstRun, goalRun } = yield* delegateWithGoal;
+    const afterSequence = yield* sink.latestSequence();
+    const goalStarted = yield* sink.stream({ afterSequence, eventType: "run.updated" }).pipe(
+      Stream.filterMap((stored) =>
+        stored.event.type === "run.updated" &&
+        stored.event.runId === goalRun.id &&
+        stored.event.payload.status === "starting"
+          ? Result.succeed(stored.event.payload)
+          : Result.failVoid,
+      ),
+      Stream.runHead,
+      Effect.map(Option.getOrUndefined),
+      Effect.forkChild,
+    );
+    yield* sink.write({
+      events: [
+        {
+          id: EventId.make("event:first-turn-completed"),
+          type: "run.updated",
+          threadId: childThreadId,
+          runId: firstRun.id,
+          occurredAt: now,
+          payload: { ...firstRun, status: "completed", startedAt: now, completedAt: now },
+        },
+      ],
+    });
+    const startedGoal = (yield* Fiber.join(goalStarted))!;
+    const { subagents } = yield* projections.getThreadRecords(parentThreadId, ["subagents"]);
+    const runningTask = subagents.find((candidate) => candidate.id === task.id)!;
+    yield* sink.write({
+      events: [
+        {
+          id: EventId.make("event:task-completed"),
+          type: "subagent.updated",
+          threadId: parentThreadId,
+          occurredAt: now,
+          payload: { ...runningTask, status: "completed", completedAt: now },
+        },
+      ],
+    });
+    const goalQuestion = {
+      id: EventId.make("event:goal-question"),
+      type: "runtime-request.updated",
+      threadId: childThreadId,
+      runId: startedGoal.id,
+      occurredAt: now,
+      payload: {
+        id: RuntimeRequestId.make("request:goal-question"),
+        nodeId: startedGoal.rootNodeId!,
+        providerTurnId: null,
+        nativeRequestRef: null,
+        kind: "user_input",
+        status: "pending",
+        responseCapability: { type: "message" },
+        createdAt: now,
+        resolvedAt: null,
+      },
+    } satisfies OrchestrationV2DomainEvent;
+
+    yield* sink.write({ events: [goalQuestion] });
+    yield* reactor.handle(goalQuestion);
+
+    const parent = yield* projections.getThreadRecords(parentThreadId, ["messages", "runs"]);
+    const wake = parent.messages.find((message) => message.notification !== undefined);
+    assert.include(
+      wake?.text,
+      `t3_pending_request action read, threadId ${childThreadId}, and requestId ${goalQuestion.payload.id}.`,
+    );
+    assert.equal(parent.runs.find((run) => run.userMessageId === wake?.id)?.status, "queued");
+  }).pipe(Effect.provide(layerTest)),
 );

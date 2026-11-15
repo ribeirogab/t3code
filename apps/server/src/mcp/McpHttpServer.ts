@@ -93,6 +93,8 @@ import * as MessageHandlers from "./toolkits/message/handlers.ts";
 import { HtmlPreviewTool, HtmlPreviewToolkit, HtmlRenderToolkit } from "./toolkits/html/tools.ts";
 import * as PublishedPortsHandlers from "../fork/publishedPorts/handlers.ts";
 import { PublishedPortsToolkit } from "../fork/publishedPorts/tools.ts";
+import * as GoalStatusHandlers from "../fork/goalStatus/handlers.ts";
+import { GoalStatusToolkit } from "../fork/goalStatus/tools.ts";
 import * as ForkThreadHandoffHandlers from "../fork/threadHandoff/handlers.ts";
 import { ForkThreadHandoffToolkit } from "../fork/threadHandoff/tools.ts";
 import { forkToolVisible } from "../fork/forkToolGates.ts";
@@ -1358,6 +1360,7 @@ export const layerTools = Layer.mergeAll(
   layerHtmlToolkit,
   layerMessageToolkit,
   toolkitRegistration(PublishedPortsToolkit, PublishedPortsHandlers.layer),
+  toolkitRegistration(GoalStatusToolkit, GoalStatusHandlers.layer),
   McpServer.visibility(({ target }) => Effect.succeed(forkToolVisible(target)), { global: true }),
 );
 

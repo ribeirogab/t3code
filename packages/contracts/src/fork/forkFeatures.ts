@@ -14,7 +14,9 @@ export type ForkServerFeature =
   | "holdRunningPrChecks"
   | "workflowRunWatch"
   | "goalOnNewThreads"
-  | "parkedThreads";
+  | "parkedThreads"
+  | "goalStatus"
+  | "goalQuestionPause";
 
 export const ForkFeatureSettings = Schema.Struct({
   master: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),

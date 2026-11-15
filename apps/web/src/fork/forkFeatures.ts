@@ -208,6 +208,23 @@ export const FORK_FEATURES = [
     searchTerms: ["fork goal delegate launch new thread child objective"],
   },
   {
+    key: "goalStatus",
+    section: "Agents",
+    searchId: "fork-goal-status",
+    title: "Goal status",
+    description:
+      "Let agents end or pause their goal with a reason. Pause a goal that waits on you and mark its thread Needs you.",
+    searchTerms: ["fork goal status needs you blocked done pause stop hook loop t3_goal_update"],
+  },
+  {
+    key: "goalQuestionPause",
+    section: "Chat",
+    searchId: "fork-goal-question-pause",
+    title: "Pause goal for your question",
+    description: "A message that ends with ? pauses the goal, so the agent answers first.",
+    searchTerms: ["fork goal question pause steer answer first ask"],
+  },
+  {
     key: "parkedThreads",
     section: "Sidebar",
     searchId: "fork-parked-threads",

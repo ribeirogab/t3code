@@ -16,6 +16,7 @@ import * as Stream from "effect/Stream";
 import { reportLabel } from "@t3tools/provider-core/server/notification";
 
 import { askTheUserForChildQuestion, questionWakesParent } from "../fork/notifyParent.ts";
+import { goalRunTask } from "../fork/threadHandoff/goalQuestion.ts";
 import { forkParked } from "../serverActivation.ts";
 import * as Orchestrator from "./Orchestrator.ts";
 import * as ProjectionStore from "./ProjectionStore.ts";
@@ -194,9 +195,10 @@ const make = Effect.gen(function* () {
       const taskId =
         run?.delegatedTaskId ??
         (child.forkedFrom?.type === "node" ? child.forkedFrom.nodeId : undefined);
-      const task = parent.subagents.find(
-        (candidate) => candidate.origin === "app_owned" && candidate.id === taskId,
-      );
+      const task =
+        parent.subagents.find(
+          (candidate) => candidate.origin === "app_owned" && candidate.id === taskId,
+        ) ?? (yield* goalRunTask(projections, parent.subagents, child.id, run));
       if (
         task === undefined ||
         parent.thread.archivedAt !== null ||

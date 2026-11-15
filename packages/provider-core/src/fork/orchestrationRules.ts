@@ -21,30 +21,43 @@ const SUBSESSIONS_ARE_DELEGATES =
 
 const RECURRING_WORK_IS_SCHEDULED = "- Recurring or timed work: `schedule_task`, not `CronCreate`.";
 
-const FORK_RULES_BY_SECTION: ReadonlyArray<ReadonlyArray<string>> = [
-  [LISTED_CHILD_WAITS_FOR_THE_USER, ASK_THROUGH_THE_QUESTION_TOOL_WHILE_WORK_RUNS],
-  [SUBSESSIONS_ARE_DELEGATES, RECURRING_WORK_IS_SCHEDULED],
-];
+export const GOAL_WAITS_ON_THE_USER =
+  "- A `/goal` that waits on something only the user can do, or whose criterion cannot become true as written: call `t3_goal_update`. Never repeat the request in each reply.";
 
-let withRules: { sections: ReadonlyArray<string>; instructions: string } | undefined;
+function forkRulesBySection(goalStatus: boolean): ReadonlyArray<ReadonlyArray<string>> {
+  return [
+    [
+      LISTED_CHILD_WAITS_FOR_THE_USER,
+      ASK_THROUGH_THE_QUESTION_TOOL_WHILE_WORK_RUNS,
+      ...(goalStatus ? [GOAL_WAITS_ON_THE_USER] : []),
+    ],
+    [SUBSESSIONS_ARE_DELEGATES, RECURRING_WORK_IS_SCHEDULED],
+  ];
+}
+
+const withRules = new Map<boolean, { sections: ReadonlyArray<string>; instructions: string }>();
 
 function withForkRules() {
-  if (withRules !== undefined) return withRules;
+  const goalStatus = forkFeatureActive("goalStatus");
+  const cached = withRules.get(goalStatus);
+  if (cached !== undefined) return cached;
+  const rulesBySection = forkRulesBySection(goalStatus);
   const sections = T3_CODE_ORCHESTRATION_SECTIONS.map((section, index) =>
     [
       section.replace(
         BACKGROUND_AGENT_RULE,
         () => BACKGROUND_AGENT_RULE + LISTED_CHILD_FOR_A_THREAD_APART,
       ),
-      ...(FORK_RULES_BY_SECTION[index] ?? []),
+      ...(rulesBySection[index] ?? []),
     ].join("\n"),
   );
   const instructions = T3_CODE_ORCHESTRATION_SECTIONS.reduce(
     (text, section, index) => text.replace(section, () => sections[index]!),
     T3_CODE_ORCHESTRATION_INSTRUCTIONS,
   );
-  withRules = { sections, instructions };
-  return withRules;
+  const built = { sections, instructions };
+  withRules.set(goalStatus, built);
+  return built;
 }
 
 export function forkOrchestrationSections(): ReadonlyArray<string> {

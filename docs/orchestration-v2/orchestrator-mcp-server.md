@@ -267,8 +267,11 @@ holds the goal while a question from that turn is open or another message
 waits, so the answer runs first, and cancels it when the reply has the
 `Goal met.` line (`apps/server/src/fork/threadHandoff/goalTiming.ts`). The next
 completed turn releases a held goal for the same check, and the queue's Resume
-starts it. It needs a Codex, Claude, or OpenCode child and is refused for a task
-in a linked environment. `t3_thread_launch` takes the same `goal`.
+starts it. A question the child asks in the goal run wakes the parent like a
+first-turn question, also after the task settled
+(`apps/server/src/fork/threadHandoff/goalQuestion.ts`). It needs a Codex,
+Claude, or OpenCode child and is refused for a task in a linked environment.
+`t3_thread_launch` takes the same `goal`.
 
 Provider, model, runtime mode, and interaction mode inherit from the parent
 when omitted. A driver-only target inherits the parent's provider instance
@@ -434,6 +437,21 @@ A top-level handoff records the link three ways: the new thread's lineage names
 the caller as a detached fork in the caller's family (`thread.create`
 `continuesFrom`, set only by the server), its first message names the caller as
 the sender, and the caller's timeline gets a created-thread item.
+
+### `t3_goal_update` (fork)
+
+Ends or pauses the caller's `/goal` with `needs_user`, `blocked`, or `done`, a
+one-line `reason`, and for `done` a `result` link. The server stores the status
+on the thread (`forkAttention`, written by `thread.metadata.update`, so no
+migration), then sends `/goal clear` as a steer, which stops the running turn
+like the composer's Clear. The goal card shows the reason, and the sidebar marks
+`needs_user` and `blocked` threads Needs you. The next message from the user or
+another thread turns the status into a plain pause that keeps the objective for
+Resume; a user `/goal` command clears it. `GoalStallReactor` sets the same
+status when a Claude goal's Stop hook blocks a turn that ends on a question, or
+blocks twice with no tool call between, and marks Done when the judge meets the
+goal. A user message that ends with `?` during an active goal pauses it and runs
+after the `/goal clear` (`apps/server/src/fork/goalStatus/`).
 
 ### `t3_thread_list`
 
