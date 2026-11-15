@@ -215,6 +215,23 @@ export const FORK_FEATURES = [
     description: "Park a thread to keep it in the Parked shelf, out of the list and auto-settle.",
     searchTerms: ["fork parked park unpark shelf hide keep long lived threads sidebar"],
   },
+  {
+    key: "updateActiveTurnsWarning",
+    section: "Sidebar",
+    searchId: "fork-update-active-turns-warning",
+    title: "Name active turns before an update",
+    description: "Before an update restarts T3 Code, list the threads with an active turn.",
+    searchTerms: ["fork update install restart active turn running threads warning confirm"],
+  },
+  {
+    key: "archiveAfterTurn",
+    section: "Agents",
+    searchId: "fork-archive-after-turn",
+    title: "Archive after the turn",
+    description:
+      "When an agent archives a thread with a running turn, archive it when the turn ends.",
+    searchTerms: ["fork archive organize thread running turn wait end child coordinator"],
+  },
 ] as const satisfies ReadonlyArray<{
   readonly key: string;
   readonly section: (typeof FORK_FEATURE_SECTIONS)[number];

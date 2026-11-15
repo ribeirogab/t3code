@@ -74,7 +74,9 @@ fork/bin/use fork
 fork/bin/use official
 ```
 
-`use` moves the desktop app on this machine to the latest release of the fork or of upstream: the app on macOS arm64, the AppImage on Linux x64. Options: `--only app`, `--only server`, `--server <ssh-host>`, and an exact tag such as `v0.1.8-nightly.20261108.4367001`.
+`use` moves the desktop app on this machine to the latest release of the fork or of upstream: the app on macOS arm64, the AppImage on Linux x64. Options: `--only app`, `--only server`, `--server <ssh-host>`, `--yes`, and an exact tag such as `v0.1.8-nightly.20261108.4367001`.
+
+Before it moves the app, `use` lists the threads of this machine that have an active turn, from `fork/bin/active-turns`, and asks before it installs. Without a terminal, it stops unless you pass `--yes`. `fork/test/use-active-turns` tests this with stubs.
 
 To also move a T3 server on another machine, pass `--server <ssh-host>` or set `T3CODE_FORK_SERVER=<ssh-host>` in your shell profile. `use` moves that server first, then the app. Without a server, it moves only the app.
 
