@@ -38,6 +38,7 @@ import {
   ThreadMetadataMcpUpdateResult,
   TrimmedNonEmptyString,
 } from "@t3tools/contracts";
+import { ForkThreadSendResultFields } from "@t3tools/contracts";
 import { McpSchema, Tool, Toolkit } from "effect/ai";
 import * as Schema from "effect/Schema";
 import * as Struct from "effect/Struct";
@@ -279,7 +280,10 @@ const ThreadSendTool = Tool.make("t3_thread_send", {
   description:
     "Send a message to any thread. The target cannot run with broader modes than yours. `mode:'auto'` starts an idle thread, steers a running turn, or queues. `queue`: new turn. `steer`: mid-turn update. `restart`: interrupt and restart. A send to a finished child thread starts a fresh task and returns its `taskId`. In your reply, name it as its `link` verbatim.",
   parameters: OrchestratorMcpThreadSendInput,
-  success: OrchestratorMcpThreadSendResult,
+  success: Schema.Struct({
+    ...OrchestratorMcpThreadSendResult.fields,
+    ...ForkThreadSendResultFields,
+  }),
   failure: OrchestratorMcpFailure,
   failureMode: "return",
   dependencies: sendDependencies,

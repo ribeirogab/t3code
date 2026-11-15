@@ -79,3 +79,4 @@ export * from "./fork/publishedPorts.ts";
 export * from "./fork/threadHandoff.ts";
 export * from "./fork/fullAccessConsent.ts";
 export * from "./fork/forkFeatures.ts";
+export * from "./fork/threadSendWake.ts";

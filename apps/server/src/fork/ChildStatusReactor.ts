@@ -19,6 +19,7 @@ import * as Stream from "effect/Stream";
 import * as Orchestrator from "../orchestration-v2/Orchestrator.ts";
 import * as ProjectionStore from "../orchestration-v2/ProjectionStore.ts";
 import { forkParked } from "../serverActivation.ts";
+import { caseClosedDispatch } from "./ownerFacingTasks.ts";
 
 type StatusThread = Pick<
   OrchestrationV2AppThread,
@@ -171,8 +172,22 @@ const make = Effect.gen(function* () {
     }
   });
 
+  const tellCaseClosed = Effect.fnUntraced(function* (event: OrchestrationV2DomainEvent) {
+    const notice = yield* caseClosedDispatch(projections, event);
+    if (notice === null) return;
+    yield* engine.dispatch(notice).pipe(
+      Effect.catchCause((cause) =>
+        Effect.logDebug("a closed child could not notify its parent", {
+          threadId: event.threadId,
+          cause,
+        }),
+      ),
+    );
+  });
+
   const handle: ChildStatusReactor["Service"]["handle"] = Effect.fnUntraced(
     function* (event) {
+      yield* tellCaseClosed(event);
       if (!forkFeatureActive("nestedThreads")) return;
       if (PARENT_STATUS_EVENTS.has(event.type) || changesSnooze(event)) {
         const parent = yield* projections.getThread(event.threadId);

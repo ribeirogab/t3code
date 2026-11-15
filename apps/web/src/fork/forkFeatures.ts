@@ -179,8 +179,26 @@ export const FORK_FEATURES = [
     searchId: "fork-quiet-parent-wake",
     title: "Quiet parent wake",
     description:
-      "Do not wake the parent when you write in its child thread. Agents choose which child events wake them.",
-    searchTerms: ["fork notify parent wake child delegate finish question quiet"],
+      "Do not wake the parent when you write in its child thread. Agents choose which child events wake them. A failed child always wakes its parent.",
+    searchTerms: ["fork notify parent wake child delegate finish question quiet failure"],
+  },
+  {
+    key: "ownerFacingTasks",
+    section: "Agents",
+    searchId: "fork-owner-facing-tasks",
+    title: "Owner-facing children",
+    description:
+      "Let agents start a child that you handle directly. The parent wakes once, when you close the child.",
+    searchTerms: ["fork owner facing child delegate listed close case hub quiet parent"],
+  },
+  {
+    key: "quietThreadSend",
+    section: "Agents",
+    searchId: "fork-quiet-thread-send",
+    title: "Quiet thread send",
+    description:
+      "Let agents send news to a thread without starting a turn. It arrives with the next turn.",
+    searchTerms: ["fork thread send wake false quiet note receipt steer idle"],
   },
   {
     key: "holdRunningPrChecks",
@@ -190,6 +208,15 @@ export const FORK_FEATURES = [
     description:
       "Wake a pull request watcher when the running checks finish, after 30 minutes at most, and once per conflict.",
     searchTerms: ["fork pull request watch checks running hold batch conflict wake"],
+  },
+  {
+    key: "stalePrWakes",
+    section: "Agents",
+    searchId: "fork-stale-pr-wakes",
+    title: "Drop stale PR notices",
+    description:
+      "Drop a waiting conflict notice once the branch merges cleanly. Agents can stop a watch after their turn ends.",
+    searchTerms: ["fork pull request watch stale notice conflict unwatch queue wake"],
   },
   {
     key: "workflowRunWatch",

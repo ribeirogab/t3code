@@ -58,6 +58,8 @@ describe("childEventWakesParent", () => {
     ["on_question", "question", slashFromParent, false],
     [undefined, "finish", undefined, true],
     ["never", "finish", undefined, false],
+    ["on_close", "finish", parentAgent, false],
+    ["on_close", "question", parentAgent, false],
   ];
 
   it.each(cases)(
@@ -77,9 +79,12 @@ describe("childEventWakesParent", () => {
     }
     expect(mayWakeParentOnFinish({ notifyParent: "never" })).toBe(true);
     expect(
-      quietCompletion({ notifyParent: "never" }, { userMessageId: MessageId.make("m") }, [
-        { id: MessageId.make("m"), ...owner },
-      ]),
+      quietCompletion(
+        { notifyParent: "never" },
+        { userMessageId: MessageId.make("m") },
+        [{ id: MessageId.make("m"), ...owner }],
+        "completed",
+      ),
     ).toEqual({});
   });
 });
@@ -124,28 +129,50 @@ describe("quietCompletion", () => {
     { id: MessageId.make("message:child:1"), ...parentAgent, text: "Start." },
     { id: starterId, ...starter },
   ];
+  const disposed = { completionDelivery: { state: "disposed", observedByRunId: null } };
 
   it("keeps the wake for a run the parent started", () => {
-    expect(quietCompletion({}, { userMessageId: starterId }, message(parentAgent))).toEqual({});
+    expect(
+      quietCompletion({}, { userMessageId: starterId }, message(parentAgent), "completed"),
+    ).toEqual({});
   });
 
   it("disposes the delivery of a run the owner started in the child", () => {
-    expect(quietCompletion({}, { userMessageId: starterId }, message(owner))).toEqual({
-      completionDelivery: { state: "disposed", observedByRunId: null },
-    });
+    expect(quietCompletion({}, { userMessageId: starterId }, message(owner), "completed")).toEqual(
+      disposed,
+    );
   });
 
   it("disposes the delivery of a slash command turn", () => {
-    expect(quietCompletion({}, { userMessageId: starterId }, message(slashFromParent))).toEqual({
-      completionDelivery: { state: "disposed", observedByRunId: null },
-    });
+    expect(
+      quietCompletion({}, { userMessageId: starterId }, message(slashFromParent), "completed"),
+    ).toEqual(disposed);
   });
 
   it("follows the option when the starter message is not loaded", () => {
-    expect(quietCompletion({ notifyParent: "never" }, { userMessageId: starterId }, [])).toEqual({
-      completionDelivery: { state: "disposed", observedByRunId: null },
-    });
+    expect(
+      quietCompletion({ notifyParent: "never" }, { userMessageId: starterId }, [], "completed"),
+    ).toEqual(disposed);
   });
+
+  it.each([
+    [{ notifyParent: "never" as const }, message(parentAgent)],
+    [{ notifyParent: "on_question" as const }, message(parentAgent)],
+    [{ notifyParent: "on_close" as const }, message(parentAgent)],
+    [{}, message(owner)],
+    [{}, message(slashFromParent)],
+  ])("keeps the wake of a failed child with %o", (task, messages) => {
+    expect(quietCompletion(task, { userMessageId: starterId }, messages, "failed")).toEqual({});
+  });
+
+  it.each(["interrupted", "cancelled"] as const)(
+    "stays quiet for a child that ends %s",
+    (outcome) => {
+      expect(
+        quietCompletion({ notifyParent: "never" }, { userMessageId: starterId }, [], outcome),
+      ).toEqual(disposed);
+    },
+  );
 });
 
 describe("questionWakesParent", () => {

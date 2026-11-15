@@ -48,6 +48,7 @@ function optionWakesParent(notifyParent: ForkNotifyParent, event: ChildWakeEvent
     case "on_question":
       return event === "question";
     case "never":
+    case "on_close":
       return false;
   }
 }
@@ -83,7 +84,9 @@ export function quietCompletion(
   task: Pick<OrchestrationV2Subagent, "notifyParent">,
   childRun: Pick<OrchestrationV2Run, "userMessageId">,
   childMessages: ReadonlyArray<Pick<OrchestrationV2ConversationMessage, "id"> & TurnStarter>,
+  outcome: OrchestrationV2Subagent["status"],
 ): Partial<Pick<OrchestrationV2Subagent, "completionDelivery">> {
+  if (outcome === "failed") return {};
   const starter = childMessages.find((message) => message.id === childRun.userMessageId);
   return childEventWakesParent({ notifyParent: task.notifyParent, event: "finish", starter })
     ? {}

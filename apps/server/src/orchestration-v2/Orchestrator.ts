@@ -205,6 +205,7 @@ import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAda
 import * as ServerSettings from "../serverSettings.ts";
 import { nestingPatch, nestingRejection, withListed } from "../fork/threadNesting.ts";
 import { quietCompletion } from "../fork/notifyParent.ts";
+import { conflictNewsResolved } from "../fork/stalePullRequestWakes.ts";
 import { createdThreadLineage } from "../fork/threadHandoff/handoffRules.ts";
 
 const isMessageQuestionAnswer = Schema.is(
@@ -1101,6 +1102,7 @@ function monitorPullRequestStamps(
 function isStalePullRequestWatchStamp(
   projection: Pick<OrchestrationV2ThreadProjection, "thread" | "messages">,
   stamp: MonitorPullRequestStamp,
+  summary?: string,
 ): boolean {
   const link = threadPullRequestsOf(projection.thread).find(
     (candidate) =>
@@ -1131,7 +1133,8 @@ function isStalePullRequestWatchStamp(
   return (
     link.watch.startedAt !== stamp.watchStartedAt ||
     (stamp.headSha !== null && link.watch.headSha !== stamp.headSha) ||
-    pullRequestSnapshotEndsWatch(link.snapshot, link.watch.startedAt)
+    pullRequestSnapshotEndsWatch(link.snapshot, link.watch.startedAt) ||
+    conflictNewsResolved(link.watch, stamp.section?.summary ?? summary)
   );
 }
 
@@ -1139,11 +1142,13 @@ function isStalePullRequestWatchWake(
   projection: Pick<OrchestrationV2ThreadProjection, "thread" | "messages">,
   run: OrchestrationV2Run,
 ): boolean {
-  const stamps = monitorPullRequestStamps(
-    projection.messages.find((message) => message.id === run.userMessageId)?.notification?.source,
-  );
+  const notification = projection.messages.find(
+    (message) => message.id === run.userMessageId,
+  )?.notification;
+  const stamps = monitorPullRequestStamps(notification?.source);
   return (
-    stamps.length > 0 && stamps.every((stamp) => isStalePullRequestWatchStamp(projection, stamp))
+    stamps.length > 0 &&
+    stamps.every((stamp) => isStalePullRequestWatchStamp(projection, stamp, notification?.summary))
   );
 }
 
@@ -14449,7 +14454,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
               completionDelivery: { state: "disposed" as const, observedByRunId: null },
             }
           : {}),
-        ...quietCompletion(task, childRun, childControls.messages),
+        ...quietCompletion(task, childRun, childControls.messages, terminalStatus),
       };
       const completionPlan = yield* planDelegatedCompletionDelivery({
         parentProjection,
