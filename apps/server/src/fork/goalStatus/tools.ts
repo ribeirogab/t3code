@@ -5,6 +5,7 @@ import {
   OrchestratorMcpFailure,
 } from "@t3tools/contracts";
 import * as SecureRandom from "effect/crypto/SecureRandom";
+import * as McpSchema from "effect/ai/McpSchema";
 import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/ai";
 
@@ -44,7 +45,8 @@ const GoalUpdateTool = Tool.make("t3_goal_update", {
   .annotate(Tool.Readonly, false)
   .annotate(Tool.Destructive, false)
   .annotate(Tool.Idempotent, false)
-  .annotate(Tool.OpenWorld, false);
+  .annotate(Tool.OpenWorld, false)
+  .annotate(McpSchema.EnabledWhen, McpInvocationContext.hiddenFromOutsideClients);
 
 const RequestAttentionTool = Tool.make("t3_request_attention", {
   description:
@@ -68,6 +70,7 @@ const RequestAttentionTool = Tool.make("t3_request_attention", {
   .annotate(Tool.Readonly, false)
   .annotate(Tool.Destructive, false)
   .annotate(Tool.Idempotent, false)
-  .annotate(Tool.OpenWorld, false);
+  .annotate(Tool.OpenWorld, false)
+  .annotate(McpSchema.EnabledWhen, McpInvocationContext.hiddenFromOutsideClients);
 
 export const GoalStatusToolkit = Toolkit.make(GoalUpdateTool, RequestAttentionTool);

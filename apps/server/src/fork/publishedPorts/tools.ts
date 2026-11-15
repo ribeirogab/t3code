@@ -1,4 +1,5 @@
 import { ForkPortNumber, OrchestratorMcpFailure } from "@t3tools/contracts";
+import * as McpSchema from "effect/ai/McpSchema";
 import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/ai";
 
@@ -39,7 +40,8 @@ const PublishPortTool = Tool.make("publish_port", {
   .annotate(Tool.Readonly, false)
   .annotate(Tool.Destructive, false)
   .annotate(Tool.Idempotent, true)
-  .annotate(Tool.OpenWorld, true);
+  .annotate(Tool.OpenWorld, true)
+  .annotate(McpSchema.EnabledWhen, McpInvocationContext.hiddenFromOutsideClients);
 
 const UnpublishPortTool = Tool.make("unpublish_port", {
   description: "Turn off a port that publish_port published.",
@@ -57,6 +59,7 @@ const UnpublishPortTool = Tool.make("unpublish_port", {
   .annotate(Tool.Readonly, false)
   .annotate(Tool.Destructive, false)
   .annotate(Tool.Idempotent, true)
-  .annotate(Tool.OpenWorld, true);
+  .annotate(Tool.OpenWorld, true)
+  .annotate(McpSchema.EnabledWhen, McpInvocationContext.hiddenFromOutsideClients);
 
 export const PublishedPortsToolkit = Toolkit.make(PublishPortTool, UnpublishPortTool);
