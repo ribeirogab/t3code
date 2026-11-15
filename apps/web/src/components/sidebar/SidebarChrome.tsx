@@ -1,4 +1,10 @@
-import { ArrowLeftIcon, ArrowRightIcon, ChartNoAxesColumnIcon, SettingsIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  ChartNoAxesColumnIcon,
+  GitForkIcon,
+  SettingsIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { T, useGT } from "gt-react";
 import { memo } from "react";
@@ -41,6 +47,7 @@ import { SidebarThreadUndoNotice } from "./SidebarThreadUndoNotice";
 import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
 import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
+import { useSidebarFooterItems } from "~/fork/sidebarFooterItems";
 import { observeResize } from "~/lib/observeResize";
 import { useStagePill } from "~/fork/forkPill";
 
@@ -237,6 +244,7 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   });
   const pullRequestsSupported = usePullRequestsSupported();
   const issuesSupported = useIssuesSupported();
+  const footerItems = useSidebarFooterItems();
   const closeMobileSidebar = () => {
     if (isMobile) {
       setOpenMobile(false);
@@ -256,6 +264,10 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   const handleSettingsClick = () => {
     closeMobileSidebar();
     void navigate({ to: "/settings" });
+  };
+  const handleForkClick = () => {
+    closeMobileSidebar();
+    void navigate({ to: "/settings/fork" });
   };
 
   const handleUsageClick = () => {
@@ -288,7 +300,10 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             label={gt("Settings")}
             onClick={handleSettingsClick}
           />
-          {pullRequestsSupported ? (
+          {footerItems.fork ? (
+            <SidebarUtilityItem icon={<GitForkIcon />} label="Fork" onClick={handleForkClick} />
+          ) : null}
+          {pullRequestsSupported && footerItems.pullRequests ? (
             <SidebarUtilityItem
               icon={<PullRequestGlyph.pullRequest />}
               label={gt("Pull requests")}
@@ -302,11 +317,13 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
               onClick={handleIssuesClick}
             />
           ) : null}
-          <SidebarUtilityItem
-            icon={<ChartNoAxesColumnIcon />}
-            label={gt("Usage")}
-            onClick={handleUsageClick}
-          />
+          {footerItems.usage ? (
+            <SidebarUtilityItem
+              icon={<ChartNoAxesColumnIcon />}
+              label={gt("Usage")}
+              onClick={handleUsageClick}
+            />
+          ) : null}
         </>
       )}
       <SidebarThreadUndoNotice />
