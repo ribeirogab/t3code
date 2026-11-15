@@ -28,11 +28,13 @@ import {
   sameWatchTarget,
   unreadableWake,
   WORKFLOW_RUN_READ_FAILURE_LIMIT,
+  workflowRunWaitLabel,
   type WorkflowRunWake,
   workflowRunWake,
   type WorkflowRunWatchRecord,
   WorkflowRunWatchesFile,
 } from "./workflowRunRules.ts";
+import { publishWorkflowRunWaits, type WorkflowRunWait } from "./workflowRunWaits.ts";
 
 const WATCHES_FILE = "fork-workflow-run-watches.json";
 const SWEEP_INTERVAL = "30 seconds";
@@ -64,6 +66,7 @@ export interface WorkflowRunWatchesDependencies {
   readonly threadWatchable: (threadId: ThreadId) => Effect.Effect<boolean>;
   readonly wake: (watch: WorkflowRunWatchRecord, wake: WorkflowRunWake) => Effect.Effect<boolean>;
   readonly newId: Effect.Effect<string>;
+  readonly publish: (waits: ReadonlyArray<WorkflowRunWait>) => void;
 }
 
 export class WorkflowRunWatches extends Context.Service<
@@ -87,17 +90,36 @@ export const make = Effect.fn("WorkflowRunWatches.make")(function* (
 ) {
   const watches = yield* Ref.make(yield* deps.store.load);
   const readFailures = new Map<string, number>();
+  const knownRuns = new Map<string, ReadonlyArray<GitHubCli.WorkflowRun>>();
   const writes = Semaphore.makeUnsafe(1);
+
+  const publish = (current: ReadonlyArray<WorkflowRunWatchRecord>) =>
+    Effect.sync(() => {
+      const ids = new Set(current.map((record) => record.id));
+      for (const id of knownRuns.keys()) if (!ids.has(id)) knownRuns.delete(id);
+      deps.publish(
+        current.map((record) => ({
+          threadId: record.threadId,
+          watchId: record.id,
+          label: workflowRunWaitLabel(record, knownRuns.get(record.id) ?? []),
+        })),
+      );
+    });
+
+  yield* publish(yield* Ref.get(watches));
 
   const update = (
     change: (
       current: ReadonlyArray<WorkflowRunWatchRecord>,
     ) => ReadonlyArray<WorkflowRunWatchRecord>,
-  ) => writes.withPermit(Ref.updateAndGet(watches, change).pipe(Effect.flatMap(deps.store.save)));
+  ) =>
+    writes.withPermit(
+      Ref.updateAndGet(watches, change).pipe(Effect.tap(publish), Effect.flatMap(deps.store.save)),
+    );
 
   const watch = Effect.fn("WorkflowRunWatches.watch")(function* (input: WatchWorkflowRunInput) {
     const sha = input.sha ?? (yield* deps.cli.branchHead(input));
-    yield* deps.cli.workflowRuns({ ...input, sha });
+    const runs = yield* deps.cli.workflowRuns({ ...input, sha });
     const record: WorkflowRunWatchRecord = {
       id: yield* deps.newId,
       threadId: input.threadId,
@@ -108,6 +130,7 @@ export const make = Effect.fn("WorkflowRunWatches.make")(function* (
       workflow: input.workflow,
       startedAt: yield* Clock.currentTimeMillis,
     };
+    knownRuns.set(record.id, runs);
     yield* update((current) => [
       ...current.filter((known) => !sameWatchTarget(known, record)),
       record,
@@ -137,6 +160,7 @@ export const make = Effect.fn("WorkflowRunWatches.make")(function* (
       return failedAgain(record) ? unreadableWake(record, read.failure.detail) : null;
     }
     readFailures.delete(record.id);
+    knownRuns.set(record.id, read.success);
     return workflowRunWake(record, read.success, now);
   });
 
@@ -170,6 +194,7 @@ export const make = Effect.fn("WorkflowRunWatches.make")(function* (
       { concurrency: PARALLEL_READS, discard: true },
     );
     if (ended.size > 0) yield* update((current) => current.filter((known) => !ended.has(known.id)));
+    else yield* publish(yield* Ref.get(watches));
   }).pipe(Effect.withSpan("WorkflowRunWatches.sweep"));
 
   return WorkflowRunWatches.of({ watch, stop, sweep });
@@ -251,6 +276,7 @@ export const layer = Layer.effect(
             ),
           ),
       newId: random.uuidV4(),
+      publish: publishWorkflowRunWaits,
     });
     yield* forkParked(
       service.sweep.pipe(Effect.repeat(Schedule.spaced(SWEEP_INTERVAL)), Effect.asVoid),
