@@ -296,6 +296,8 @@ import { isCompactAndContinueAction } from "../fork/compactAndContinue";
 import { readCanCompactAndContinue, useCompactAndContinue } from "../fork/useCompactAndContinue";
 import { useForkFeature } from "../fork/forkFeatures";
 import { useSetThreadListed } from "../fork/useSetThreadListed";
+import { startNewThreadWithoutProject } from "../fork/newThreadNoProject";
+import { useScratchProject } from "../hooks/useScratchProject";
 import { readThreadParked, setThreadParked } from "../fork/parkedThreadActions";
 import { useParkedShelfExpanded, useParkedThreadKeys } from "../fork/parkedThreads";
 import {
@@ -1084,6 +1086,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const newThreadContext = useHandleNewThread();
   // Row callbacks capture only the handler; the rest of the context changes with the route.
   const { handleNewThread } = newThreadContext;
+  const scratchProject = useScratchProject();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const clearSelection = useThreadSelectionStore((s) => s.clearSelection);
   const setSelectionAnchor = useThreadSelectionStore((s) => s.setAnchor);
@@ -3158,6 +3161,18 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     if (scopedProjectRef) {
       if (isMobile) setOpenMobile(false);
       void handleNewThread(scopedProjectRef);
+      return;
+    }
+    if (
+      !event?.shiftKey &&
+      startNewThreadWithoutProject(
+        scratchProject,
+        newThreadContext.activeThread?.environmentId ??
+          newThreadContext.activeDraftThread?.environmentId ??
+          null,
+      )
+    ) {
+      if (isMobile) setOpenMobile(false);
       return;
     }
     if (

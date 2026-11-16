@@ -46,6 +46,7 @@ import { textDirection } from "~/textDirection";
 import { useClientSettings } from "../../hooks/useSettings";
 import { GuestShareIndicator } from "./GuestShareControls";
 import { ThreadHeaderPlanProgress } from "~/fork/PlanProgress";
+import { useDraftProjectPickerOpener } from "~/fork/useDraftProjectPicker";
 
 interface ChatHeaderProps {
   activeThreadEnvironmentId: EnvironmentId;
@@ -88,6 +89,7 @@ export const ChatHeader = memo(function ChatHeader({
 }: ChatHeaderProps) {
   const gt = useGT();
   const activeProjectName = activeProject?.isScratch ? gt("No project") : activeProject?.title;
+  const openDraftProjectPicker = useDraftProjectPickerOpener(isServerThread);
   const activeProjectCwd = activeProject?.workspaceRoot ?? null;
   const interfaceFont = useClientSettings((settings) => settings.fontFamilySans);
   const breadcrumbContainerRef = useRef<HTMLDivElement>(null);
@@ -271,8 +273,12 @@ export const ChatHeader = memo(function ChatHeader({
                   render={
                     <button
                       type="button"
-                      aria-label={gt("New thread in {project}", { project: activeProjectName })}
-                      onClick={onNewThreadInProject}
+                      aria-label={
+                        openDraftProjectPicker
+                          ? "Choose project"
+                          : gt("New thread in {project}", { project: activeProjectName })
+                      }
+                      onClick={openDraftProjectPicker ?? onNewThreadInProject}
                       className="inline-flex min-w-0 max-w-full cursor-pointer items-center gap-1.5 rounded-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                     />
                   }
@@ -284,11 +290,16 @@ export const ChatHeader = memo(function ChatHeader({
                     showTitle={false}
                     variant="cap-aligned"
                   />
+                  {openDraftProjectPicker ? <ChevronDownIcon className="size-3 shrink-0" /> : null}
                 </TooltipTrigger>
                 <TooltipPopup side="top">
-                  <T>
-                    New thread in <Var>{activeProjectName}</Var>
-                  </T>
+                  {openDraftProjectPicker ? (
+                    "Choose project"
+                  ) : (
+                    <T>
+                      New thread in <Var>{activeProjectName}</Var>
+                    </T>
+                  )}
                 </TooltipPopup>
               </Tooltip>
             </WorkspaceBreadcrumbItem>
