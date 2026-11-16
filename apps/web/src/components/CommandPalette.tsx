@@ -288,6 +288,8 @@ import { readIssueListPreferences } from "~/components/issue/issueListPreference
 import { IssueGlyph } from "~/components/issue/issuePresentation";
 import { useThreadRouteTarget } from "../hooks/useThreadRouteTarget";
 import { threadRecentUse } from "@t3tools/shared/paletteSearch";
+import { paletteNewThreadCommand } from "~/fork/newThreadNoProject";
+import { useDraftProjectPick } from "~/fork/useDraftProjectPicker";
 
 const EMPTY_BROWSE_ENTRIES: FilesystemBrowseResult["entries"] = [];
 const ADD_PROJECT_ENTRY_GROUP = "add-project";
@@ -476,6 +478,7 @@ function OpenCommandPaletteDialog(props: {
   });
   const { scratchEnvironmentId, scratchWorkspaceRootFor, startScratchThread } = useScratchProject();
   const startTriage = useStartTriage();
+  const draftProjectPick = useDraftProjectPick();
   const lookupRepository = useAtomQueryRunner(sourceControlEnvironment.repository, {
     reportFailure: false,
   });
@@ -896,6 +899,7 @@ function OpenCommandPaletteDialog(props: {
         pin: projectPin,
         runProject: async (project) => {
           const group = projectGroupByTargetKey.get(`${project.environmentId}:${project.id}`);
+          if (draftProjectPick) return draftProjectPick.pickProject(project, group?.projectKey);
           const contextualProjectIsEligible =
             contextualProjectRef !== null &&
             group?.memberProjects.some(
@@ -932,7 +936,9 @@ function OpenCommandPaletteDialog(props: {
           title: gt("No project"),
           icon: <MessageSquareDashedIcon className={ITEM_ICON_CLASS} />,
           shortcutCommand: "chat.newWithoutProject" as const,
-          run: () => startScratchThread(scratchTargetEnvironmentId),
+          run: () =>
+            draftProjectPick?.pickNoProject(scratchTargetEnvironmentId) ??
+            startScratchThread(scratchTargetEnvironmentId),
         },
         ...projectItems.slice(noProjectIndex),
       ];
@@ -2689,7 +2695,7 @@ function OpenCommandPaletteDialog(props: {
       isJump || isNewThread
         ? displayedGroups
             .flatMap((group) => group.items)
-            .find((item) => item.shortcutCommand === command)
+            .find((item) => item.shortcutCommand === paletteNewThreadCommand(command))
         : undefined;
     if (isJump || matchingItem) {
       (event as typeof event & { preventBaseUIHandler?: () => void }).preventBaseUIHandler?.();
