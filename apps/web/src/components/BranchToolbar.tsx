@@ -80,6 +80,7 @@ import { cn } from "~/lib/utils";
 
 import { observeResize } from "~/lib/observeResize";
 import { SharedTooltipTrigger } from "./ui/shared-tooltip";
+import { DraftProjectChip } from "~/fork/DraftProjectChip";
 
 const isClipboardApiUnavailableError = Schema.is(ClipboardApiUnavailableError);
 const isClipboardWriteError = Schema.is(ClipboardWriteError);
@@ -800,6 +801,7 @@ export const BranchToolbar = memo(function BranchToolbar({
       data-compact={labelsOverflow ? "" : undefined}
       className={cn("gap-1 text-xs font-normal text-foreground/70 dark:text-muted-foreground")}
     >
+      <DraftProjectChip project={activeProject} isServerThread={isServerThread} />
       {showGitControls ? (
         <div className="contents @xl/composer-surface:hidden">
           <RunContextSelector
