@@ -141,6 +141,15 @@ export const FORK_FEATURES = [
     searchTerms: ["fork waiting status pull request checks workflow run ci command child duration"],
   },
   {
+    key: "newThreadNoProject",
+    section: "Chat",
+    searchId: "fork-new-thread-no-project",
+    title: "New thread without a project",
+    description:
+      "New thread opens with No project. Pick the project in the header or below the composer.",
+    searchTerms: ["fork new thread no project scratch picker header composer choose folder"],
+  },
+  {
     key: "goalPause",
     section: "Chat",
     searchId: "fork-goal-pause",
