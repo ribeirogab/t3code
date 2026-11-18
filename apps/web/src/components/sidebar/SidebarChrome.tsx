@@ -50,6 +50,7 @@ import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { useSidebarFooterItems } from "~/fork/sidebarFooterItems";
 import { observeResize } from "~/lib/observeResize";
 import { useStagePill } from "~/fork/forkPill";
+import { FORK_COPY } from "~/fork/forkCopy";
 
 export const SidebarChromeHeader = memo(function SidebarChromeHeader({
   isElectron,
@@ -301,7 +302,11 @@ const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             onClick={handleSettingsClick}
           />
           {footerItems.fork ? (
-            <SidebarUtilityItem icon={<GitForkIcon />} label="Fork" onClick={handleForkClick} />
+            <SidebarUtilityItem
+              icon={<GitForkIcon />}
+              label={FORK_COPY.fork}
+              onClick={handleForkClick}
+            />
           ) : null}
           {pullRequestsSupported && footerItems.pullRequests ? (
             <SidebarUtilityItem
