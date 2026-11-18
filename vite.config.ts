@@ -594,6 +594,7 @@ export default defineConfig({
           "**/{test-fixtures,*TestFixtures}.ts",
           "apps/mobile/src/features/development/**",
           "packages/client-runtime/src/rpc/**",
+          "apps/web/src/fork/**",
         ],
         rules: { "t3code/no-untranslated-copy": "error" },
       },
