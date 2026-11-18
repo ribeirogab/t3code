@@ -18,7 +18,8 @@ export function isSubagentLineage(lineage: ParentLineage, nestedThreads: boolean
 export function parentLinkTitle(
   parent: { readonly title: string; readonly archivedAt: string | null } | null,
   nestedThreads: boolean,
+  untitledParent: string,
 ): string | null {
-  if (!nestedThreads) return parent?.title ?? "Parent thread";
+  if (!nestedThreads) return parent?.title ?? untitledParent;
   return parent !== null && parent.archivedAt === null ? parent.title : null;
 }

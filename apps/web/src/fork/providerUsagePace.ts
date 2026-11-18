@@ -4,11 +4,8 @@ import type {
   UsageLimitSourceSnapshots,
   UsageLimitsReport,
 } from "@t3tools/contracts";
-import {
-  collectProviderUsageLimits,
-  limitsNotice,
-  remainingPercent,
-} from "@t3tools/shared/usageLimits";
+import { collectProviderUsageLimits, remainingPercent } from "@t3tools/shared/usageLimits";
+import { limitsNotice } from "@t3tools/shared/usageLimitsCopy";
 
 import { paceMarkerPercent, windowDurationMins } from "./paceMarker";
 

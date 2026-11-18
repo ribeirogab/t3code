@@ -48,6 +48,7 @@ import { GuestShareIndicator } from "./GuestShareControls";
 import { SharedTooltipTrigger } from "../ui/shared-tooltip";
 import { ThreadHeaderPlanProgress } from "~/fork/PlanProgress";
 import { useDraftProjectPickerOpener } from "~/fork/useDraftProjectPicker";
+import { FORK_COPY } from "~/fork/forkCopy";
 
 interface ChatHeaderProps {
   activeThreadEnvironmentId: EnvironmentId;
@@ -276,7 +277,7 @@ export const ChatHeader = memo(function ChatHeader({
                     type="button"
                     aria-label={
                       openDraftProjectPicker
-                        ? "Choose project"
+                        ? FORK_COPY.chooseProject
                         : gt("New thread in {project}", { project: activeProjectName })
                     }
                     onClick={openDraftProjectPicker ?? onNewThreadInProject}
@@ -285,7 +286,7 @@ export const ChatHeader = memo(function ChatHeader({
                 }
                 label={
                   openDraftProjectPicker ? (
-                    "Choose project"
+                    FORK_COPY.chooseProject
                   ) : (
                     <>
                       <T>
