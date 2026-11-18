@@ -299,11 +299,16 @@ import { useSetThreadListed } from "../fork/useSetThreadListed";
 import { startNewThreadWithoutProject } from "../fork/newThreadNoProject";
 import { useScratchProject } from "../hooks/useScratchProject";
 import { readThreadParked, setThreadParked } from "../fork/parkedThreadActions";
-import { useParkedShelfExpanded, useParkedThreadKeys } from "../fork/parkedThreads";
+import {
+  useParkedShelfExpanded,
+  useParkedThreadIds,
+  useParkedThreadKeys,
+} from "../fork/parkedThreads";
 import {
   parkedThreadHasOpenRequest,
   parkedThreadMenuTarget,
   resolveParkedPlacement,
+  resolveParkHoverAction,
 } from "../fork/parkedThreads.logic";
 import {
   renderNestedSidebarRows,
@@ -1404,6 +1409,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     },
   );
 
+  const parkedThreadIds = useParkedThreadIds();
   const {
     workingShelfEnabled,
     pinnedThreads,
@@ -3691,6 +3697,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                               section !== "parked" && serverConfigs.has(thread.environmentId)
                             }
                             snoozeSupported={serverConfigs.has(thread.environmentId)}
+                            parkAction={resolveParkHoverAction(thread, parkedThreadIds)}
                             pinningSupported={serverConfigs.has(thread.environmentId)}
                             isPinned={thread.pinnedAt != null}
                             dropVerb={

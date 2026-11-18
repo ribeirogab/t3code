@@ -6,6 +6,8 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   parkedThreadHasOpenRequest,
   resolveParkedPlacement,
+  resolveParkHoverAction,
+  type ParkedThreadIds,
   type ParkedThreadShell,
 } from "./parkedThreads.logic";
 
@@ -112,5 +114,54 @@ describe("parkedThreadHasOpenRequest", () => {
     expect(
       parkedThreadHasOpenRequest(shell({ latestRun: failedRunAt("2026-11-13T11:00:00.000Z") })),
     ).toBe(false);
+  });
+});
+
+const hoverActionCases: ReadonlyArray<{
+  readonly name: string;
+  readonly parentThreadId: ThreadId | null;
+  readonly parkedThreadIds: ParkedThreadIds | null;
+  readonly expected: "park" | "unpark" | null;
+}> = [
+  {
+    name: "an unparked thread",
+    parentThreadId: null,
+    parkedThreadIds: new Map([[environmentId, new Set()]]),
+    expected: "park",
+  },
+  {
+    name: "a parked thread",
+    parentThreadId: null,
+    parkedThreadIds: new Map([[environmentId, new Set([threadId])]]),
+    expected: "unpark",
+  },
+  {
+    name: "a thread with the feature off",
+    parentThreadId: null,
+    parkedThreadIds: null,
+    expected: null,
+  },
+  {
+    name: "a thread whose server settings are not loaded",
+    parentThreadId: null,
+    parkedThreadIds: new Map(),
+    expected: null,
+  },
+  {
+    name: "a child thread",
+    parentThreadId: ThreadId.make("parent"),
+    parkedThreadIds: new Map([[environmentId, new Set()]]),
+    expected: null,
+  },
+];
+
+describe("resolveParkHoverAction", () => {
+  it.each(hoverActionCases)("offers $expected for $name", (testCase) => {
+    const thread = {
+      environmentId,
+      id: threadId,
+      lineage: { parentThreadId: testCase.parentThreadId },
+    };
+    expect(resolveParkHoverAction(thread, testCase.parkedThreadIds)).toBe(testCase.expected);
   });
 });
