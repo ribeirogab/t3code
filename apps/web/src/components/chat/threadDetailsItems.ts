@@ -1,6 +1,8 @@
 import type { ClientSettings } from "@t3tools/contracts";
 import { msg } from "gt-react";
 
+import { FORK_COPY } from "../../fork/forkCopy";
+
 // Ids are stored in client settings, so never rename one.
 export const THREAD_DETAILS_ITEMS = [
   { id: "environment", label: msg("Environment and worktree"), defaultVisible: true },
@@ -26,7 +28,7 @@ export const THREAD_DETAILS_ITEMS = [
   },
   { id: "sideChats", label: msg("Side chats"), defaultVisible: true },
   { id: "usage", label: msg("Usage limits"), defaultVisible: false },
-  { id: "providerUsage", label: "Provider usage", defaultVisible: false },
+  { id: "providerUsage", label: FORK_COPY.providerUsage, defaultVisible: false },
   { id: "context", label: msg("Context window"), defaultVisible: false },
 ] as const;
 

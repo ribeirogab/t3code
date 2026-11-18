@@ -33,17 +33,27 @@ describe("isSubagentLineage", () => {
 
 describe("parentLinkTitle", () => {
   it("links a parent only while it is loaded and not archived", () => {
-    expect(parentLinkTitle({ title: "Parent", archivedAt: null }, true)).toBe("Parent");
+    expect(parentLinkTitle({ title: "Parent", archivedAt: null }, true, "Parent thread")).toBe(
+      "Parent",
+    );
     expect(
-      parentLinkTitle({ title: "Parent", archivedAt: "2026-11-10T12:00:00.000Z" }, true),
+      parentLinkTitle(
+        { title: "Parent", archivedAt: "2026-11-10T12:00:00.000Z" },
+        true,
+        "Parent thread",
+      ),
     ).toBeNull();
-    expect(parentLinkTitle(null, true)).toBeNull();
+    expect(parentLinkTitle(null, true, "Parent thread")).toBeNull();
   });
 
   it("links every parent, as upstream does, while Nested threads is off", () => {
     expect(
-      parentLinkTitle({ title: "Parent", archivedAt: "2026-11-10T12:00:00.000Z" }, false),
+      parentLinkTitle(
+        { title: "Parent", archivedAt: "2026-11-10T12:00:00.000Z" },
+        false,
+        "Parent thread",
+      ),
     ).toBe("Parent");
-    expect(parentLinkTitle(null, false)).toBe("Parent thread");
+    expect(parentLinkTitle(null, false, "Parent thread")).toBe("Parent thread");
   });
 });
