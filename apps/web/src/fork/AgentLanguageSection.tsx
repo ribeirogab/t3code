@@ -20,7 +20,7 @@ export function AgentLanguageRow() {
       resetAction={
         agentLanguage === "" ? null : (
           <SettingResetButton
-            label="agent language"
+            ariaLabel="Reset agent language to default"
             onClick={() => updateSettings({ agentLanguage: "" })}
           />
         )

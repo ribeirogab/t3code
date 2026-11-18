@@ -12,6 +12,7 @@ import {
   type CompactAndContinueMenuId,
 } from "../fork/compactAndContinue";
 import { parkedThreadMenuItems, type ParkedThreadMenuId } from "../fork/parkedThreads.logic";
+import { FORK_COPY } from "../fork/forkCopy";
 
 export type ThreadActionMenuId =
   | "find"
@@ -235,8 +236,8 @@ export function buildThreadActionMenuItems(
     { id: "mark-unread", label: resolve(msg("Mark unread")), icon: "mail-open" },
     ...(state.canHideFromSidebar
       ? [
-          { id: "hide-from-sidebar" as const, label: "Hide from sidebar" },
-          { id: "detach-to-top-level" as const, label: "Detach to top level" },
+          { id: "hide-from-sidebar" as const, label: FORK_COPY.hideFromSidebar },
+          { id: "detach-to-top-level" as const, label: FORK_COPY.detachToTopLevel },
         ]
       : []),
     ...(state.canShareWithGuest

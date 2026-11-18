@@ -17,6 +17,7 @@ import type { MessageResolver } from "../../i18n/messages";
 import { commandLabel } from "./KeybindingsSettings.logic";
 import { FORK_SETTINGS_SEARCH_ITEMS } from "~/fork/forkFeatures";
 import { AGENT_LANGUAGE_SETTINGS_SEARCH_ITEMS } from "~/fork/agentLanguage";
+import { FORK_COPY } from "~/fork/forkCopy";
 import type { ResolvedSettingsScope } from "./settingsScope";
 
 export type SettingsPath =
@@ -117,7 +118,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<SettingsPath, string>> = {
   "/settings/secrets": msg("Secrets"),
   "/settings/maintenance": msg("Maintenance"),
   "/settings/labs": msg("Labs"),
-  "/settings/fork": msg("Fork"),
+  "/settings/fork": FORK_COPY.fork,
   "/settings/about": msg("About"),
   "/settings/voice": msg("Voice"),
   "/settings/archived": msg("Archive"),

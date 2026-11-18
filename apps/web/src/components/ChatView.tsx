@@ -887,7 +887,11 @@ export default function ChatView(props: ChatViewProps) {
     return scopeThreadRef(parentSubagentEnvironmentId, parentSubagentThreadId);
   })();
   const parentSubagentThread = useQuietThreadShell(parentSubagentThreadRef);
-  const parentSubagentTitle = parentLinkTitle(parentSubagentThread, nestedThreads);
+  const parentSubagentTitle = parentLinkTitle(
+    parentSubagentThread,
+    nestedThreads,
+    gt("Parent thread"),
+  );
   // Workflow threads open with a script; their replacement plan lives on the parent's coordinator row.
   const workflowOpeningParentId =
     serverProjection === null

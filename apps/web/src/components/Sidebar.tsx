@@ -284,6 +284,7 @@ import { useNestedCollapseStore, useNestedCollapsedKeys } from "../fork/nestedCo
 import { chooseNestedRemoval } from "../fork/NestedThreadsDialog";
 import { removeWithNested } from "../fork/nestedThreadRemoval";
 import { useDetachThread } from "../fork/useDetachThread";
+import { FORK_COPY } from "../fork/forkCopy";
 import { continueInNewThreadPlacement } from "../fork/continueInNewThread";
 import { useContinueInNewThread } from "../fork/useContinueInNewThread";
 import { isCompactAndContinueAction } from "../fork/compactAndContinue";
@@ -3825,7 +3826,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                                 className={cn(
                                   workingThreads.length + snoozedThreads.length === 0 && "mt-auto",
                                 )}
-                                label="Parked"
+                                label={FORK_COPY.parked}
                                 count={parkedThreads.length}
                                 attention={parkedAttention}
                                 toggle={{

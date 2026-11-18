@@ -3,6 +3,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { type ReactNode, useLayoutEffect } from "react";
 import { cn } from "~/lib/utils";
+import { FORK_COPY } from "~/fork/forkCopy";
 import {
   animateSidebarLayoutChanges,
   sidebarMarkerId,
@@ -146,7 +147,7 @@ export function SidebarSectionHeader(props: {
             {props.attention ? (
               <span
                 role="img"
-                aria-label="Needs attention"
+                aria-label={FORK_COPY.needsAttention}
                 className="size-1.5 shrink-0 rounded-full bg-warning"
               />
             ) : null}
