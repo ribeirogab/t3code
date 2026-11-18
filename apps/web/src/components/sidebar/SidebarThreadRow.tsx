@@ -154,6 +154,8 @@ import { SidebarTitleProviderIcon } from "~/fork/SidebarTitleProviderIcon";
 import { SidebarPlanProgress } from "~/fork/PlanProgress";
 import { ForkWaitingDuration, useForkWaitingLabel } from "~/fork/WaitingDetail";
 import { FORK_NEEDS_YOU_PILL, forkNeedsYou } from "~/fork/goalStatus.logic";
+import { ParkThreadHoverButton } from "~/fork/ParkThreadHoverButton";
+import type { ParkedThreadMenuId } from "~/fork/parkedThreads.logic";
 
 // The fields thread rows show. Provider status pushes refresh `checkedAt`,
 // status and auth on every provider; leaving those out keeps each
@@ -607,6 +609,7 @@ export type SidebarThreadRowProps = {
   variantAction: SidebarSweepAction;
   settlementSupported: boolean;
   snoozeSupported: boolean;
+  parkAction?: ParkedThreadMenuId | null;
   pinningSupported: boolean;
   isPinned: boolean;
   sortable?: SortableThreadRowBag | undefined;
@@ -1032,6 +1035,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
   }
   const showSnoozeButton =
     canTriageThread && props.snoozeSupported && canSnooze(thread, { now: snoozeGateNow });
+  const parkAction = canTriageThread ? (props.parkAction ?? null) : null;
   // Closing here, not just masking, keeps the menu from reopening when the button returns.
   if (snoozeMenuOpenRaw && !showSnoozeButton) setSnoozeMenuOpen(false);
   const snoozeMenuOpen = snoozeMenuOpenRaw && showSnoozeButton;
@@ -1532,6 +1536,18 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
                     </span>
                   )}
                 </span>
+                {parkAction ? (
+                  <ParkThreadHoverButton
+                    action={parkAction}
+                    threadRef={threadRef}
+                    slimRow={{
+                      variantAction,
+                      isWoke,
+                      snoozeSupported: props.snoozeSupported,
+                      settlementSupported: props.settlementSupported,
+                    }}
+                  />
+                ) : null}
                 {variantAction === "unsnooze" ? (
                   !props.snoozeSupported ? null : (
                     <button
@@ -1758,7 +1774,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
                     <RelativeTimeLabel timestamp={resolveThreadActivityTimestamp(thread)} />
                   )}
                 </span>
-                {props.settlementSupported || showSnoozeButton || hasUnsentDraft ? (
+                {props.settlementSupported || showSnoozeButton || hasUnsentDraft || parkAction ? (
                   <span
                     className={cn(
                       // Mouse clicks leave Settle focused; focus-within would pin controls over
@@ -1794,6 +1810,9 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
                         timestampFormat={props.timestampFormat}
                         environmentId={thread.environmentId}
                       />
+                    ) : null}
+                    {parkAction ? (
+                      <ParkThreadHoverButton action={parkAction} threadRef={threadRef} />
                     ) : null}
                     {props.settlementSupported ? (
                       <SharedTooltipTrigger

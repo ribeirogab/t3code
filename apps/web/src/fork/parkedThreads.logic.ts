@@ -1,6 +1,6 @@
 import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
-import type { ContextMenuItem } from "@t3tools/contracts";
+import type { ContextMenuItem, EnvironmentId, ThreadId } from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 
 export type ParkedThreadMenuId = "park" | "unpark";
@@ -73,4 +73,18 @@ export function parkedThreadMenuItems(
 
 export function parkedThreadMenuTarget(action: string): boolean | null {
   return action === "park" ? true : action === "unpark" ? false : null;
+}
+
+export type ParkedThreadIds = ReadonlyMap<EnvironmentId, ReadonlySet<ThreadId>>;
+
+export function resolveParkHoverAction(
+  thread: Pick<EnvironmentThreadShell, "environmentId" | "id"> & {
+    readonly lineage: Pick<EnvironmentThreadShell["lineage"], "parentThreadId">;
+  },
+  parkedThreadIds: ParkedThreadIds | null,
+): ParkedThreadMenuId | null {
+  if (thread.lineage.parentThreadId !== null) return null;
+  const parked = parkedThreadIds?.get(thread.environmentId);
+  if (parked === undefined) return null;
+  return parked.has(thread.id) ? "unpark" : "park";
 }
