@@ -68,6 +68,8 @@ fork/bin/release mac     # Mac: macOS arm64 app, signed with the fork certificat
 
 The version keeps the upstream nightly format, so the app stays on the Nightly track and sorts after the upstream build it comes from.
 
+A fork version exists only in the releases of this fork, so `CLI_RELEASE_REPOSITORY` in `packages/shared/src/cliRelease.ts` names this repository. The desktop app downloads the `t3` of its own version from there when it connects to an SSH host, and the server downloads its updates from there. `apps/server/src/fork/forkReleaseRepository.test.ts` fails when a rebase brings back the upstream repository.
+
 Each command works in its own clone (`~/Library/Caches/t3code-fork-release` on the Mac, `~/.cache/t3code-fork-release` on Linux) and never touches the clone you run it from. `linux` needs Docker. `mac` needs Xcode, Rust, Vite+, and the `T3 Code Fork (ribeirogab)` certificate in the login keychain. Over SSH, unlock the login keychain first, or `codesign` fails with `errSecInternalComponent`. `fork/AGENTS.local.md` has the SSH steps of this machine.
 
 ## Install and update
