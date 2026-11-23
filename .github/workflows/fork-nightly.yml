@@ -25,7 +25,7 @@ env:
   FORK_BRANCH: custom
   UPSTREAM_REPOSITORY: pingdotgg/t3code
   RELEASE_KEEP_COUNT: "20"
-  MAC_RUNNER: macos-15
+  MAC_RUNNER: macos-26
 
 jobs:
   plan:
