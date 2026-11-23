@@ -70,12 +70,18 @@ export const useSidebarCardDisplayStore = create<SidebarCardDisplayState>()(
   ),
 );
 
-const ALL_SIDEBAR_CARD_FIELDS: SidebarCardDisplay = Object.fromEntries(
-  SIDEBAR_CARD_FIELDS.map(({ key }) => [key, true]),
-) as SidebarCardDisplay;
+const UPSTREAM_SIDEBAR_CARD_DISPLAY: SidebarCardDisplay = {
+  project: true,
+  branch: false,
+  machine: true,
+  pullRequest: true,
+  terminal: true,
+  diff: true,
+  model: true,
+};
 
 export function useSidebarCardDisplay(): SidebarCardDisplay {
   const display = useSidebarCardDisplayStore((state) => state.display);
   const enabled = useForkFeature("cardDisplayOptions");
-  return enabled ? display : ALL_SIDEBAR_CARD_FIELDS;
+  return enabled ? display : UPSTREAM_SIDEBAR_CARD_DISPLAY;
 }
