@@ -790,8 +790,9 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   ReplayMarkers.layer,
   Layer.effectDiscard(ProjectSettingsOverrideSweep.sweep),
 ).pipe(
-  Layer.provideMerge(layerOrchestrationApplication),
-  Layer.provideMerge(ForkFeatureSettings.layer),
+  Layer.provideMerge(
+    layerOrchestrationApplication.pipe(Layer.provideMerge(ForkFeatureSettings.layer)),
+  ),
   // One hub, which the feeders above and the workflow store inside the runtime publish to.
   Layer.provideMerge(MilestoneHub.layer),
   Layer.provideMerge(layerTaskFolders),
