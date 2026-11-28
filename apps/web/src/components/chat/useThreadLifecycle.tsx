@@ -71,12 +71,7 @@ import {
   threadTriagePermitted,
   useOrchestrationCommand,
 } from "../../state/use-orchestration-command";
-import {
-  backgroundWorkNowItem,
-  childInputNowItem,
-  goalNowItem,
-  runStopNowItem,
-} from "./ThreadActivityBanners";
+import { backgroundWorkNowItem, childInputNowItem, runStopNowItem } from "./ThreadActivityBanners";
 import { useSupervisedTurnNowItem } from "../../fork/useSupervisedTurnNowItem";
 import { useForceStopThread } from "./useForceStopThread";
 import { useAtomValue } from "@effect/atom-react";

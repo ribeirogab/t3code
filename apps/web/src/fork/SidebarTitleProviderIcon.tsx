@@ -1,5 +1,3 @@
-import { resolveThreadProviderStack } from "@t3tools/client-runtime/state/models";
-
 import { ProviderInstanceIcon } from "~/components/chat/ProviderInstanceIcon";
 import type { SidebarProviderEntry } from "~/components/sidebar/SidebarThreadRow";
 import { shouldShowInstanceBadge } from "~/providerInstances";
@@ -9,8 +7,9 @@ export function SidebarTitleProviderIcon(props: {
   readonly thread: SidebarThreadSummary;
   readonly providerEntryByInstanceId: ReadonlyMap<string, SidebarProviderEntry>;
 }) {
-  const stack = resolveThreadProviderStack(props.thread);
-  const entry = props.providerEntryByInstanceId.get(stack[stack.length - 1]!);
+  const entry = props.providerEntryByInstanceId.get(
+    props.thread.runtime?.providerInstanceId ?? props.thread.modelSelection.instanceId,
+  );
   if (entry === undefined) return null;
   return (
     <span aria-hidden className="inline-flex shrink-0 items-center">

@@ -2,10 +2,10 @@ import { agentLanguageLine, forkAgentLanguage, forkFeatureActive } from "@t3tool
 
 import {
   T3_CODE_ORCHESTRATION_INSTRUCTIONS,
-  T3_CODE_ORCHESTRATION_SECTIONS,
+  t3CodeOrchestrationSections,
 } from "../server/orchestrationInstructions.ts";
 
-const BACKGROUND_AGENT_RULE = "Background agent: `delegate_task`, never a background `Agent`.";
+const WORKFLOW_RULE = " Workflow only when asked.";
 
 const LISTED_CHILD_FOR_A_THREAD_APART =
   " A thread the user asked to run apart: `delegate_task` with `listed:true`, so it gets a sidebar row.";
@@ -45,28 +45,47 @@ function forkRulesBySection(features: RuleFeatures): ReadonlyArray<ReadonlyArray
   ];
 }
 
+const upstreamSections = new Map<boolean, ReadonlyArray<string>>();
+
+function upstreamOrchestrationSections(nativeSubagents = true): ReadonlyArray<string> {
+  const cached = upstreamSections.get(nativeSubagents);
+  if (cached !== undefined) return cached;
+  const sections = t3CodeOrchestrationSections(nativeSubagents);
+  upstreamSections.set(nativeSubagents, sections);
+  return sections;
+}
+
+function withForkRulesInSections(
+  sections: ReadonlyArray<string>,
+  features: RuleFeatures,
+): ReadonlyArray<string> {
+  const rulesBySection = forkRulesBySection(features);
+  return sections.map((section, index) =>
+    [
+      section.replace(WORKFLOW_RULE, () => LISTED_CHILD_FOR_A_THREAD_APART + WORKFLOW_RULE),
+      ...(rulesBySection[index] ?? []),
+    ].join("\n"),
+  );
+}
+
 const withRules = new Map<string, { sections: ReadonlyArray<string>; instructions: string }>();
 
-function withForkRules() {
+function withForkRules(nativeSubagents: boolean) {
   const features: RuleFeatures = {
     goalStatus: forkFeatureActive("goalStatus"),
     requestAttention: forkFeatureActive("requestAttention"),
   };
-  const key = `${features.goalStatus}:${features.requestAttention}`;
+  const key = `${nativeSubagents}:${features.goalStatus}:${features.requestAttention}`;
   const cached = withRules.get(key);
   if (cached !== undefined) return cached;
-  const rulesBySection = forkRulesBySection(features);
-  const sections = T3_CODE_ORCHESTRATION_SECTIONS.map((section, index) =>
-    [
-      section.replace(
-        BACKGROUND_AGENT_RULE,
-        () => BACKGROUND_AGENT_RULE + LISTED_CHILD_FOR_A_THREAD_APART,
-      ),
-      ...(rulesBySection[index] ?? []),
-    ].join("\n"),
+  const sections = withForkRulesInSections(
+    upstreamOrchestrationSections(nativeSubagents),
+    features,
   );
-  const instructions = T3_CODE_ORCHESTRATION_SECTIONS.reduce(
-    (text, section, index) => text.replace(section, () => sections[index]!),
+  const instructionSections = upstreamOrchestrationSections();
+  const forkInstructionSections = withForkRulesInSections(instructionSections, features);
+  const instructions = instructionSections.reduce(
+    (text, section, index) => text.replace(section, () => forkInstructionSections[index]!),
     T3_CODE_ORCHESTRATION_INSTRUCTIONS,
   );
   const built = { sections, instructions };
@@ -81,17 +100,17 @@ function agentLanguageSection(): string | undefined {
     : `### Language\n\n- ${agentLanguageLine(language)} This holds for every reply, also after a notification, a compaction, a goal continuation, or long output in another language.`;
 }
 
-export function forkOrchestrationSections(): ReadonlyArray<string> {
+export function forkOrchestrationSections(nativeSubagents = true): ReadonlyArray<string> {
   const sections = forkFeatureActive("orchestrationRules")
-    ? withForkRules().sections
-    : T3_CODE_ORCHESTRATION_SECTIONS;
+    ? withForkRules(nativeSubagents).sections
+    : upstreamOrchestrationSections(nativeSubagents);
   const language = agentLanguageSection();
   return language === undefined ? sections : [...sections, language];
 }
 
 export function forkOrchestrationInstructions(): string {
   const instructions = forkFeatureActive("orchestrationRules")
-    ? withForkRules().instructions
+    ? withForkRules(true).instructions
     : T3_CODE_ORCHESTRATION_INSTRUCTIONS;
   const language = agentLanguageSection();
   return language === undefined ? instructions : `${instructions}\n${language}\n`;

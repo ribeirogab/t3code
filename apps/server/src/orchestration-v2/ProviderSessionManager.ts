@@ -2806,7 +2806,9 @@ export const layerWithOptions = (
                 Effect.flatMap(withSharedWorktree),
                 Effect.flatMap((turn) =>
                   agentFeedbackMode.pipe(
-                    Effect.flatMap((agentFeedback) => runtime.startTurn({ ...turn, agentFeedback })),
+                    Effect.flatMap((agentFeedback) =>
+                      runtime.startTurn({ ...turn, agentFeedback }),
+                    ),
                   ),
                 ),
                 turnMetrics("send", input.modelSelection.model),

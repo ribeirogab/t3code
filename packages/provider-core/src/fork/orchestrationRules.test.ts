@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   T3_CODE_ORCHESTRATION_INSTRUCTIONS,
-  T3_CODE_ORCHESTRATION_SECTIONS,
+  t3CodeOrchestrationSections,
   t3OrchestrationPrompt,
 } from "../server/orchestrationInstructions.ts";
 import {
@@ -17,7 +17,7 @@ const FORK_RULE = "- Recurring or timed work: `schedule_task`, not `CronCreate`.
 
 describe("fork orchestration rules", () => {
   it("adds the fork rules to every instruction format while Orchestration rules is on", () => {
-    expect(forkOrchestrationSections()).toHaveLength(T3_CODE_ORCHESTRATION_SECTIONS.length);
+    expect(forkOrchestrationSections()).toHaveLength(t3CodeOrchestrationSections().length);
     expect(forkOrchestrationSections().join("\n")).toContain(FORK_RULE);
     expect(forkOrchestrationInstructions()).toContain(FORK_RULE);
     expect(forkOrchestrationInstructions()).toContain(GOAL_WAITS_ON_THE_USER);
@@ -33,12 +33,22 @@ describe("fork orchestration rules", () => {
     );
   });
 
+  it("adds the listed child rule for providers without native subagents", () => {
+    expect(forkOrchestrationSections(false)).toHaveLength(
+      t3CodeOrchestrationSections(false).length,
+    );
+    expect(forkOrchestrationSections(false)[0]).toContain(
+      "for a separate checkout. A thread the user asked to run apart: `delegate_task` with `listed:true`, so it gets a sidebar row. Workflow only when asked.",
+    );
+  });
+
   it.each([
     { master: false, features: {} },
     { master: true, features: { orchestrationRules: false } },
   ])("gives agents the upstream instructions with %o", (settings) => {
     using _settings = overrideForkFeatureSettings(settings);
-    expect(forkOrchestrationSections()).toBe(T3_CODE_ORCHESTRATION_SECTIONS);
+    expect(forkOrchestrationSections()).toEqual(t3CodeOrchestrationSections());
+    expect(forkOrchestrationSections(false)).toEqual(t3CodeOrchestrationSections(false));
     expect(forkOrchestrationInstructions()).toBe(T3_CODE_ORCHESTRATION_INSTRUCTIONS);
     const prompt = t3OrchestrationPrompt({
       prompt: "Fix it.",

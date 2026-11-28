@@ -1,4 +1,5 @@
 import { assert, it } from "@effect/vitest";
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import {
   CommandId,
   EventId,
@@ -42,7 +43,10 @@ const layerTest = ChildStatusReactor.layer.pipe(
   Layer.provideMerge(
     Layer.mergeAll(
       layerDatabase,
-      ProjectionStore.layer.pipe(Layer.provide(layerDatabase)),
+      ProjectionStore.layer.pipe(
+        Layer.provide(NodeCrypto.layerDigest),
+        Layer.provide(layerDatabase),
+      ),
       EffectOutbox.layer.pipe(Layer.provide(layerDatabase)),
       ProviderReplayHarness.layerWithRegistry(
         { name: "fork-child-status" },
