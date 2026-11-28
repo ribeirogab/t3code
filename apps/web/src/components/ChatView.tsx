@@ -2747,6 +2747,7 @@ export default function ChatView(props: ChatViewProps) {
     driver: selectedProvider,
     blocked:
       pendingHandoff !== null ||
+      freshSessionPending ||
       compactDisabled ||
       hasHeldQueuedRuns ||
       multipleModelSelections !== null,
