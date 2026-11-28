@@ -291,6 +291,21 @@ import {
   SidebarSectionHeader,
   SidebarSectionPlaceholder,
 } from "./sidebar/SidebarListMarkers";
+import { FORK_COPY } from "../fork/forkCopy";
+import { startNewThreadWithoutProject } from "../fork/newThreadNoProject";
+import { useScratchProject } from "../hooks/useScratchProject";
+import { readThreadParked, setThreadParked } from "../fork/parkedThreadActions";
+import {
+  useParkedShelfExpanded,
+  useParkedThreadIds,
+  useParkedThreadKeys,
+} from "../fork/parkedThreads";
+import {
+  parkedThreadHasOpenRequest,
+  parkedThreadMenuTarget,
+  resolveParkedPlacement,
+  resolveParkHoverAction,
+} from "../fork/parkedThreads.logic";
 
 function sameSidebarProviderEntries(
   left: ReadonlyMap<string, SidebarProviderEntry>,
@@ -382,6 +397,7 @@ interface SidebarThreadPartitionInput {
   // on the clock, so the minute tick, the precise snooze-wake tick and the inbox
   // tracker's expiry version are inputs: a new key repartitions.
   readonly clockKey: string;
+  readonly parkedKeys: ReadonlySet<string> | null;
 }
 
 function scrollSidebarToTop(content: HTMLElement | null) {
@@ -501,9 +517,12 @@ function useSidebarThreads(input: {
   }
   const settledVisibleCount =
     settledTail.scopeKey === projectScopeKey ? settledTail.count : SETTLED_TAIL_INITIAL_COUNT;
+  const parkedKeys = useParkedThreadKeys();
+  const [parkedShelfExpanded, setParkedShelfExpanded] = useParkedShelfExpanded();
 
   const partition = partitionSidebarThreads({
     threads,
+    parkedKeys,
     scopedProjectKeys,
     delegatedUnderParent,
     serverConfigs,
@@ -514,8 +533,14 @@ function useSidebarThreads(input: {
     clockKey: `${nowMinute}:${snoozeWakeClock}:${inboxReturnsVersion}`,
   });
 
-  const { pinnedThreads, activeThreads, workingThreads, snoozedThreads, settledThreads } =
-    partition;
+  const {
+    pinnedThreads,
+    activeThreads,
+    workingThreads,
+    snoozedThreads,
+    parkedThreads,
+    settledThreads,
+  } = partition;
   // Older settled threads load in pages; the shelf lists them only as far as they are loaded.
   const olderSettledShelf = useOlderSettledShelf({
     scopes: olderSettledScopes([...serverConfigs.keys()], scopedProjectKeys),
@@ -548,6 +573,9 @@ function useSidebarThreads(input: {
   const visibleWorkingThreads = workingShelfExpanded
     ? workingThreads
     : routeThreadOnly(workingThreads, routeRowThreadKey);
+  const visibleParkedThreads = parkedShelfExpanded
+    ? parkedThreads
+    : routeThreadOnly(parkedThreads, routeRowThreadKey);
   const projectFolders =
     folderGroups === null
       ? null
@@ -582,6 +610,7 @@ function useSidebarThreads(input: {
       : projectFolders.flatMap((folder) => folder.threads)),
     ...visibleWorkingThreads,
     ...visibleSnoozedThreads,
+    ...visibleParkedThreads,
     ...renderedSettledThreads,
   ];
   const sectionByThreadKey = new Map<string, SidebarSection>();
@@ -590,6 +619,7 @@ function useSidebarThreads(input: {
     [activeThreads, "active"],
     [workingThreads, "working"],
     [snoozedThreads, "snoozed"],
+    [parkedThreads, "parked"],
     [settledThreads, "settled"],
   ] as const) {
     for (const thread of list) sectionByThreadKey.set(threadShellKey(thread), section);
@@ -603,6 +633,7 @@ function useSidebarThreads(input: {
       ...activeThreads,
       ...workingThreads,
       ...snoozedThreads,
+      ...parkedThreads,
       ...settledThreads,
     ],
     settledVisibleCount,
@@ -620,6 +651,10 @@ function useSidebarThreads(input: {
     toggleSnoozedShelf: () => setSnoozedShelfExpanded((value) => !value),
     workingShelfExpanded,
     toggleWorkingShelf: () => setWorkingShelfExpanded((value) => !value),
+    parkedShelfExpanded,
+    toggleParkedShelf: () => setParkedShelfExpanded((value) => !value),
+    visibleParkedThreads,
+    parkedAttention: parkedThreads.some(parkedThreadHasOpenRequest),
     projectFolders,
     toggleProjectFolder: (group: SidebarProjectSnapshot) => {
       const keys = sidebarFolderExpansionKeys(group);
@@ -675,9 +710,10 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
       ? working
       : active;
   const snoozed: EnvironmentThreadShell[] = [];
+  const parked: EnvironmentThreadShell[] = [];
   const settled: EnvironmentThreadShell[] = [];
   const { draggableThreadKeys, activeReorderableThreadKeys } = resolveSidebarReorderableThreadKeys({
-    threads: visible,
+    threads: visible.filter((thread) => resolveParkedPlacement(thread, input.parkedKeys) === null),
     serverConfigs,
     connectedEnvironmentIds: input.connectedEnvironmentIds,
   });
@@ -702,6 +738,11 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
           : { ...projected, snoozedAt: thread.snoozedAt, snoozedUntil: thread.snoozedUntil },
       );
     } else {
+      const parkedPlacement = resolveParkedPlacement(thread, input.parkedKeys);
+      if (parkedPlacement !== null) {
+        (parkedPlacement === "parked" ? parked : active).push(thread);
+        continue;
+      }
       const section = resolveSidebarThreadSection({
         snoozed: configLoaded && effectiveSnoozed(thread, { now: preciseNow }),
         settled: configLoaded && thread.settledOverride === "settled",
@@ -749,6 +790,7 @@ function partitionSidebarThreads(input: SidebarThreadPartitionInput) {
         firstValidTimestampMs(left.snoozedUntil ?? null) -
         firstValidTimestampMs(right.snoozedUntil ?? null),
     ),
+    parkedThreads: sortThreadsForSidebar(parked),
     settledThreads: sortSettledThreads(settled),
     visibleThreads: visible,
     snoozeNow: preciseNow,
@@ -1032,6 +1074,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   const newThreadContext = useHandleNewThread();
   // Row callbacks capture only the handler; the rest of the context changes with the route.
   const { handleNewThread } = newThreadContext;
+  const scratchProject = useScratchProject();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const clearSelection = useThreadSelectionStore((s) => s.clearSelection);
   const toggleThreadSelection = useThreadSelectionStore((s) => s.toggleThread);
@@ -1354,6 +1397,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     },
   );
 
+  const parkedThreadIds = useParkedThreadIds();
   const {
     workingShelfEnabled,
     pinnedThreads,
@@ -1376,6 +1420,11 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     toggleSnoozedShelf,
     workingShelfExpanded,
     toggleWorkingShelf,
+    parkedThreads,
+    parkedShelfExpanded,
+    toggleParkedShelf,
+    visibleParkedThreads,
+    parkedAttention,
     projectFolders,
     toggleProjectFolder,
     toggleProjectFolderShowAll,
@@ -2031,6 +2080,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
         activeThreads.length +
         workingThreads.length +
         snoozedThreads.length +
+        parkedThreads.length +
         settledCount ===
         0
     ) {
@@ -2050,6 +2100,10 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     if (snoozedThreads.length > 0) {
       items.push({ kind: "marker", marker: "snoozed-header" });
       items.push(...rowsOf(visibleSnoozedThreads, "snoozed"));
+    }
+    if (parkedThreads.length > 0) {
+      items.push({ kind: "marker", marker: "parked-header" });
+      items.push(...rowsOf(visibleParkedThreads, "parked"));
     }
     items.push({ kind: "marker", marker: "settled-header" });
     const settledRows = rowsOf(renderedSettledThreads, "settled");
@@ -2095,9 +2149,12 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     dragState === null && sidebarListItems.length + visibleDraftSessionCount > 0;
   // Cache on both fields so layout-key changes trigger the effect even when animate is unchanged.
   const listMotionPass = { layoutKey: listMotionLayoutKey, animate: listMotionAnimate };
-  const shelfExpansionKey = [workingShelfExpanded, snoozedShelfExpanded, settledShelfExpanded].join(
-    ":",
-  );
+  const shelfExpansionKey = [
+    workingShelfExpanded,
+    snoozedShelfExpanded,
+    parkedShelfExpanded,
+    settledShelfExpanded,
+  ].join(":");
   const previousShelfExpansionKeyRef = useRef(shelfExpansionKey);
   // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- records moved rows and updates list motion after each layout-affecting commit
   useLayoutEffect(() => {
@@ -2785,6 +2842,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
               ),
               canTurnIntoProject: canTurnThreadIntoProject(threadRef),
               canRename: !fromSearch,
+              parked: readThreadParked(threadRef, thread),
               supports: {
                 settlement: configLoaded,
                 autoSettleOptOut: supportsAutoSettleOptOut,
@@ -2804,6 +2862,11 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           !checkThreadOperations([thread], isThreadTriageAction(clicked.value))
         )
           return;
+        const parkTarget = parkedThreadMenuTarget(clicked.value);
+        if (parkTarget !== null) {
+          await setThreadParked(threadRef, parkTarget);
+          return;
+        }
         if (clicked.value?.startsWith("snooze:")) {
           const preset =
             clicked.value === "snooze:custom"
@@ -3091,6 +3154,18 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     if (scopedProjectRef) {
       if (isMobile) setOpenMobile(false);
       void handleNewThread(scopedProjectRef);
+      return;
+    }
+    if (
+      !event?.shiftKey &&
+      startNewThreadWithoutProject(
+        scratchProject,
+        newThreadContext.activeThread?.environmentId ??
+          newThreadContext.activeDraftThread?.environmentId ??
+          null,
+      )
+    ) {
+      if (isMobile) setOpenMobile(false);
       return;
     }
     if (
@@ -3483,7 +3558,8 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           pinnedThreads.length +
             activeThreads.length +
             workingThreads.length +
-            snoozedThreads.length ===
+            snoozedThreads.length +
+            parkedThreads.length ===
             0 &&
           (settledCount === 0 || scopedProjectGroups.length > 0) ? (
             <div className="flex flex-col items-center gap-2 px-2 py-6 text-center text-xs text-muted-foreground/60">
@@ -3588,7 +3664,10 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                           variant={rowVariant}
                           navigationParent={
                             folderRow ??
-                            (section === "working" || section === "snoozed" || section === "settled"
+                            (section === "working" ||
+                            section === "snoozed" ||
+                            section === "parked" ||
+                            section === "settled"
                               ? `shelf:${section}`
                               : undefined)
                           }
@@ -3599,8 +3678,11 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                                 ? "unsettle"
                                 : "settle"
                           }
-                          settlementSupported={serverConfigs.has(thread.environmentId)}
+                          settlementSupported={
+                            section !== "parked" && serverConfigs.has(thread.environmentId)
+                          }
                           snoozeSupported={serverConfigs.has(thread.environmentId)}
+                          parkAction={resolveParkHoverAction(thread, parkedThreadIds)}
                           pinningSupported={serverConfigs.has(thread.environmentId)}
                           isPinned={thread.pinnedAt != null}
                           dropVerb={
@@ -3808,13 +3890,34 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                             />,
                           );
                           break;
+                        case "parked-header":
+                          items.push(
+                            <SidebarSectionHeader
+                              key="parked-shelf-header"
+                              marker="parked-header"
+                              className={cn(
+                                workingThreads.length + snoozedThreads.length === 0 && "mt-auto",
+                              )}
+                              label={FORK_COPY.parked}
+                              count={parkedThreads.length}
+                              attention={parkedAttention}
+                              toggle={{
+                                expanded: parkedShelfExpanded,
+                                onToggle: toggleParkedShelf,
+                              }}
+                            />,
+                          );
+                          break;
                         case "settled-header":
                           items.push(
                             <SidebarSectionHeader
                               key="settled-shelf-header"
                               marker="settled-header"
                               className={cn(
-                                workingThreads.length + snoozedThreads.length === 0 && "mt-auto",
+                                workingThreads.length +
+                                  snoozedThreads.length +
+                                  parkedThreads.length ===
+                                  0 && "mt-auto",
                               )}
                               label={gt("Settled", { $context: "sidebar section" })}
                               count={settledCount}

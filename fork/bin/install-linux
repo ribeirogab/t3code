@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repository="$1"
+tag="$2"
+app_dir="$HOME/Applications"
+app_path="${app_dir}/t3code-nightly.AppImage"
+menu_entry="${XDG_DATA_HOME:-$HOME/.local/share}/applications/t3code-nightly.desktop"
+staging_dir="$(mktemp -d "${TMPDIR:-/tmp}/t3code-install.XXXXXX")"
+trap 'rm -rf "$staging_dir"' EXIT
+
+manifest_sha512() {
+  awk -v name="$1" '
+    $1 == "-" && $2 == "url:" { current = $3 }
+    $1 == "sha512:" && current == name { print $2; exit }
+  ' "$staging_dir/nightly-linux.yml"
+}
+
+file_sha512() {
+  openssl dgst -sha512 -binary "$1" | base64 | tr -d '\n'
+}
+
+# The app's own entry is a hidden URL handler, so the menu needs this one. The app installs the icon on first start.
+write_menu_entry() {
+  mkdir -p "$(dirname "$menu_entry")"
+  cat > "$menu_entry" <<ENTRY
+[Desktop Entry]
+Type=Application
+Name=T3 Code (Nightly)
+Exec="${app_path}" %U
+Icon=com.t3tools.T3Code
+Terminal=false
+Categories=Development;
+StartupWMClass=com.t3tools.T3Code
+ENTRY
+}
+
+gh release download "$tag" --repo "$repository" --pattern '*-x86_64.AppImage' --pattern 'nightly-linux.yml' --dir "$staging_dir"
+new_app="$(find "$staging_dir" -maxdepth 1 -name '*-x86_64.AppImage' -print -quit)"
+expected_sha512="$(manifest_sha512 "$(basename "$new_app")")"
+if [[ -z "$expected_sha512" || "$(file_sha512 "$new_app")" != "$expected_sha512" ]]; then
+  echo "$(basename "$new_app") does not match the sha512 in nightly-linux.yml." >&2
+  exit 1
+fi
+
+# A fixed name lets the in-app updater replace this same file.
+mkdir -p "$app_dir"
+install -m 755 "$new_app" "${app_path}.new"
+mv -f "${app_path}.new" "$app_path"
+write_menu_entry
+
+echo "Installed ${tag} from ${repository} at ${app_path}. Open it from the app menu as T3 Code (Nightly)."
+echo "Restart T3 Code if it is running."

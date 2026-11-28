@@ -26,13 +26,12 @@ import { ThreadAutomationsPanel } from "./ThreadAutomationsPanel";
 import { ThreadRelationshipsPanel } from "./ThreadRelationshipsControl";
 import { ThreadRepositorySections } from "./ThreadRepositorySections";
 import { ThreadServersPanel } from "./ThreadServersPanel";
-import {
-  ThreadDetailsContext,
-  ThreadDetailsUsage,
-  type ThreadDetailsUsageInput,
-} from "./ThreadDetailsUsage";
+import { ThreadDetailsUsage, type ThreadDetailsUsageInput } from "./ThreadDetailsUsage";
+import { ForkThreadDetailsContext } from "../../fork/ThreadDetailsContextBreakdown";
 import { ThreadDetailsTasks } from "./ThreadDetailsTasks";
 import type { TaskListPlan } from "../../session-logic";
+import { ForkThreadDetailsProviderUsage } from "../../fork/ThreadDetailsProviderUsage";
+import { ForkThreadDetailsPublishedPorts } from "../../fork/ThreadDetailsPublishedPorts";
 import { ThreadDetailsItemsMenuItems } from "./ThreadDetailsItemsMenu";
 import { resolveThreadDetailsVisibility, THREAD_DETAILS_ITEMS } from "./threadDetailsItems";
 import { useClientSettings } from "../../hooks/useSettings";
@@ -309,6 +308,13 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                 <ThreadServersPanel environmentId={props.environmentId} threadId={props.threadId} />
               ) : null}
 
+              {density === "full" && !props.draftId ? (
+                <ForkThreadDetailsPublishedPorts
+                  environmentId={props.environmentId}
+                  threadId={props.threadId}
+                />
+              ) : null}
+
               {density === "full" && !props.draftId && visible.automations ? (
                 <ThreadAutomationsPanel
                   environmentId={props.environmentId}
@@ -333,8 +339,21 @@ export function ThreadDetailsPanel(props: ThreadDetailsPanelProps) {
                 <ThreadDetailsUsage {...props.usage} environmentId={props.environmentId} />
               ) : null}
 
+              {visible.providerUsage ? (
+                <ForkThreadDetailsProviderUsage
+                  providers={props.usage.providers}
+                  sources={props.usage.sources}
+                />
+              ) : null}
+
               {visible.context && props.usage.contextWindow ? (
-                <ThreadDetailsContext usage={props.usage.contextWindow} />
+                <ForkThreadDetailsContext
+                  contextWindow={props.usage.contextWindow}
+                  environmentId={props.environmentId}
+                  threadId={props.draftId ? null : props.threadId}
+                  providerInstanceId={props.usage.providerInstanceId}
+                  providers={props.usage.providers}
+                />
               ) : null}
 
               {visible.machineLoad ? (

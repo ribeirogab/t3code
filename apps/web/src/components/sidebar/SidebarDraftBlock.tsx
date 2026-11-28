@@ -20,6 +20,8 @@ import { cn } from "~/lib/utils";
 import { useTerminalLabelsByThreadKey } from "~/state/terminalSessions";
 import { resolveSidebarRowAccessibility } from "../Sidebar.logic";
 import { ProjectFavicon, type ProjectFaviconProject } from "../ProjectFavicon";
+import { TitleFirstProjectLabel } from "~/fork/TitleFirstProjectLabel";
+import { useForkFeature } from "~/fork/forkFeatures";
 import {
   composerDraftHasUserContent,
   DraftId,
@@ -123,6 +125,7 @@ const SidebarDraftRow = memo(function SidebarDraftRow(props: {
     projectDisplayName: props.projectDisplayName,
     isActive: props.isActive,
   });
+  const titleFirst = useForkFeature("titleFirstCards");
   const handleActivate = () => onNavigate(draftId);
   const handleKeyDown = (event: ReactKeyboardEvent) => {
     // Keys targeting the nested discard button belong to the button:
@@ -164,15 +167,28 @@ const SidebarDraftRow = memo(function SidebarDraftRow(props: {
         onContextMenu={handleContextMenu}
         onKeyDown={handleKeyDown}
       >
-        <div className="relative z-10 h-[4.875rem] px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)">
+        <div
+          className={cn(
+            "relative z-10 px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)",
+            titleFirst ? "h-14" : "h-[4.875rem]",
+          )}
+        >
           <div className="flex h-5 min-w-0 items-center gap-1.5">
             <SquarePenIcon aria-hidden className={draftPenClassName} />
-            {props.project ? (
-              <ProjectFavicon project={props.project} className="size-4 shrink-0" />
-            ) : null}
-            <span className="min-w-0 flex-1 truncate text-xs font-medium text-secondary-label">
-              {props.projectDisplayName}
-            </span>
+            {titleFirst ? (
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground/90">
+                {preview}
+              </span>
+            ) : (
+              <>
+                {props.project ? (
+                  <ProjectFavicon project={props.project} className="size-4 shrink-0" />
+                ) : null}
+                <span className="min-w-0 flex-1 truncate text-xs font-medium text-secondary-label">
+                  {props.projectDisplayName}
+                </span>
+              </>
+            )}
             <span
               className={cn(
                 "ml-auto flex h-5 min-w-5 shrink-0 items-center justify-end",
@@ -199,7 +215,17 @@ const SidebarDraftRow = memo(function SidebarDraftRow(props: {
               {props.jumpLabel ? <JumpHintBadge label={props.jumpLabel} /> : null}
             </span>
           </div>
-          <div className="mt-0.5 truncate text-sm font-medium text-foreground/90">{preview}</div>
+          {titleFirst ? (
+            <div className="mt-1 flex h-4 min-w-0 items-center gap-1.5 text-xs text-secondary-label">
+              <TitleFirstProjectLabel
+                project={props.project}
+                projectDisplayName={props.projectDisplayName}
+                separated={false}
+              />
+            </div>
+          ) : (
+            <div className="mt-0.5 truncate text-sm font-medium text-foreground/90">{preview}</div>
+          )}
         </div>
       </div>
     </li>

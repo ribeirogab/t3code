@@ -130,6 +130,9 @@ import * as ThreadViewers from "./orchestration-v2/ThreadViewers.ts";
 import * as CommandOutputHub from "./orchestration-v2/CommandOutputHub.ts";
 import * as McpAppRequests from "./mcpApps/McpAppRequests.ts";
 import * as McpSignIn from "./mcpApps/McpSignIn.ts";
+import { readForkContextUsage } from "./fork/contextUsageRequests.ts";
+import * as PublishedPorts from "./fork/publishedPorts/PublishedPorts.ts";
+import { publishedPortsRpcHandlers } from "./fork/publishedPorts/rpcHandlers.ts";
 import * as ProviderSessionManager from "./orchestration-v2/ProviderSessionManager.ts";
 import * as ThreadLaunchService from "./orchestration-v2/ThreadLaunchService.ts";
 import * as ThreadMessageIntake from "./orchestration-v2/ThreadMessageIntake.ts";
@@ -1486,6 +1489,7 @@ export const layerWsRpc = (
       const providerSessionsV2 = yield* ProviderSessionManager.ProviderSessionManagerV2;
       const mcpAppRequests = yield* McpAppRequests.McpAppRequests;
       const mcpSignIn = yield* McpSignIn.McpSignIn;
+      const publishedPorts = yield* PublishedPorts.PublishedPorts;
       const analytics = yield* AnalyticsService.AnalyticsService;
       const originProps = clientAnalyticsProps;
       const recordClientCommandAnalytics = (command: OrchestrationV2Command) => {
@@ -2720,6 +2724,9 @@ export const layerWsRpc = (
         [WS_METHODS.mcpAppsReadResource]: (input) => mcpAppRequests.readResource(input),
         [WS_METHODS.providerMcpSignInStart]: (input) => mcpSignIn.start(input),
         [WS_METHODS.providerMcpSignInComplete]: (input) => mcpSignIn.complete(input),
+        [WS_METHODS.forkContextUsage]: (input) =>
+          readForkContextUsage({ threadManagement, providerSessions: providerSessionsV2 }, input),
+        ...publishedPortsRpcHandlers(publishedPorts),
         [WS_METHODS.providerUploadFeedback]:
           /* Request instrumentation already owns the span; keep this helper in that context. */
           Effect.fnUntraced(

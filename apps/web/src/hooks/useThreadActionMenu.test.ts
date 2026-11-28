@@ -36,6 +36,10 @@ function recordEffect(action: string) {
 }
 
 vi.mock("../components/CustomSnoozeDialog", () => ({ requestCustomSnooze: vi.fn() }));
+vi.mock("../fork/parkedThreadActions", () => ({
+  readThreadParked: () => false,
+  setThreadParked: async () => recordEffect("park"),
+}));
 vi.mock("react", () => ({
   useCallback: (callback: unknown) => callback,
   useMemo: (factory: () => unknown) => factory(),

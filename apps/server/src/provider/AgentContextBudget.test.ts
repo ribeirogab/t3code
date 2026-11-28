@@ -33,6 +33,7 @@ import { PeerForwarding } from "../peer/PeerForwarding.ts";
 import { PeerLinkRequests } from "../peer/PeerLinkRequests.ts";
 import { PeerLinks } from "../peer/PeerLinks.ts";
 import { RemoteDelegation } from "../peer/RemoteDelegation.ts";
+import { PublishedPorts } from "../fork/publishedPorts/PublishedPorts.ts";
 import { PreviewManager } from "../preview/Manager.ts";
 import { Workflows } from "../workflows/Workflows.ts";
 import { PreviewBrowser } from "../preview/PreviewBrowser.ts";
@@ -79,6 +80,7 @@ const toolHandlerServices = Layer.mergeAll(
   Layer.mock(PreviewBrowser)({}),
   Layer.mock(PreviewManager)({}),
   Layer.mock(Workflows)({}),
+  Layer.mock(PublishedPorts)({}),
   Layer.mock(ProjectCloneTracker)({}),
   Layer.mock(ProjectService)({}),
   Layer.mock(ProjectSetupScriptRunner)({}),

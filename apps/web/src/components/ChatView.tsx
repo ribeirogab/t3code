@@ -397,6 +397,8 @@ import {
 } from "./ChatView.logic";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { useComposerHandleContext } from "../composerHandleContext";
+import { useForkFeature } from "../fork/forkFeatures";
+import { useCompactOnDemand } from "../fork/compactOnDemand";
 import { clampFileAttachmentUploadBytes } from "@t3tools/client-runtime/state/attachments";
 import { appAtomRegistry } from "../rpc/atomRegistry";
 import { assetEnvironment } from "../state/assets";
@@ -2120,6 +2122,7 @@ export default function ChatView(props: ChatViewProps) {
   const threadPanelInlineOpen = useRightPanelStore((state) =>
     selectThreadPanelOpen(state.threadPanelVisibilityByThreadKey, activeThreadRef, "inline"),
   );
+  const centerChatBesideDetails = useForkFeature("centerChatBesideDetails");
   // Selects only the mode, so canvas resizes rerender the chat view only when the
   // card switches presentation.
   const threadPanelPresentation = useStore(
@@ -2131,6 +2134,7 @@ export default function ChatView(props: ChatViewProps) {
         threadRef: activeThreadRef,
         preview: canvasPreview,
         detailsCardInlineOpen: threadPanelInlineOpen,
+        centerBesideDetailsCard: centerChatBesideDetails,
       }).detailsCardMode,
   );
   const threadPanelOpen = useRightPanelStore((state) =>
@@ -2694,7 +2698,7 @@ export default function ChatView(props: ChatViewProps) {
   const freshSessionPending = freshSessionAvailable && freshSessionArmed;
   // The context window is the current conversation's, so neither a handoff destination nor
   // the fresh session armed by /clear inherits it.
-  const resumeCompactionTokens =
+  const idleCompactionTokens =
     activeContextWindow &&
     pendingHandoff === null &&
     !freshSessionPending &&
@@ -2719,8 +2723,8 @@ export default function ChatView(props: ChatViewProps) {
   const [fullHistoryThreadKeys, setFullHistoryThreadKeys] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
-  const keepFullHistory = fullHistoryThreadKeys.has(routeThreadKey);
-  const setKeepFullHistory = (threadKey: string, keep: boolean) => {
+  const keepIdleHistory = fullHistoryThreadKeys.has(routeThreadKey);
+  const setIdleKeepFullHistory = (threadKey: string, keep: boolean) => {
     setFullHistoryThreadKeys((current) => {
       if (current.has(threadKey) === keep) return current;
       const next = new Set(current);
@@ -2729,6 +2733,25 @@ export default function ChatView(props: ChatViewProps) {
       return next;
     });
   };
+  const {
+    resumeCompactionTokens,
+    keepFullHistory,
+    setKeepFullHistory,
+    toggleKeepFullHistory: toggleCompactKeepFullHistory,
+  } = useCompactOnDemand({
+    threadKey: routeThreadKey,
+    idleTokens: idleCompactionTokens,
+    keepIdleHistory,
+    setIdleKeepFullHistory,
+    contextTokens: activeContextWindow?.usedTokens,
+    driver: selectedProvider,
+    blocked:
+      pendingHandoff !== null ||
+      freshSessionPending ||
+      compactDisabled ||
+      hasHeldQueuedRuns ||
+      multipleModelSelections !== null,
+  });
   // While a question, approval or queued edit owns the composer, its text belongs to that, not the next send.
   const freshSessionCommandAvailable =
     freshSessionAvailable &&
@@ -2743,7 +2766,7 @@ export default function ChatView(props: ChatViewProps) {
   });
   const toggleKeepFullHistory = () => {
     cancelHeldComposerSend(composerDraftTargetKey);
-    setKeepFullHistory(routeThreadKey, !keepFullHistory);
+    toggleCompactKeepFullHistory();
   };
   const toggleKeepFullHistoryStable = useStableCallback(toggleKeepFullHistory);
   const armFreshSessionStable = useStableCallback(() => armFreshSession(routeThreadKey));

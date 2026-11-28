@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+base_tag="$1"
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+upstream_repository="${UPSTREAM_REPOSITORY:-pingdotgg/t3code}"
+rebase_log="${RUNNER_TEMP:-/tmp}/fork-rebase.log"
+
+git config merge.fork-budget-sum.driver "${script_dir}/merge-budget %O %A %B"
+attributes="$(git rev-parse --git-path info/attributes)"
+mkdir -p "$(dirname "$attributes")"
+printf 'apps/server/src/provider/agentContextBudget.json merge=fork-budget-sum\n' >> "$attributes"
+
+git config user.name "github-actions[bot]"
+git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+git fetch --no-tags "https://github.com/${upstream_repository}.git" "+refs/tags/${base_tag}:refs/tags/${base_tag}" >&2
+
+if ! git rebase "$base_tag" > "$rebase_log" 2>&1; then
+  cat "$rebase_log" >&2
+  conflicts="$(git diff --name-only --diff-filter=U | paste -sd, -)"
+  git rebase --abort || true
+  if [[ -z "$conflicts" ]]; then
+    exit 1
+  fi
+  printf 'result=conflict\n'
+  printf 'conflicts=%s\n' "$conflicts"
+  exit 0
+fi
+
+printf 'result=rebased\n'

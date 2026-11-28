@@ -54,6 +54,8 @@ import { useCopyToClipboard } from "./useCopyToClipboard";
 import { useNewThreadHandler } from "./useHandleNewThread";
 import { useClientSettings } from "./useSettings";
 import { canTurnThreadIntoProject, useThreadActions } from "./useThreadActions";
+import { readThreadParked, setThreadParked } from "../fork/parkedThreadActions";
+import { parkedThreadMenuTarget } from "../fork/parkedThreads.logic";
 
 function failureToast(title: string, error: unknown) {
   toastManager.add(
@@ -153,6 +155,7 @@ export function useThreadActionMenu(input: {
       snoozePresets,
       canShareWithGuest,
       canTurnIntoProject: canTurnThreadIntoProject(threadRef),
+      parked: readThreadParked(threadRef, thread),
     });
     const run = async (action: ThreadActionMenuId) => {
       const api = readLocalApi();
@@ -167,6 +170,11 @@ export function useThreadActionMenu(input: {
           m(msg("Thread action unavailable")),
           new Error(m(msg("This connection cannot change threads."))),
         );
+        return;
+      }
+      const parkTarget = parkedThreadMenuTarget(action);
+      if (parkTarget !== null) {
+        await setThreadParked(threadRef, parkTarget);
         return;
       }
       if (action.startsWith("snooze:")) {

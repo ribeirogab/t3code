@@ -144,6 +144,11 @@ import { useThreadHasUnsentDraft } from "../../composerDraftStore";
 import { ThreadDetailsIssueRows } from "../chat/ThreadDetailsIssueRows";
 import { IssueGlyph, issueStatePresentation } from "../issue/issuePresentation";
 import { useThreadIntentPrefetch } from "./useThreadIntentPrefetch";
+import { hasTitleFirstProjectLabel, TitleFirstProjectLabel } from "~/fork/TitleFirstProjectLabel";
+import { useSidebarCardDisplay } from "~/fork/sidebarCardDisplay";
+import { useForkFeature } from "~/fork/forkFeatures";
+import { ParkThreadHoverButton } from "~/fork/ParkThreadHoverButton";
+import type { ParkedThreadMenuId } from "~/fork/parkedThreads.logic";
 
 // The fields thread rows show. Provider status pushes refresh `checkedAt`,
 // status and auth on every provider; leaving those out keeps each
@@ -598,6 +603,7 @@ type SidebarThreadRowProps = {
   variantAction: SidebarSweepAction;
   settlementSupported: boolean;
   snoozeSupported: boolean;
+  parkAction?: ParkedThreadMenuId | null;
   pinningSupported: boolean;
   isPinned: boolean;
   sortable?: SortableThreadRowBag | undefined;
@@ -901,6 +907,11 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
     ? getTriggerDisplayModelName(selectedModel, providerEntry?.driverKind)
     : thread.modelSelection.model;
 
+  const cardDisplay = useSidebarCardDisplay();
+  const titleFirst = useForkFeature("titleFirstCards");
+  const showsBranch = Boolean(checkoutThread.branch) && cardDisplay.branch;
+  const showsEnvironmentLabel = props.environmentLabel !== null && cardDisplay.machine;
+
   const detailsTooltip = (
     <SidebarThreadTooltip
       thread={checkoutThread}
@@ -1034,6 +1045,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
   }
   const showSnoozeButton =
     canTriageThread && props.snoozeSupported && canSnooze(thread, { now: snoozeGateNow });
+  const parkAction = canTriageThread ? (props.parkAction ?? null) : null;
   // Closing here, not just masking, keeps the menu from reopening when the button returns.
   if (snoozeMenuOpenRaw && !showSnoozeButton) setSnoozeMenuOpen(false);
   const snoozeMenuOpen = snoozeMenuOpenRaw && showSnoozeButton;
@@ -1161,7 +1173,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
     if (!props.isRouteThread) onThreadActivate(threadRef);
   };
   const prBadge =
-    prBadgeShape?.kind === "stack" || pr || currentLinkedPr ? (
+    cardDisplay.pullRequest && (prBadgeShape?.kind === "stack" || pr || currentLinkedPr) ? (
       <ThreadPullRequestBadgeControl
         render={<InlineButton />}
         badge={prBadgeShape}
@@ -1225,13 +1237,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       />
     </ThreadLinkBadge>
   ) : null;
-  const terminalStatusIcon = (
+  const terminalStatusIcon = cardDisplay.terminal ? (
     <ThreadTerminalStatusButton
       threadRef={threadRef}
       terminalIds={runningTerminalIds}
       onThreadActivate={onThreadActivate}
     />
-  );
+  ) : null;
   const draftIndicator = hasUnsentDraft ? (
     <SharedTooltipTrigger
       render={
@@ -1310,17 +1322,50 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
     <SidebarThreadHostPressureIcon environmentId={thread.environmentId} threadId={thread.id} />
   );
 
-  const diff = latestRunDiff(thread);
+  const providerStack = cardDisplay.model ? (
+    <SidebarProviderIcon
+      thread={thread}
+      providerEntryByInstanceId={props.providerEntryByInstanceId}
+    />
+  ) : null;
+  const diff = cardDisplay.diff ? latestRunDiff(thread) : null;
+  const cardProjectLabel =
+    variant === "card" &&
+    titleFirst &&
+    cardDisplay.project &&
+    hasTitleFirstProjectLabel(props.project, props.projectDisplayName) ? (
+      <TitleFirstProjectLabel
+        project={props.project}
+        projectDisplayName={props.projectDisplayName}
+        separated={showsBranch || showsEnvironmentLabel}
+      />
+    ) : null;
   // Only the trailing icons would remain, so the row moves them to the title line instead.
   const metaLineEmpty =
-    props.environmentLabel === null &&
+    cardProjectLabel === null &&
+    !showsBranch &&
+    !showsEnvironmentLabel &&
     prBadge === null &&
     issueBadge === null &&
     diff === null &&
-    runningTerminalIds.length === 0;
+    (terminalStatusIcon === null || runningTerminalIds.length === 0);
   const metaLine = metaLineEmpty ? null : (
-    <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-secondary-label text-xs">
-      {props.environmentLabel !== null ? (
+    <div
+      className={cn(
+        "flex min-w-0 items-center gap-1.5 text-secondary-label text-xs",
+        variant === "card" && titleFirst ? "mt-1" : "mt-0.5",
+      )}
+    >
+      {cardProjectLabel}
+      {showsBranch && checkoutThread.branch ? (
+        <>
+          <GitBranchIcon aria-hidden className="size-3 shrink-0 text-icon-muted" />
+          <span className="flex min-w-0 flex-1">
+            <MiddleTruncate value={checkoutThread.branch} showTitle={false} />
+          </span>
+        </>
+      ) : null}
+      {showsEnvironmentLabel ? (
         <>
           <EnvironmentMachineIcon
             aria-hidden
@@ -1329,7 +1374,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
           />
           <span className="min-w-0 flex-1 truncate">{props.environmentLabel}</span>
         </>
-      ) : (
+      ) : showsBranch ? null : (
         <span className="flex-1" />
       )}
       {terminalStatusIcon}
@@ -1345,21 +1390,28 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
         aria-hidden
         className="pointer-events-none ml-auto inline-flex shrink-0 items-center gap-1"
       >
-        <SidebarProviderIcon
-          thread={thread}
-          providerEntryByInstanceId={props.providerEntryByInstanceId}
-        />
+        {providerStack}
       </span>
     </div>
   );
-  const titleLineIcons = metaLineEmpty ? (
-    <span aria-hidden className="inline-flex shrink-0 items-center gap-1">
-      <SidebarProviderIcon
-        thread={thread}
-        providerEntryByInstanceId={props.providerEntryByInstanceId}
-      />
-    </span>
-  ) : null;
+  const titleLineIcons =
+    metaLineEmpty && providerStack !== null ? (
+      <span aria-hidden className="inline-flex shrink-0 items-center gap-1">
+        {providerStack}
+      </span>
+    ) : null;
+
+  const cardTitle = (
+    <>
+      {title}
+      {isRegeneratingTitle ? (
+        <span role="status" className="sr-only">
+          <T>Regenerating title</T>
+        </span>
+      ) : null}
+      {titleLineIcons}
+    </>
+  );
 
   if (variant !== "card") {
     const multiline = variant === "folder-multiline";
@@ -1504,6 +1556,18 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                     </span>
                   )}
                 </span>
+                {parkAction ? (
+                  <ParkThreadHoverButton
+                    action={parkAction}
+                    threadRef={threadRef}
+                    slimRow={{
+                      variantAction,
+                      isWoke,
+                      snoozeSupported: props.snoozeSupported,
+                      settlementSupported: props.settlementSupported,
+                    }}
+                  />
+                ) : null}
                 {variantAction === "unsnooze" ? (
                   !props.snoozeSupported ? null : (
                     <button
@@ -1585,8 +1649,12 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       // The hints are the rendered heights inside py-0.5. Revealing the open thread measures rows
       // that have not rendered yet, so a hint off by a pixel lands it a pixel short per row above.
       className={cn(
-        "list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_78px]",
-        metaLineEmpty && "[contain-intrinsic-size:auto_60px]",
+        "list-none py-0.5 [content-visibility:auto]",
+        titleFirst ? "[contain-intrinsic-size:auto_60px]" : "[contain-intrinsic-size:auto_78px]",
+        metaLineEmpty &&
+          (titleFirst
+            ? "[contain-intrinsic-size:auto_40px]"
+            : "[contain-intrinsic-size:auto_60px]"),
         sortable?.isDragging && "relative z-20",
       )}
     >
@@ -1617,13 +1685,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
       >
         <div
           className={cn(
-            "relative z-10 h-[4.875rem] px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)",
+            "relative z-10 px-(--sidebar-row-content-inset) py-(--sidebar-content-inset)",
+            titleFirst ? "h-14" : "h-[4.875rem]",
             metaLineEmpty && "h-auto",
           )}
         >
           <div className="flex h-5 min-w-0 items-center gap-1.5">
             {draftIndicator}
-            {props.project ? (
+            {!titleFirst && cardDisplay.project && props.project ? (
               <ProjectFavicon project={props.project} className="size-4 shrink-0" />
             ) : null}
             {/* Left of the status slot, the pin would slide when hover swaps the
@@ -1631,7 +1700,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
             {pinIndicator}
             {pinButton}
             {hostPressureIcon}
-            {props.projectDisplayName ? (
+            {titleFirst ? (
+              cardTitle
+            ) : cardDisplay.project && props.projectDisplayName ? (
               <span
                 className={cn("min-w-0 flex-1 truncate font-normal text-secondary-label text-xs")}
               >
@@ -1717,7 +1788,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                     <RelativeTimeLabel timestamp={resolveThreadActivityTimestamp(thread)} />
                   )}
                 </span>
-                {props.settlementSupported || showSnoozeButton || hasUnsentDraft ? (
+                {props.settlementSupported || showSnoozeButton || hasUnsentDraft || parkAction ? (
                   <span
                     className={cn(
                       // Mouse clicks leave Settle focused; focus-within would pin controls over
@@ -1754,6 +1825,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
                         environmentId={thread.environmentId}
                       />
                     ) : null}
+                    {parkAction ? (
+                      <ParkThreadHoverButton action={parkAction} threadRef={threadRef} />
+                    ) : null}
                     {props.settlementSupported ? (
                       <SharedTooltipTrigger
                         side="right"
@@ -1783,15 +1857,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowP
             )}
             {props.sweepAction !== null ? dragDestination : null}
           </div>
-          <div className="mt-1 flex min-w-0 items-center gap-1.5">
-            {title}
-            {isRegeneratingTitle ? (
-              <span role="status" className="sr-only">
-                <T>Regenerating title</T>
-              </span>
-            ) : null}
-            {titleLineIcons}
-          </div>
+          {titleFirst ? null : (
+            <div className="mt-1 flex min-w-0 items-center gap-1.5">{cardTitle}</div>
+          )}
           {metaLine}
         </div>
       </ThreadHoverCardTrigger>

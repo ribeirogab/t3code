@@ -1,6 +1,13 @@
 import type { ProviderInteractionMode } from "@t3tools/contracts";
 import type { McpToolExposureMode } from "./mcpSession.ts";
 
+import { forkOrchestrationInstructions } from "../fork/agentLanguageInstructions.ts";
+
+export {
+  forkOrchestrationInstructions,
+  forkOrchestrationSections,
+} from "../fork/agentLanguageInstructions.ts";
+
 // Codex truncates entries over 4,000 bytes; keep each section self-contained and below that limit.
 export const t3CodeOrchestrationSections = (nativeSubagents = true): ReadonlyArray<string> => [
   `## T3 Code orchestration
@@ -106,7 +113,7 @@ export function t3AcpPromptWithInstructions(input: {
       ? [
           T3_CODE_BROWSER_TOOL_INSTRUCTIONS.trim(),
           ...(input.state.hasDeviceTools ? [T3_CODE_DEVICE_TOOL_INSTRUCTIONS] : []),
-          T3_CODE_ORCHESTRATION_INSTRUCTIONS.trim(),
+          forkOrchestrationInstructions().trim(),
           ...(input.state.toolExposure === "deferred-proxy"
             ? [T3_CODE_ACP_DEFERRED_PROXY_INSTRUCTIONS]
             : []),
@@ -119,8 +126,8 @@ export function t3AcpPromptWithInstructions(input: {
 
 const orchestrationInstructions = (hasDeviceTools: boolean) =>
   hasDeviceTools
-    ? `${T3_CODE_ORCHESTRATION_INSTRUCTIONS}\n${T3_CODE_DEVICE_TOOL_INSTRUCTIONS}\n`
-    : T3_CODE_ORCHESTRATION_INSTRUCTIONS;
+    ? `${forkOrchestrationInstructions()}\n${T3_CODE_DEVICE_TOOL_INSTRUCTIONS}\n`
+    : forkOrchestrationInstructions();
 
 function prependT3OrchestrationInstructions(prompt: string, instructions: string): string {
   return `<t3_code_orchestration_instructions>${instructions.trim()}</t3_code_orchestration_instructions>\n\n<user_request>\n${prompt}\n</user_request>`;

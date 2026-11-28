@@ -3,6 +3,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { type ReactNode, useLayoutEffect } from "react";
 import { cn } from "~/lib/utils";
+import { FORK_COPY } from "~/fork/forkCopy";
 import {
   animateSidebarLayoutChanges,
   sidebarMarkerId,
@@ -111,10 +112,11 @@ export function SidebarDragBoundary(props: {
 }
 
 export function SidebarSectionHeader(props: {
-  marker: "working-header" | "snoozed-header" | "settled-header";
+  marker: "working-header" | "snoozed-header" | "parked-header" | "settled-header";
   label: string;
   /** A muted trailing count. */
   count: number;
+  attention?: boolean;
   className?: string;
   dragging?: boolean;
   isDropTarget?: boolean;
@@ -125,7 +127,9 @@ export function SidebarSectionHeader(props: {
       ? "working"
       : props.marker === "snoozed-header"
         ? "snoozed"
-        : "settled";
+        : props.marker === "parked-header"
+          ? "parked"
+          : "settled";
   return (
     <SortableSidebarMarker
       marker={props.marker}
@@ -138,7 +142,18 @@ export function SidebarSectionHeader(props: {
         expanded={props.toggle.expanded}
         tone={props.isDropTarget ? "accent" : props.dragging ? "emphasized" : "muted"}
         data-testid={`sidebar-${shelf}-shelf-toggle`}
-        accessory={<span className="font-normal tabular-nums">{props.count}</span>}
+        accessory={
+          <>
+            {props.attention ? (
+              <span
+                role="img"
+                aria-label={FORK_COPY.needsAttention}
+                className="size-1.5 shrink-0 rounded-full bg-warning"
+              />
+            ) : null}
+            <span className="font-normal tabular-nums">{props.count}</span>
+          </>
+        }
       >
         {props.label}
       </CollapsibleSectionHeader>

@@ -120,6 +120,9 @@ import { MessageToolkit } from "./toolkits/message/tools.ts";
 import * as MessageHandlers from "./toolkits/message/handlers.ts";
 import { HtmlPreviewTool, HtmlPreviewToolkit, HtmlRenderToolkit } from "./toolkits/html/tools.ts";
 import { MCP_HTTP_PATH } from "../httpCors.ts";
+import * as PublishedPortsHandlers from "../fork/publishedPorts/handlers.ts";
+import { PublishedPortsToolkit } from "../fork/publishedPorts/tools.ts";
+import { forkToolVisible } from "../fork/forkToolGates.ts";
 import { requestUrl } from "../requestUrl.ts";
 import { routineSpan } from "@t3tools/shared/observability";
 
@@ -1621,6 +1624,8 @@ export const layerTools = Layer.mergeAll(
   layerDeviceToolkit,
   layerHtmlToolkit,
   layerMessageToolkit,
+  toolkitRegistration(PublishedPortsToolkit, PublishedPortsHandlers.layer),
+  McpServer.visibility(({ target }) => Effect.succeed(forkToolVisible(target)), { global: true }),
 );
 
 const enabledWhenFallbackClient = {

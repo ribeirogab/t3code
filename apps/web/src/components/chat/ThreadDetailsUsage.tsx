@@ -37,6 +37,13 @@ import {
   resolveThreadDetailsLimits,
   resolveThreadHttpQuotas,
 } from "./ThreadDetailsUsage.logic";
+import { useForkFeature } from "../../fork/forkFeatures";
+import { paceMarkerPercent } from "../../fork/paceMarker";
+import {
+  type ContextDisclosure,
+  DisclosureChevron,
+  disclosureTriggerProps,
+} from "../../fork/contextDisclosure";
 
 const PACE_LABEL: Record<LimitPace, string> = {
   ahead: msg("Ahead of pace"),
@@ -178,7 +185,13 @@ function UsageAccessRow({
 }
 
 /** The thread's context window. The bar fills as context is used; the tick marks auto-compaction. */
-export function ThreadDetailsContext({ usage }: { readonly usage: ContextWindowSnapshot }) {
+export function ThreadDetailsContext({
+  usage,
+  disclosure,
+}: {
+  readonly usage: ContextWindowSnapshot;
+  readonly disclosure?: ContextDisclosure | undefined;
+}) {
   const maxTokens = usage.maxTokens != null && usage.maxTokens > 0 ? usage.maxTokens : null;
   const used =
     maxTokens !== null && usage.usedPercentage !== null
@@ -206,6 +219,7 @@ export function ThreadDetailsContext({ usage }: { readonly usage: ContextWindowS
           tone={used === null ? null : used >= 90 ? "error" : used >= 80 ? "warning" : null}
           tick={tick}
           muted
+          disclosure={disclosure}
           value={
             maxTokens !== null
               ? `${usedTokens} / ${formatContextWindowTokens(maxTokens)}`
@@ -239,6 +253,7 @@ export function ThreadDetailsContext({ usage }: { readonly usage: ContextWindowS
             </>
           }
         />
+        {disclosure?.expanded ? disclosure.content : null}
       </div>
     </ThreadDetailsSection>
   );
@@ -256,6 +271,7 @@ function LimitRow({
   const gt = useGT();
   const m = useMessages();
   const timestampFormat = usePrimarySettings((settings) => settings.timestampFormat);
+  const showPaceMarker = useForkFeature("paceMarker");
   const left = remainingPercent(window);
   const pace = paceOf(window, now);
   const timeLeft = paceRemainingPercent(window, now);
@@ -265,7 +281,7 @@ function LimitRow({
       label={window.label}
       fill={left}
       tone={limitTone(left)}
-      tick={timeLeft}
+      tick={showPaceMarker ? paceMarkerPercent(window, now) : timeLeft}
       value={`${left}%`}
       ariaValue={gt("{left}% left", { left })}
       opensUsage
@@ -366,6 +382,7 @@ export function UsageRow({
   tooltip,
   muted = false,
   opensUsage = false,
+  disclosure,
 }: {
   readonly label: string;
   /** Bar fill from 0 to 100. Null hides the bar. */
@@ -378,6 +395,7 @@ export function UsageRow({
   readonly tooltip: ReactNode;
   readonly muted?: boolean;
   readonly opensUsage?: boolean;
+  readonly disclosure?: ContextDisclosure | undefined;
 }) {
   const gt = useGT();
   const rowProps = {
@@ -393,11 +411,16 @@ export function UsageRow({
     <Tooltip>
       <TooltipTrigger
         render={
-          opensUsage ? <Link to="/usage" {...rowProps} /> : <div tabIndex={0} {...rowProps} />
+          opensUsage ? (
+            <Link to="/usage" {...rowProps} />
+          ) : (
+            <div tabIndex={0} {...rowProps} {...disclosureTriggerProps(disclosure)} />
+          )
         }
       >
         <span className="max-w-28 truncate text-muted-foreground group-hover:text-foreground">
           {label}
+          <DisclosureChevron disclosure={disclosure} />
         </span>
         {fill !== null ? (
           <span className="relative h-[3px] rounded-full bg-muted-foreground/30 dark:bg-muted-foreground/20">

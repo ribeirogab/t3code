@@ -12,6 +12,8 @@ import * as PullRequestWatchReactor from "./orchestration-v2/PullRequestWatchRea
 import * as DelegatedTaskQuestionReactor from "./orchestration-v2/DelegatedTaskQuestionReactor.ts";
 import * as MilestoneHub from "./milestones/MilestoneHub.ts";
 import * as OrchestrationMilestones from "./milestones/OrchestrationMilestones.ts";
+import * as PublishedPorts from "./fork/publishedPorts/PublishedPorts.ts";
+import * as ForkFeatureSettings from "./fork/forkFeatureSettings.ts";
 // Effect wraps this raw Node HTTP server after its startup and write-error guards attach.
 // @effect-diagnostics nodeBuiltinImport:off
 import * as NodeHttp from "node:http";
@@ -780,13 +782,16 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
       yield* (yield* OrchestrationMilestones.OrchestrationMilestones).start();
     }),
   ).pipe(Layer.provide(OrchestrationMilestones.layer), Layer.provide(ProjectionStoreV2.layer)),
+  PublishedPorts.layer,
   ProviderUsageLimitsIngestion.layer,
   layerProviderInstallationRefresh,
   ProviderInstallation.layer,
   ReplayMarkers.layer,
   Layer.effectDiscard(ProjectSettingsOverrideSweep.sweep),
 ).pipe(
-  Layer.provideMerge(layerOrchestrationApplication),
+  Layer.provideMerge(
+    layerOrchestrationApplication.pipe(Layer.provideMerge(ForkFeatureSettings.layer)),
+  ),
   // One hub, which the feeders above and the workflow store inside the runtime publish to.
   Layer.provideMerge(MilestoneHub.layer),
   Layer.provideMerge(Layer.merge(layerTaskFolders, LayoutCommandApprovalWrites.layer)),
