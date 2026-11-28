@@ -1,12 +1,12 @@
 import type { ProviderInteractionMode } from "@t3tools/contracts";
 import type { McpToolExposureMode } from "./mcpSession.ts";
 
-import { forkOrchestrationInstructions } from "../fork/orchestrationRules.ts";
+import { forkOrchestrationInstructions } from "../fork/agentLanguageInstructions.ts";
 
 export {
   forkOrchestrationInstructions,
   forkOrchestrationSections,
-} from "../fork/orchestrationRules.ts";
+} from "../fork/agentLanguageInstructions.ts";
 
 // Codex truncates entries over 4,000 bytes; keep each section self-contained and below that limit.
 export const t3CodeOrchestrationSections = (nativeSubagents = true): ReadonlyArray<string> => [

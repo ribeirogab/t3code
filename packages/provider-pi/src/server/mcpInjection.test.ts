@@ -1,7 +1,7 @@
 import { assert, describe, expect, it } from "@effect/vitest";
 import {
   EnvironmentId,
-  overrideForkFeatureSettings,
+  overrideAgentLanguage,
   ProviderInstanceId,
   ThreadId,
 } from "@t3tools/contracts";
@@ -211,14 +211,19 @@ describe("materializePiT3McpExtension", () => {
     }).pipe(Effect.provide(NodeServices.layer)),
   );
 
-  it.effect("writes the upstream extension while Orchestration rules is off", () =>
+  it.effect("writes the upstream extension while no agent language is set", () =>
     Effect.gen(function* () {
       const fs = yield* NodeFS.FileSystem;
-      const directory = yield* fs.makeTempDirectoryScoped({ prefix: "t3-pi-rules-" });
-      const withRules = yield* fs.readFileString(yield* materializePiT3McpExtension(directory));
-      expect(withRules).not.toBe(PI_T3_MCP_EXTENSION_SOURCE);
-      expect(withRules).toContain("schedule_task");
-      using _settings = overrideForkFeatureSettings({ features: { orchestrationRules: false } });
+      const directory = yield* fs.makeTempDirectoryScoped({ prefix: "t3-pi-language-" });
+      {
+        using _language = overrideAgentLanguage("Brazilian Portuguese");
+        const withLanguage = yield* fs.readFileString(
+          yield* materializePiT3McpExtension(directory),
+        );
+        expect(withLanguage).not.toBe(PI_T3_MCP_EXTENSION_SOURCE);
+        expect(withLanguage).toContain("Answer the user in Brazilian Portuguese.");
+      }
+      using _language = overrideAgentLanguage("");
       const upstream = yield* fs.readFileString(yield* materializePiT3McpExtension(directory));
       expect(upstream).toBe(PI_T3_MCP_EXTENSION_SOURCE);
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),

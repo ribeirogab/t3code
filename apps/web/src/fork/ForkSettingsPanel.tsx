@@ -14,17 +14,8 @@ import { cn } from "~/lib/utils";
 
 import { AGENT_LANGUAGE_SETTING } from "./agentLanguage";
 import { AgentLanguageRow } from "./AgentLanguageSection";
-import {
-  FORK_FEATURE_SECTIONS,
-  FORK_FEATURES,
-  FORK_MASTER_SEARCH_ID,
-  type ForkFeature,
-} from "./forkFeatures";
+import { FORK_FEATURE_SECTIONS, FORK_FEATURES, FORK_MASTER_SEARCH_ID } from "./forkFeatures";
 import { matchesForkSettingsSearch } from "./forkSettingsSearch.logic";
-
-const THREAD_LIST_FEATURES: ReadonlySet<ForkFeature> = new Set(["nestedThreads"]);
-
-const reloadThreadLists = () => window.location.reload();
 
 export function ForkSettingsPanel() {
   const forkFeatures = usePrimarySettings((settings) => settings.forkFeatures);
@@ -39,11 +30,7 @@ export function ForkSettingsPanel() {
       visibleFeatures.some((feature) => feature.section === section) ||
       (section === "Agents" && agentLanguageVisible),
   );
-  const save = (patch: Partial<ForkFeatureSettings>, changesThreadLists: boolean) =>
-    updateSettings(
-      { forkFeatures: patch },
-      changesThreadLists ? { onSaved: reloadThreadLists } : undefined,
-    );
+  const save = (patch: Partial<ForkFeatureSettings>) => updateSettings({ forkFeatures: patch });
   return (
     <SettingsPageContainer>
       <InputGroup>
@@ -68,7 +55,7 @@ export function ForkSettingsPanel() {
           control={
             <Switch
               checked={forkFeatures.master}
-              onCheckedChange={(checked) => save({ master: Boolean(checked) }, true)}
+              onCheckedChange={(checked) => save({ master: Boolean(checked) })}
               aria-label="Fork features"
             />
           }
@@ -101,10 +88,7 @@ export function ForkSettingsPanel() {
                     checked={forkFeatureChoice(forkFeatures.features, feature.key)}
                     disabled={!forkFeatures.master}
                     onCheckedChange={(checked) =>
-                      save(
-                        { features: { [feature.key]: Boolean(checked) } },
-                        THREAD_LIST_FEATURES.has(feature.key),
-                      )
+                      save({ features: { [feature.key]: Boolean(checked) } })
                     }
                     aria-label={feature.title}
                   />

@@ -81,10 +81,6 @@ it("stamps authoritative provenance on commands that create threads or messages"
       workflow: "fix",
       step: "write",
     },
-    continuesFrom: {
-      threadId: ThreadId.make("thread:elsewhere"),
-      rootThreadId: ThreadId.make("thread:elsewhere"),
-    },
   };
 
   const stamped = ThreadManagementService.withCreationProvenance(command, {
@@ -99,7 +95,6 @@ it("stamps authoritative provenance on commands that create threads or messages"
   expect(stamped).not.toHaveProperty("delegatedFrom");
   expect(stamped).not.toHaveProperty("initialMessage");
   expect(stamped).not.toHaveProperty("workflowRun");
-  expect(stamped).not.toHaveProperty("continuesFrom");
 });
 
 const layerReceiptsTest = CommandReceiptStore.layer.pipe(

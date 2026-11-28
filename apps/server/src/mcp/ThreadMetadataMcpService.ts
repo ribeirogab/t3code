@@ -79,13 +79,6 @@ function metadataCommand(input: {
         threadId: input.threadId,
         regenerateTitle: true,
       };
-    case "set_listed":
-      return {
-        type: "thread.metadata.update",
-        commandId: input.commandId,
-        threadId: input.threadId,
-        listed: input.update.listed!,
-      };
   }
 }
 

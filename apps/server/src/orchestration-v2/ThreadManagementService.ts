@@ -98,7 +98,6 @@ export function withCreationProvenance(
         delegatedFrom: _delegatedFrom,
         initialMessage: _initialMessage,
         workflowRun: _workflowRun,
-        continuesFrom: _continuesFrom,
         ...rest
       } = command;
       return { ...rest, ...provenance };

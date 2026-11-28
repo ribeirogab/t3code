@@ -21,15 +21,6 @@ Threads don't require a project. Pick **No project** (or press `mod+alt+n` on we
 - **Background start** (web/desktop): Press `Cmd+Enter` (macOS) or `Ctrl+Enter` (Windows/Linux) in a new thread to submit it and immediately open another draft with the same workspace mode and base branch.
 - **Same prompt, multiple models** (web/desktop, Git projects): `Shift`-click models in a new thread's model picker to select several. Sending starts a separate thread and worktree for each model.
 
-### Continue in a new thread
-
-When a thread's context gets long, pick **Continue in new thread** from its menu,
-then **Same worktree**, **New worktree**, or **Child thread**. The agent writes a
-short handoff and starts the new thread with it, with a goal when the rest of the
-work has a clear end. The new thread links back to the old one, and the old one
-settles when its turn ends. A child thread stays under its parent instead. Turn it
-off in **Settings → Fork**.
-
 ## Sidebar layout and organization
 
 - **Resize or hide** (web/desktop): Drag the sidebar's right edge past its minimum width to hide it; hover the left window edge and click or drag the handle to bring it back.
@@ -85,9 +76,6 @@ The server automatically links open PRs matching an unsettled thread's branch. O
 - **Subagents**: Follow delegated work from the conversation card or **Agents**. Stopping a parent thread also stops its delegated subagents. Subagents started internally by the provider are read-only; message the parent thread instead.
 - **Running dev servers** (web/desktop): The thread details card lists local servers started by the thread's terminals or Claude agent with their ports. Click one to open it in the browser panel, or **Stop** to end it (macOS/Linux only).
 - **Customize thread details**: Right-click the thread details card or open **Settings → Appearance → Thread details** to show/hide rows.
-- **Nested threads**: Forks, and subagents you ask the agent to run apart, show nested under their parent. The count next to a parent minimizes or shows its branch. Hide a nested thread from its menu; show or hide a child from the thread details card. Archiving or deleting a parent asks whether to include its nested threads; unarchive brings the whole batch back. While a parent is archived, its nested threads show at the top level.
-- **Nested threads follow their parent**: When the parent settles, un-settles, snoozes, or wakes, its nested threads follow, on every device. A nested thread that is still running follows when its turn ends. You can still change one nested thread on its own; it follows the parent again at the parent's next change.
-- **Detach to top level**: In the menu of a nested thread, it makes the thread a normal thread for good: it leaves its parent in the sidebar and takes its own nested threads with it. The parent still gets its result. There is no way back.
 
 ## Open a thread beside the one you are in
 

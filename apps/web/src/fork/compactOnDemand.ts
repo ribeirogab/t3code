@@ -1,10 +1,6 @@
 import { useAtomValue } from "@effect/atom-react";
 import { parseScopedThreadKey, scopedThreadKey } from "@t3tools/client-runtime/environment";
-import {
-  isForkFeatureOn,
-  supportsCompactAndContinue,
-  type ScopedThreadRef,
-} from "@t3tools/contracts";
+import { isForkFeatureOn, type ScopedThreadRef } from "@t3tools/contracts";
 import { Atom } from "effect/reactivity";
 
 import { useComposerDraftStore } from "~/composerDraftStore";
@@ -17,6 +13,7 @@ import {
   compactOnDemandKeepsHistory,
   compactOnDemandTokens,
   goalComposerText,
+  supportsCompactOnDemand,
 } from "./compactOnDemand.logic";
 import { useForkFeature } from "./forkFeatures";
 
@@ -44,7 +41,7 @@ const useAsGoalAvailableAtom = Atom.family((threadKey: string) =>
     const driver = get(environmentPresentations.providersByEnvironmentAtom)
       .get(ref.environmentId)
       ?.find((provider) => provider.instanceId === instanceId)?.driver;
-    return supportsCompactAndContinue(driver);
+    return supportsCompactOnDemand(driver);
   }).pipe(Atom.withLabel(`fork-use-as-goal:${threadKey}`)),
 );
 

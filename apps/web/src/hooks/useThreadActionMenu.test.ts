@@ -36,17 +36,6 @@ function recordEffect(action: string) {
 }
 
 vi.mock("../components/CustomSnoozeDialog", () => ({ requestCustomSnooze: vi.fn() }));
-vi.mock("../fork/NestedThreadsDialog", () => ({
-  chooseNestedRemoval: async () => ({ choice: "none", descendants: [] }),
-}));
-vi.mock("../fork/useContinueInNewThread", () => ({
-  useContinueInNewThread: () => async () => recordEffect("continue-in-new-thread"),
-}));
-vi.mock("../fork/useCompactAndContinue", () => ({
-  readCanCompactAndContinue: () => false,
-  useCompactAndContinue: () => async () => recordEffect("compact-and-continue"),
-}));
-vi.mock("../fork/forkFeatures", () => ({ isForkFeatureEnabled: () => true }));
 vi.mock("../fork/parkedThreadActions", () => ({
   readThreadParked: () => false,
   setThreadParked: async () => recordEffect("park"),

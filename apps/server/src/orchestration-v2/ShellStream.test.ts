@@ -5,12 +5,7 @@ import type {
   OrchestrationV2ShellStreamItem,
   OrchestrationV2ThreadShell,
 } from "@t3tools/contracts";
-import {
-  overrideForkFeatureSettings,
-  ProjectId,
-  ProviderInstanceId,
-  ThreadId,
-} from "@t3tools/contracts";
+import { ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
 import type * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
@@ -189,28 +184,10 @@ describe("omitIdleSubagentShells", () => {
       row("background", "root", {
         pendingBackgroundTasks: [{ kind: "subagent" } as never],
       }),
-      row("listed", "root", {
-        lineage: {
-          parentThreadId: ThreadId.make("root"),
-          relationshipToParent: "subagent",
-          rootThreadId: ThreadId.make("root"),
-          listed: true,
-        },
-      }),
       // Idle, but a woken grandchild walks through it to reach the root's badge.
       row("middle", "root"),
       row("grandchild", "middle"),
     ];
-    expect(omitIdleSubagentShells(threads).map((thread) => thread.id)).toEqual([
-      "root",
-      "running",
-      "queued",
-      "asking",
-      "background",
-      "listed",
-      "middle",
-    ]);
-    using _settings = overrideForkFeatureSettings({ features: { nestedThreads: false } });
     expect(omitIdleSubagentShells(threads).map((thread) => thread.id)).toEqual([
       "root",
       "running",
@@ -350,27 +327,6 @@ describe("omitOlderSettledShells", () => {
       "side-chat",
     ]);
     expect(result.olderSettled.counts).toEqual([{ projectId: "project-a", count: 5 }]);
-  });
-
-  it("keeps an older parent of a nested fork only while Nested threads is on", () => {
-    const threads = [
-      ...newest,
-      row("fork-parent", 30),
-      row("fork", null, {
-        lineage: {
-          parentThreadId: ThreadId.make("fork-parent"),
-          relationshipToParent: "fork",
-          rootThreadId: ThreadId.make("fork-parent"),
-        },
-      }),
-    ];
-    const kept = () =>
-      omit(threads)
-        .threads.map((thread) => thread.id)
-        .slice(25);
-    expect(kept()).toEqual(["fork-parent", "fork"]);
-    using _settings = overrideForkFeatureSettings({ features: { nestedThreads: false } });
-    expect(kept()).toEqual(["fork"]);
   });
 });
 

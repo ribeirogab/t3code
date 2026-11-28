@@ -26,7 +26,6 @@ import * as Effect from "effect/Effect";
 
 import type { OrchestratorV2Error } from "../orchestration-v2/Orchestrator.ts";
 import * as ThreadManagement from "../orchestration-v2/ThreadManagementService.ts";
-import { idleCallerAllowed } from "../fork/idleCallerTools.ts";
 import { resolveInteractionMode, resolveRuntimeMode } from "./delegatedTaskModes.ts";
 import { fencingLinkOrigin } from "./linkOrigin.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
@@ -209,15 +208,11 @@ export function assertLiveCaller({ caller, scope }: Caller) {
   if (caller === undefined) return Effect.void;
   return isLiveCallerShell(caller, scope.thread?.providerInstanceId)
     ? Effect.void
-    : Effect.flatMap(idleCallerAllowed(caller, scope.thread?.providerInstanceId), (allowed) =>
-        allowed
-          ? Effect.void
-          : Effect.fail(
-              new OrchestratorMcpFailure({
-                code: "parent_not_active",
-                message: "The calling provider no longer owns an active thread run.",
-              }),
-            ),
+    : Effect.fail(
+        new OrchestratorMcpFailure({
+          code: "parent_not_active",
+          message: "The calling provider no longer owns an active thread run.",
+        }),
       );
 }
 

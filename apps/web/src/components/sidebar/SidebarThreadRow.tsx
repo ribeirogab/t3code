@@ -73,14 +73,6 @@ import type { MessageResolver } from "../../i18n/messages";
 import { useRightPanelStore } from "../../rightPanelStore";
 import { useOpenPrLink } from "../../lib/openPullRequestLink";
 import { useUiStateStore } from "../../uiStateStore";
-import {
-  NestedDisclosure,
-  NestedRowGuides,
-  nestedListItemClassName,
-  nestedRowClassName,
-  nestedRowStyle,
-  type SidebarRowNesting,
-} from "../../fork/NestedThreadRowParts";
 import { useThreadSelectionStore } from "../../threadSelectionStore";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import { useNowSecond } from "../../hooks/useNowSecond";
@@ -150,10 +142,6 @@ import { useThreadIntentPrefetch } from "./useThreadIntentPrefetch";
 import { hasTitleFirstProjectLabel, TitleFirstProjectLabel } from "~/fork/TitleFirstProjectLabel";
 import { useSidebarCardDisplay } from "~/fork/sidebarCardDisplay";
 import { useForkFeature } from "~/fork/forkFeatures";
-import { SidebarTitleProviderIcon } from "~/fork/SidebarTitleProviderIcon";
-import { SidebarPlanProgress } from "~/fork/PlanProgress";
-import { ForkWaitingDuration, useForkWaitingLabel } from "~/fork/WaitingDetail";
-import { FORK_NEEDS_YOU_PILL, forkNeedsYou } from "~/fork/goalStatus.logic";
 import { ParkThreadHoverButton } from "~/fork/ParkThreadHoverButton";
 import type { ParkedThreadMenuId } from "~/fork/parkedThreads.logic";
 
@@ -599,13 +587,12 @@ function TopStatusIcon(props: { icon: keyof typeof TOP_STATUS_ICONS; className: 
   return <Icon aria-hidden className={cn("shrink-0", props.className)} />;
 }
 
-export type SidebarThreadRowProps = {
+type SidebarThreadRowProps = {
   thread: SidebarThreadSummary;
   // "folder" is a one-line row inside a boring sidebar project folder;
   // "folder-multiline" adds the card's environment and PR line under it.
   variant: "card" | "slim" | "folder" | "folder-multiline";
   navigationParent?: string | undefined;
-  nesting?: SidebarRowNesting | undefined;
   variantAction: SidebarSweepAction;
   settlementSupported: boolean;
   snoozeSupported: boolean;
@@ -702,7 +689,7 @@ function ThreadRenameInput(props: {
   );
 }
 
-export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowProps) {
+const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThreadRowProps) {
   const gt = useGT();
   const messages = useMessages();
   const {
@@ -802,7 +789,6 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
 
   const isUnread = hasUnseenCompletion({ ...thread, lastVisitedAt });
   const status = resolveSidebarRowStatus({ ...thread, lastVisitedAt });
-  const forkWaitingLabel = useForkWaitingLabel(thread);
   const lastVisitedDate = lastVisitedAt === undefined ? null : parseTimestampDate(lastVisitedAt);
   const wokeAtDate = props.wokeAt === null ? null : parseTimestampDate(props.wokeAt);
   const isWoke =
@@ -830,7 +816,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
         }
       : status === "waiting"
         ? {
-            label: forkWaitingLabel ?? gt("Waiting", { $context: "thread status" }),
+            label: gt("Waiting", { $context: "thread status" }),
             icon: "waiting" as const,
             className: "text-muted-foreground",
           }
@@ -842,9 +828,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
             }
           : status === "input"
             ? {
-                label: forkNeedsYou(thread)
-                  ? FORK_NEEDS_YOU_PILL.label
-                  : gt("Input", { $context: "thread status: needs user input" }),
+                label: gt("Input", { $context: "thread status: needs user input" }),
                 icon: "input" as const,
                 className: "text-indigo-600 dark:text-indigo-300",
               }
@@ -903,7 +887,6 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
 
   const cardDisplay = useSidebarCardDisplay();
   const titleFirst = useForkFeature("titleFirstCards");
-  const modelIconInTitle = useForkFeature("modelIconInTitle") && cardDisplay.model;
   const showsBranch = Boolean(checkoutThread.branch) && cardDisplay.branch;
   const showsEnvironmentLabel = props.environmentLabel !== null && cardDisplay.machine;
 
@@ -1290,8 +1273,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
     )
   ) : null;
 
-  const trailingModelIcon = cardDisplay.model && !modelIconInTitle;
-  const providerStack = trailingModelIcon ? (
+  const providerStack = cardDisplay.model ? (
     <SidebarProviderIcon
       thread={thread}
       providerEntryByInstanceId={props.providerEntryByInstanceId}
@@ -1310,9 +1292,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
       />
     ) : null;
   // Only the trailing icons would remain, so the row moves them to the title line instead.
-  const disclosureInMetaLine = variant === "card" && (props.nesting?.descendantCount ?? 0) > 0;
   const metaLineEmpty =
-    !disclosureInMetaLine &&
     cardProjectLabel === null &&
     !showsBranch &&
     !showsEnvironmentLabel &&
@@ -1363,7 +1343,6 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
       >
         {providerStack}
       </span>
-      {disclosureInMetaLine ? <NestedDisclosure nesting={props.nesting} /> : null}
     </div>
   );
   const titleLineIcons =
@@ -1375,12 +1354,6 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
 
   const cardTitle = (
     <>
-      {modelIconInTitle ? (
-        <SidebarTitleProviderIcon
-          thread={thread}
-          providerEntryByInstanceId={props.providerEntryByInstanceId}
-        />
-      ) : null}
       {title}
       {isRegeneratingTitle ? (
         <span role="status" className="sr-only">
@@ -1402,7 +1375,6 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
         className={cn(
           "list-none [content-visibility:auto] [contain-intrinsic-size:auto_--spacing(9)]",
           metaLine !== null && multiline && "[contain-intrinsic-size:auto_--spacing(13.5)]",
-          props.nesting && nestedListItemClassName,
           sortable?.isDragging && "relative z-20",
         )}
       >
@@ -1427,9 +1399,7 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
                   : "flex h-9 items-center gap-2.5 px-2.5",
                 // Lines titles up with the folder name, past its chevron and icon.
                 inFolder && "ps-9",
-                nestedRowClassName(props.nesting),
               )}
-              style={nestedRowStyle(props.nesting)}
               onClick={handleClick}
               onPointerEnter={intentPrefetch.onPointerEnter}
               onPointerLeave={intentPrefetch.onPointerLeave}
@@ -1613,12 +1583,10 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
                 {jumpHintLabel ? <JumpHintBadge label={jumpHintLabel} /> : null}
               </span>
             )}
-            <NestedDisclosure nesting={props.nesting} />
             {props.sweepAction !== null ? dragDestination : null}
           </div>
           {multiline ? metaLine : null}
         </ThreadHoverCardTrigger>
-        {props.nesting ? <NestedRowGuides nesting={props.nesting} card={false} /> : null}
       </li>
     );
   }
@@ -1637,7 +1605,6 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
           (titleFirst
             ? "[contain-intrinsic-size:auto_40px]"
             : "[contain-intrinsic-size:auto_60px]"),
-        props.nesting && nestedListItemClassName,
         sortable?.isDragging && "relative z-20",
       )}
     >
@@ -1755,11 +1722,6 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
                               startedAt={resolveWorkingStartedAt(thread)}
                             />
                           </span>
-                        ) : status === "waiting" && forkWaitingLabel !== null ? (
-                          <ForkWaitingDuration
-                            environmentId={thread.environmentId}
-                            startedAt={thread.latestRun?.completedAt ?? null}
-                          />
                         ) : status === "waiting" ? (
                           <span aria-hidden>
                             <WorkingDuration
@@ -1847,10 +1809,8 @@ export const SidebarThreadRow = memo(function SidebarThreadRow(props: SidebarThr
             <div className="mt-1 flex min-w-0 items-center gap-1.5">{cardTitle}</div>
           )}
           {metaLine}
-          <SidebarPlanProgress thread={thread} />
         </div>
       </ThreadHoverCardTrigger>
-      {props.nesting ? <NestedRowGuides nesting={props.nesting} card /> : null}
     </li>
   );
 });

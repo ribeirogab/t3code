@@ -109,8 +109,6 @@ import { ToolSearchToolkit } from "./toolkits/toolSearch/tools.ts";
 import { PullRequestsToolkit } from "./toolkits/pullRequests/tools.ts";
 import * as IssuesHandlers from "./toolkits/issues/handlers.ts";
 import { IssuesToolkit } from "./toolkits/issues/tools.ts";
-import * as WorkflowRunWatchHandlers from "../fork/workflowRunWatch/handlers.ts";
-import { WorkflowRunWatchToolkit } from "../fork/workflowRunWatch/tools.ts";
 import * as DeviceHandlers from "./toolkits/device/handlers.ts";
 import {
   DeviceScreenshotTool,
@@ -124,14 +122,7 @@ import { HtmlPreviewTool, HtmlPreviewToolkit, HtmlRenderToolkit } from "./toolki
 import { MCP_HTTP_PATH } from "../httpCors.ts";
 import * as PublishedPortsHandlers from "../fork/publishedPorts/handlers.ts";
 import { PublishedPortsToolkit } from "../fork/publishedPorts/tools.ts";
-import * as GoalStatusHandlers from "../fork/goalStatus/handlers.ts";
-import { GoalStatusToolkit } from "../fork/goalStatus/tools.ts";
-import * as CompactAndContinueHandlers from "../fork/compactAndContinue/handlers.ts";
-import { CompactAndContinueToolkit } from "../fork/compactAndContinue/tools.ts";
-import * as ForkThreadHandoffHandlers from "../fork/threadHandoff/handlers.ts";
-import { ForkThreadHandoffToolkit } from "../fork/threadHandoff/tools.ts";
 import { forkToolVisible } from "../fork/forkToolGates.ts";
-import { followForkToolListing } from "../fork/forkToolListing.ts";
 import { requestUrl } from "../requestUrl.ts";
 import { routineSpan } from "@t3tools/shared/observability";
 
@@ -1054,7 +1045,6 @@ const HANDOFF_TOOLS: ReadonlySet<string> = new Set([
   "delegate_task",
   "create_threads",
   "t3_thread_launch",
-  "t3_thread_handoff",
   "t3_thread_send",
   "t3_thread_send_attachments",
   "schedule_task",
@@ -1512,11 +1502,6 @@ export const layerOrchestratorToolkit = toolkitRegistration(
   OrchestratorHandlers.layer,
 ).pipe(Layer.provide(OrchestratorMcpService.layer), Layer.provide(ThreadMetadataMcpService.layer));
 
-const layerForkThreadHandoffToolkit = toolkitRegistration(
-  ForkThreadHandoffToolkit,
-  ForkThreadHandoffHandlers.layer,
-).pipe(Layer.provide(OrchestratorMcpService.layer));
-
 export const layerThreadToolkit = toolkitRegistration(ThreadToolkit, ThreadHandlers.layer);
 const layerWorkflowToolkit = toolkitRegistration(WorkflowToolkit, WorkflowHandlers.layer);
 
@@ -1565,10 +1550,6 @@ export const layerPullRequestsToolkit = toolkitRegistration(
 ).pipe(Layer.provide(PullRequestWatchService.layer));
 
 const layerIssuesToolkit = toolkitRegistration(IssuesToolkit, IssuesHandlers.layer);
-const layerWorkflowRunWatchToolkit = toolkitRegistration(
-  WorkflowRunWatchToolkit,
-  WorkflowRunWatchHandlers.layer,
-);
 
 const layerDeviceStandardToolkitRegistration = toolkitRegistration(
   DeviceStandardToolkit,
@@ -1618,7 +1599,6 @@ export const layerMcpTransport = <RA, RE, RR>(registrations: Layer.Layer<RA, RE,
 export const layerTools = Layer.mergeAll(
   layerPreviewToolkit,
   layerOrchestratorToolkit,
-  layerForkThreadHandoffToolkit,
   layerThreadToolkit,
   layerWorkflowToolkit,
   layerAttachmentToolkit,
@@ -1630,20 +1610,11 @@ export const layerTools = Layer.mergeAll(
   layerWorktreeToolkitRegistration,
   layerPullRequestsToolkit,
   layerIssuesToolkit,
-  layerWorkflowRunWatchToolkit,
   layerDeviceToolkit,
   layerHtmlToolkit,
   layerMessageToolkit,
   toolkitRegistration(PublishedPortsToolkit, PublishedPortsHandlers.layer),
-  toolkitRegistration(GoalStatusToolkit, GoalStatusHandlers.layer),
-  toolkitRegistration(CompactAndContinueToolkit, CompactAndContinueHandlers.layer),
   McpServer.visibility(({ target }) => Effect.succeed(forkToolVisible(target)), { global: true }),
-).pipe(
-  Layer.tap(() =>
-    Effect.flatMap(McpServer.McpServer, (server) =>
-      followForkToolListing(server.tools, (registration) => server.addTool(registration)),
-    ),
-  ),
 );
 
 const enabledWhenFallbackClient = {

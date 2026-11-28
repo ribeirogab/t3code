@@ -1,4 +1,8 @@
-import { supportsCompactAndContinue } from "@t3tools/contracts";
+const COMPACT_ON_DEMAND_DRIVERS: ReadonlySet<string> = new Set(["claudeAgent", "codex"]);
+
+export function supportsCompactOnDemand(driver: string | null | undefined): boolean {
+  return driver != null && COMPACT_ON_DEMAND_DRIVERS.has(driver);
+}
 
 const GOAL_COMMAND_PATTERN = /^\/goal(?:\s|$)/;
 
@@ -16,7 +20,7 @@ export function compactOnDemandTokens(input: {
 }): number | null {
   if (input.idleTokens !== null) return input.idleTokens;
   const tokens = input.contextTokens ?? 0;
-  return input.enabled && !input.blocked && tokens > 0 && supportsCompactAndContinue(input.driver)
+  return input.enabled && !input.blocked && tokens > 0 && supportsCompactOnDemand(input.driver)
     ? tokens
     : null;
 }

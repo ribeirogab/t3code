@@ -1,9 +1,5 @@
 import { OrchestrationMessageContext } from "./composerContext.ts";
-import { ForkNotifyParent } from "./fork/notifyParent.ts";
-import { forkFeatureActive } from "./fork/forkFeatures.ts";
 import { withRecordIdTable } from "./orchestrationV2IdTable.ts";
-import { ForkPlanProgress } from "./fork/planProgress.ts";
-import { ForkThreadAttention } from "./fork/goalStatus.ts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
@@ -100,7 +96,6 @@ import {
   ToolActivitySource,
 } from "./providerRuntime.ts";
 import { ThreadTokenUsageSnapshot } from "./providerRuntime.ts";
-import { ForkContinuesFrom } from "./fork/threadHandoff.ts";
 
 export const OrchestrationV2Actor = Schema.Literals(["user", "agent", "system"]);
 export type OrchestrationV2Actor = typeof OrchestrationV2Actor.Type;
@@ -198,20 +193,17 @@ export const OrchestrationV2AppThreadLineage = Schema.Struct({
   sideChat: Schema.optional(Schema.Boolean),
   /** An agent step of a workflow run, which the thread's `workflowRun` names. */
   workflowStep: Schema.optional(Schema.Boolean),
-  listed: Schema.optional(Schema.Boolean),
-  detached: Schema.optional(Schema.Boolean),
 });
 export type OrchestrationV2AppThreadLineage = typeof OrchestrationV2AppThreadLineage.Type;
 
 /**
- * Side chats, a workflow run's agent steps, and children with `listed` off live inside their
- * parent's view, never in thread lists. Subagents default to off.
+ * Subagents and side chats live inside their parent's view, and a workflow run's agent steps
+ * inside the run's, never in thread lists.
  */
 export const isListedThreadLineage = (lineage: OrchestrationV2AppThreadLineage): boolean =>
+  lineage.relationshipToParent !== "subagent" &&
   lineage.sideChat !== true &&
-  lineage.workflowStep !== true &&
-  ((forkFeatureActive("nestedThreads") ? lineage.listed : undefined) ??
-    lineage.relationshipToParent !== "subagent");
+  lineage.workflowStep !== true;
 
 export const OrchestrationV2ContextTransferType = Schema.Literals([
   "fork",
@@ -542,7 +534,6 @@ export const OrchestrationV2AppThread = Schema.Struct({
   createdAt: Schema.DateTimeUtc,
   updatedAt: Schema.DateTimeUtc,
   archivedAt: Schema.NullOr(Schema.DateTimeUtc),
-  archiveBatchId: Schema.optional(Schema.NullOr(CommandId)),
   settledOverride: Schema.NullOr(Schema.Literals(["settled", "active"])).pipe(
     Schema.withDecodingDefault(Effect.succeed(null)),
   ),
@@ -594,7 +585,6 @@ export const OrchestrationV2AppThread = Schema.Struct({
       }),
     ),
   ),
-  forkAttention: Schema.optional(Schema.NullOr(ForkThreadAttention)),
   deletedAt: Schema.NullOr(Schema.DateTimeUtc),
 });
 export type OrchestrationV2AppThread = typeof OrchestrationV2AppThread.Type;
@@ -1064,7 +1054,6 @@ export const OrchestrationV2Subagent = Schema.Struct({
   modelSelection: Schema.optional(ModelSelection),
   executedModel: Schema.optional(Schema.String),
   completionWake: Schema.optional(Schema.Literals(["always", "settled_only"])),
-  notifyParent: Schema.optional(ForkNotifyParent),
   completionDelivery: Schema.optional(OrchestrationV2DelegatedCompletionTaskDelivery),
   // The run whose unfinished task was cancelled, committed with its Stop.
   cancelledRunId: Schema.optional(RunId),
@@ -2482,14 +2471,11 @@ export const OrchestrationV2ThreadShell = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed([])),
   ),
   goal: Schema.optional(Schema.NullOr(OrchestrationV2ProviderGoal)),
-  forkPlanProgress: Schema.optional(Schema.NullOr(ForkPlanProgress)),
-  forkAttention: Schema.optional(Schema.NullOr(ForkThreadAttention)),
   itemCount: NonNegativeInt,
   visibleItemCount: NonNegativeInt,
   createdAt: Schema.DateTimeUtc,
   updatedAt: Schema.DateTimeUtc,
   archivedAt: Schema.NullOr(Schema.DateTimeUtc),
-  archiveBatchId: Schema.optional(Schema.NullOr(CommandId)),
   settledOverride: Schema.NullOr(Schema.Literals(["settled", "active"])),
   settledAt: Schema.NullOr(Schema.DateTimeUtc),
   unsettledAt: Schema.optional(Schema.NullOr(Schema.DateTimeUtc)),
@@ -3358,7 +3344,6 @@ export const OrchestrationV2Command = Schema.Union([
     delegatedFrom: Schema.optional(OrchestrationV2DelegatedFrom),
     /** Only the server sets this, for a thread that is a workflow run's agent step. */
     workflowRun: Schema.optional(OrchestrationV2WorkflowOrigin),
-    continuesFrom: Schema.optional(ForkContinuesFrom),
     importedNativeThread: Schema.optional(
       Schema.Struct({
         ref: Schema.Struct({
@@ -3391,7 +3376,6 @@ export const OrchestrationV2Command = Schema.Union([
     type: Schema.Literal("thread.archive"),
     commandId: CommandId,
     threadId: ThreadId,
-    archiveBatchId: Schema.optional(CommandId),
   }),
   Schema.Struct({
     type: Schema.Literal("thread.guest-share.close"),
@@ -3519,9 +3503,6 @@ export const OrchestrationV2Command = Schema.Union([
     limitRecovery: Schema.optional(Schema.NullOr(OrchestrationV2LimitRecoveryUpdate)),
     /** Link (object) or unlink (null) a pull request; absent leaves it unchanged. */
     linkedPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
-    listed: Schema.optional(Schema.Boolean),
-    detached: Schema.optional(Schema.Literal(true)),
-    forkAttention: Schema.optional(Schema.NullOr(ForkThreadAttention)),
   }),
   Schema.Struct({
     type: Schema.Literal("thread.pull-request.link"),
@@ -3827,9 +3808,7 @@ export const OrchestrationV2Command = Schema.Union([
     workspaceStrategy: Schema.optional(OrchestrationV2ThreadLaunchWorkspaceStrategy),
     // Defaults to settled_only; fire-and-forget wakes require always.
     completionWake: Schema.optional(Schema.Literals(["always", "settled_only"])),
-    notifyParent: Schema.optional(ForkNotifyParent),
     createdAt: Schema.optional(Schema.DateTimeUtc),
-    listed: Schema.optional(Schema.Boolean),
   }),
   Schema.Struct({
     type: Schema.Literal("delegated_task.wake-policy"),

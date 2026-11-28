@@ -229,15 +229,6 @@ import {
 import { planThreadDeletion } from "./ThreadDeletion.ts";
 import type * as ProviderAdapter from "@t3tools/provider-core/server/ProviderAdapter";
 import * as ServerSettings from "../serverSettings.ts";
-import { nestingPatch, nestingRejection, withListed } from "../fork/threadNesting.ts";
-import { quietCompletion } from "../fork/notifyParent.ts";
-import { conflictNewsResolved } from "../fork/stalePullRequestWakes.ts";
-import { createdThreadLineage } from "../fork/threadHandoff/handoffRules.ts";
-import { queuedGoalEvents } from "../fork/threadHandoff/goalTiming.ts";
-import { attentionPatch } from "../fork/goalStatus/goalStatusRules.ts";
-import { goalMessagePlan } from "../fork/goalStatus/goalMessagePlan.ts";
-import { settledTaskQuestionIsStale } from "../fork/threadHandoff/goalQuestion.ts";
-import { archiveBatchField, withoutArchiveBatch } from "../fork/archiveBatch.ts";
 
 const isMessageQuestionAnswer = Schema.is(
   Schema.Union([TrimmedNonEmptyString, Schema.NonEmptyArray(TrimmedNonEmptyString)]),
@@ -1168,7 +1159,6 @@ function monitorPullRequestStamps(
 function isStalePullRequestWatchStamp(
   projection: Pick<OrchestrationV2ThreadProjection, "thread" | "messages">,
   stamp: MonitorPullRequestStamp,
-  summary?: string,
 ): boolean {
   const link = threadPullRequestsOf(projection.thread).find(
     (candidate) =>
@@ -1199,8 +1189,7 @@ function isStalePullRequestWatchStamp(
   return (
     link.watch.startedAt !== stamp.watchStartedAt ||
     (stamp.headSha !== null && link.watch.headSha !== stamp.headSha) ||
-    pullRequestSnapshotEndsWatch(link.snapshot, link.watch.startedAt) ||
-    conflictNewsResolved(link.watch, stamp.section?.summary ?? summary)
+    pullRequestSnapshotEndsWatch(link.snapshot, link.watch.startedAt)
   );
 }
 
@@ -1208,13 +1197,11 @@ function isStalePullRequestWatchWake(
   projection: Pick<OrchestrationV2ThreadProjection, "thread" | "messages">,
   run: OrchestrationV2Run,
 ): boolean {
-  const notification = projection.messages.find(
-    (message) => message.id === run.userMessageId,
-  )?.notification;
-  const stamps = monitorPullRequestStamps(notification?.source);
+  const stamps = monitorPullRequestStamps(
+    projection.messages.find((message) => message.id === run.userMessageId)?.notification?.source,
+  );
   return (
-    stamps.length > 0 &&
-    stamps.every((stamp) => isStalePullRequestWatchStamp(projection, stamp, notification?.summary))
+    stamps.length > 0 && stamps.every((stamp) => isStalePullRequestWatchStamp(projection, stamp))
   );
 }
 
@@ -2520,15 +2507,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
     const childThreadId = task.childThreadId;
     if (
       childThreadId === null ||
-      (yield* settledTaskQuestionIsStale(projectionStore, task, {
-        childThreadId,
-        parentThreadId: threadId,
-        wakeMessageId: messageId,
-      }).pipe(
-        Effect.mapError(
-          (cause) => new OrchestratorProjectionError({ threadId: childThreadId, cause }),
-        ),
-      ))
+      ["completed", "failed", "cancelled", "interrupted"].includes(task.status)
     )
       return true;
     const child = yield* projectionStore
@@ -2617,17 +2596,6 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           : projection.runs.find(
               (run) => run.id === options.queuedRunId && run.status === "queued",
             );
-      const goalEvents =
-        options?.userStarted === true
-          ? []
-          : yield* queuedGoalEvents(projectionStore, projection, storedQueuedRun, (run, now) =>
-              queuedRunCancellationEvents(projection, run, now),
-            );
-      if (goalEvents.length > 0) {
-        yield* writeSystemEvents(goalEvents);
-        projection = yield* readCommandProjection(threadId);
-        storedQueuedRun = nextQueuedRun(projection);
-      }
       while (
         storedQueuedRun !== undefined &&
         isStalePullRequestWatchWake(projection, storedQueuedRun)
@@ -4227,7 +4195,9 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         : { delegatedFrom: command.delegatedFrom }),
       ...(command.workflowRun === undefined ? {} : { workflowRun: command.workflowRun }),
       lineage: {
-        ...createdThreadLineage(command),
+        parentThreadId: null,
+        relationshipToParent: null,
+        rootThreadId: command.threadId,
         ...(command.workflowRun === undefined ? {} : { workflowStep: true }),
       },
       forkedFrom: null,
@@ -4677,15 +4647,6 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           commandType: command.type,
           cause: `Thread ${command.threadId} is no longer empty.`,
         });
-    }
-    const nestingRejected =
-      command.type === "thread.metadata.update" ? nestingRejection(thread, command) : null;
-    if (nestingRejected !== null) {
-      return yield* new OrchestratorDispatchError({
-        commandId: command.commandId,
-        commandType: command.type,
-        cause: `Thread ${command.threadId} ${nestingRejected}`,
-      });
     }
     if (command.type === "thread.archive" && thread.archivedAt !== null) {
       return yield* new OrchestratorDispatchError({
@@ -5162,14 +5123,13 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           return {
             ...thread,
             archivedAt: now,
-            ...archiveBatchField(command),
             titleRegeneration: null,
             guestShare: null,
             pullRequests: thread.pullRequests?.map((link) => withPullRequestWatch(link, undefined)),
             updatedAt: now,
           };
         case "thread.unarchive":
-          return { ...withoutArchiveBatch(thread), archivedAt: null, updatedAt: now };
+          return { ...thread, archivedAt: null, updatedAt: now };
         case "thread.settle": {
           const wasPinned = thread.pinnedAt != null;
           const alreadySettled =
@@ -5324,8 +5284,6 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
                   };
           return {
             ...thread,
-            ...nestingPatch(thread, command),
-            ...attentionPatch(command),
             ...(command.title === undefined ? {} : { title: command.title, titleRenamed: true }),
             ...(command.limitRecovery === undefined ? {} : { limitRecovery }),
             ...(command.limitRecovery !== undefined &&
@@ -10313,7 +10271,6 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         model: command.modelSelection.model,
         modelSelection: command.modelSelection,
         ...(command.completionWake === undefined ? {} : { completionWake: command.completionWake }),
-        ...(command.notifyParent === undefined ? {} : { notifyParent: command.notifyParent }),
         status: "running",
         result: null,
         startedAt: now,
@@ -10370,7 +10327,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         driver: targetAdapter.driver,
         providerInstanceId: command.modelSelection.instanceId,
         occurredAt: now,
-        payload: withListed(childThread, command.listed),
+        payload: childThread,
       });
       yield* emitEvent({
         type: "node.updated",
@@ -15750,13 +15707,6 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
               completionDelivery: { state: "disposed" as const, observedByRunId: null },
             }
           : {}),
-        ...quietCompletion(
-          task,
-          childRun,
-          childControls.messages,
-          terminalStatus,
-          childControls.thread,
-        ),
       };
       const completionPlan = yield* planDelegatedCompletionDelivery({
         parentProjection,
@@ -16437,15 +16387,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
                 text: guestSend.text,
                 context: { version: 1 as const, records: [], guest: guestSend.guest },
               };
-        const goalPlan = yield* goalMessagePlan(projectionStore, dispatched, thread).pipe(
-          mapDispatchError(command),
-        );
-        if (goalPlan.mutation) yield* dispatchThreadMutation(goalPlan.mutation, events, effects);
-        cancelUnsettledEffects = yield* dispatchMessage(goalPlan.message, events, effects);
-        if (goalPlan.pause) {
-          cancelUnsettledEffects =
-            (yield* dispatchMessage(goalPlan.pause, events, effects)) ?? cancelUnsettledEffects;
-        }
+        cancelUnsettledEffects = yield* dispatchMessage(dispatched, events, effects);
         yield* recordSubagentFollowup(dispatched, events).pipe(mapDispatchError(command));
         break;
       }

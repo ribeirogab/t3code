@@ -48,11 +48,6 @@ import * as McpToolAccess from "../../McpToolAccess.ts";
 import * as OrchestrationMcp from "../../OrchestratorMcpService.ts";
 import { firstLineTitle } from "../../firstLineTitle.ts";
 import { newCommandId, readCaller, resolveProjectId, unavailable } from "../../threadAccess.ts";
-import {
-  queueGoal,
-  requireGoalSupport,
-  withGoalNote,
-} from "../../../fork/threadHandoff/goalQueue.ts";
 import { ProjectToolkit } from "./tools.ts";
 
 const isAboveCeilingError = Schema.is(OrchestratorRuntimeModeAboveCeilingError);
@@ -460,14 +455,6 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
             message:
               "Pass modelSelection: the project has no default model. orchestrator_capabilities lists providers and models.",
           });
-        if (input.goal !== undefined)
-          yield* requireGoalSupport(
-            input.goal,
-            yield* ProviderRegistry.ProviderRegistry.pipe(
-              Effect.flatMap((registry) => registry.getProviders),
-            ),
-            modelSelection.instanceId,
-          );
         let startedRuntimeMode =
           projectDefaults !== undefined && input.runtimeMode === undefined
             ? yield* resolveRuntimeMode(runtimeMode, projectDefaults.defaultRuntimeMode).pipe(
@@ -501,7 +488,7 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
                 initialMessage: {
                   messageId,
                   ...(caller === undefined ? {} : { senderThreadId: caller.id }),
-                  text: withGoalNote(input.message ?? "", input.goal),
+                  text: input.message ?? "",
                   attachments,
                   ...(input.outputSchema === undefined ? {} : { outputSchema: input.outputSchema }),
                 },
@@ -541,13 +528,6 @@ export const layer = McpToolAccess.toLayer(ProjectToolkit, {
         );
         const thread = result.projection.thread;
         const run = result.projection.runs.find((run) => run.userMessageId === messageId);
-        yield* queueGoal(context.threads, {
-          goal: input.goal,
-          projectId: thread.projectId,
-          threadId: thread.id,
-          senderThreadId: caller?.id ?? thread.id,
-          commandId,
-        });
         return {
           threadId: thread.id,
           link: McpInvocationContext.threadLinkFor(scope, thread.id, thread.title),

@@ -11,7 +11,6 @@ import { threadRuntimeCanArchive } from "@t3tools/client-runtime/state/models";
 import {
   AuthOrchestrationOperateScope,
   AuthSourceControlWriteScope,
-  type CommandId,
   EnvironmentAuthorizationError,
   EnvironmentId,
   type ScopedThreadRef,
@@ -416,10 +415,7 @@ export function useThreadActions() {
     return result;
   };
 
-  const archiveThread = async (
-    target: ScopedThreadRef,
-    opts: { onArchived?: () => void; archiveBatchId?: CommandId } = {},
-  ) => {
+  const archiveThread = async (target: ScopedThreadRef, opts: { onArchived?: () => void } = {}) => {
     const resolved = resolveThreadTarget(target);
     if (!resolved) return AsyncResult.success(undefined);
     const { thread, threadRef } = resolved;
@@ -442,10 +438,7 @@ export function useThreadActions() {
     const action = ThreadUndo.begin("archive", scopedThreadKey(threadRef));
     const archiveResult = await archiveThreadMutation({
       environmentId: threadRef.environmentId,
-      input: {
-        threadId: threadRef.threadId,
-        ...(opts.archiveBatchId === undefined ? {} : { archiveBatchId: opts.archiveBatchId }),
-      },
+      input: { threadId: threadRef.threadId },
     });
     if (archiveResult._tag === "Failure") {
       action.finish();

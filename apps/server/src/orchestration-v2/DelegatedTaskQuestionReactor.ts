@@ -16,8 +16,6 @@ import * as Stream from "effect/Stream";
 import { reportLabel } from "@t3tools/provider-core/server/notification";
 import * as KeyedLock from "@t3tools/shared/KeyedLock";
 
-import { askTheUserForChildQuestion, questionWakesParent } from "../fork/notifyParent.ts";
-import { goalRunTask } from "../fork/threadHandoff/goalQuestion.ts";
 import { forkParked } from "../serverActivation.ts";
 import * as Orchestrator from "./Orchestrator.ts";
 import * as ProjectionStore from "./ProjectionStore.ts";
@@ -39,7 +37,6 @@ const make = Effect.gen(function* () {
     request: OrchestrationV2RuntimeRequest,
   ) {
     if (task.childThreadId === null) return;
-    if (!(yield* questionWakesParent(projections, task, request))) return;
     const key = `${task.threadId}:${request.id}`;
     const label = reportLabel(task.title?.trim() || task.prompt);
     const situation =
@@ -51,7 +48,7 @@ const make = Effect.gen(function* () {
       commandId: CommandId.make(`server:delegated-task-question:${key}`),
       threadId: task.threadId,
       messageId: MessageId.make(`message:delegated-task-question:${key}`),
-      text: `${situation} Read it with t3_pending_request action read, threadId ${task.childThreadId}, and requestId ${request.id}. Answer it with action respond when the answer follows from the task or the user's instructions; otherwise ${askTheUserForChildQuestion()}, then answer it. If it is no longer pending, it was answered or dismissed.`,
+      text: `${situation} Read it with t3_pending_request action read, threadId ${task.childThreadId}, and requestId ${request.id}. Answer it with action respond when the answer follows from the task or the user's instructions; otherwise ask the user, then answer it. If it is no longer pending, it was answered or dismissed.`,
       notification: {
         source: { kind: "delegated_task", taskIds: [task.id], childThreadId: task.childThreadId },
         outcome: "updated",
@@ -196,10 +193,9 @@ const make = Effect.gen(function* () {
       const taskId =
         run?.delegatedTaskId ??
         (child.forkedFrom?.type === "node" ? child.forkedFrom.nodeId : undefined);
-      const task =
-        parent.subagents.find(
-          (candidate) => candidate.origin === "app_owned" && candidate.id === taskId,
-        ) ?? (yield* goalRunTask(projections, parent.subagents, child.id, run));
+      const task = parent.subagents.find(
+        (candidate) => candidate.origin === "app_owned" && candidate.id === taskId,
+      );
       if (
         task === undefined ||
         parent.thread.archivedAt !== null ||

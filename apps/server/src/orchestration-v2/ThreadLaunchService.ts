@@ -9,7 +9,6 @@ import {
   type ModelSelection,
   type OrchestrationV2Actor,
   type OrchestrationV2CreationSource,
-  type ForkContinuesFrom,
   type OrchestrationV2DelegatedFrom,
   type OrchestrationV2WorkflowOrigin,
   type OrchestrationV2LinkOrigin,
@@ -132,7 +131,6 @@ export interface ThreadLaunchInput {
   readonly delegatedFrom?: OrchestrationV2DelegatedFrom;
   /** The workflow run this thread is an agent step of. */
   readonly workflowRun?: OrchestrationV2WorkflowOrigin;
-  readonly continuesFrom?: ForkContinuesFrom;
 }
 
 type PreparationInput = Pick<
@@ -1587,9 +1585,6 @@ const make = Effect.gen(function* () {
                   ? {}
                   : { delegatedFrom: input.delegatedFrom }),
                 ...(input.workflowRun === undefined ? {} : { workflowRun: input.workflowRun }),
-                ...(input.continuesFrom === undefined
-                  ? {}
-                  : { continuesFrom: input.continuesFrom }),
                 createdBy: input.createdBy,
                 creationSource: input.creationSource,
                 ...(initialMessage === undefined

@@ -109,9 +109,7 @@ export interface DeleteThreadInput extends ThreadCommandInput {
   /** The server deletes only a thread with no runs and no messages. */
   readonly onlyIfUnused?: boolean;
 }
-export interface ArchiveThreadInput extends ThreadCommandInput {
-  readonly archiveBatchId?: CommandId;
-}
+export type ArchiveThreadInput = ThreadCommandInput;
 export type UnarchiveThreadInput = ThreadCommandInput;
 export type SettleThreadInput = ThreadCommandInput;
 
@@ -159,9 +157,6 @@ export interface UpdateThreadMetadataInput extends ThreadCommandInput {
   readonly regenerateTitle?: boolean;
   readonly linkedPullRequest?: ThreadLinkedPullRequest | null;
   readonly expectedEmpty?: boolean;
-  readonly listed?: boolean;
-  readonly detached?: true;
-  readonly forkAttention?: null;
 }
 
 export interface SetThreadRuntimeModeInput extends ThreadCommandInput {
@@ -590,15 +585,7 @@ export const resolveGuestMessage = Effect.fn("EnvironmentCommands.resolveGuestMe
 export const archiveThread = Effect.fn("EnvironmentCommands.archiveThread")(function* (
   input: ArchiveThreadInput,
 ) {
-  if (input.archiveBatchId === undefined)
-    return yield* simpleThreadCommand("thread.archive", input);
-  const commandId = yield* allocateCommandId(input);
-  return yield* dispatch({
-    type: "thread.archive",
-    commandId,
-    threadId: input.threadId,
-    archiveBatchId: input.archiveBatchId,
-  });
+  return yield* simpleThreadCommand("thread.archive", input);
 });
 
 export const unarchiveThread = Effect.fn("EnvironmentCommands.unarchiveThread")(function* (
@@ -737,10 +724,7 @@ export const updateThreadMetadata = Effect.fn("EnvironmentCommands.updateThreadM
       input.worktreePath !== undefined ||
       input.regenerateTitle !== undefined ||
       input.linkedPullRequest !== undefined ||
-      input.limitRecovery !== undefined ||
-      input.listed !== undefined ||
-      input.detached !== undefined ||
-      input.forkAttention !== undefined
+      input.limitRecovery !== undefined
     ) {
       result = yield* dispatch({
         type: "thread.metadata.update",
@@ -755,9 +739,6 @@ export const updateThreadMetadata = Effect.fn("EnvironmentCommands.updateThreadM
         ...(input.linkedPullRequest === undefined
           ? {}
           : { linkedPullRequest: input.linkedPullRequest }),
-        ...(input.listed === undefined ? {} : { listed: input.listed }),
-        ...(input.detached === undefined ? {} : { detached: input.detached }),
-        ...(input.forkAttention === undefined ? {} : { forkAttention: input.forkAttention }),
       });
     }
     if (input.modelSelection !== undefined) {

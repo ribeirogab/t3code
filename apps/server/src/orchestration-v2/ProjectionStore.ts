@@ -112,12 +112,6 @@ import {
 } from "./deferredCommandMessage.ts";
 import { readableSearchText } from "./messageSearchIndex.ts";
 import {
-  forkLatestTodoListStepsColumn,
-  forkPlanProgressFromStepsJson,
-} from "../fork/planProgress.ts";
-import { forkShellFields } from "../fork/forkShellFields.ts";
-import { listedThreadsFilter } from "../fork/threadNesting.ts";
-import {
   isFoldableWorkItem,
   isThreadHistoryUserTurn,
   isConversationHistoryItem,
@@ -1304,7 +1298,6 @@ type ShellThreadRow = {
   readonly latest_user_message_at: string | null;
   readonly latest_user_authored_message_at: string | null;
   readonly has_actionable_proposed_plan: number;
-  readonly fork_todo_list_steps_json: string | null;
 };
 
 type ShellRunRow = {
@@ -2049,15 +2042,11 @@ export function threadShellFromProjection(
       projection.providerThreads,
       projection.thread.activeProviderThreadId,
     ),
-    ...forkShellFields(projection.thread),
     itemCount: activeLocalTurnItems(projection).length,
     visibleItemCount: projection.visibleTurnItems.length,
     createdAt: projection.thread.createdAt,
     updatedAt: projection.thread.updatedAt,
     archivedAt: projection.thread.archivedAt,
-    ...(projection.thread.archiveBatchId == null
-      ? {}
-      : { archiveBatchId: projection.thread.archiveBatchId }),
     settledOverride: projection.thread.settledOverride,
     settledAt: projection.thread.settledAt,
     unsettledAt: projection.thread.unsettledAt ?? null,
@@ -2177,7 +2166,6 @@ type ShellThreadState = {
   readonly pendingBackgroundTasks: OrchestrationV2ThreadShell["pendingBackgroundTasks"];
   readonly providerInstanceHistory: OrchestrationV2ThreadShell["providerInstanceHistory"];
   readonly goal: OrchestrationV2ThreadShell["goal"];
-  readonly forkPlanProgress: OrchestrationV2ThreadShell["forkPlanProgress"];
   readonly itemCount: number;
   readonly runlessItemCount: number;
   readonly updatedAt: OrchestrationV2ThreadProjection["updatedAt"];
@@ -2359,15 +2347,11 @@ function shellFromState(input: {
     pendingBackgroundTasks: input.state.pendingBackgroundTasks,
     providerInstanceHistory: input.state.providerInstanceHistory,
     goal: input.state.goal,
-    ...forkShellFields(input.state.thread, input.state.forkPlanProgress),
     itemCount: input.state.itemCount,
     visibleItemCount: input.visibleItemCount,
     createdAt: input.state.thread.createdAt,
     updatedAt: input.state.updatedAt,
     archivedAt: input.state.thread.archivedAt,
-    ...(input.state.thread.archiveBatchId == null
-      ? {}
-      : { archiveBatchId: input.state.thread.archiveBatchId }),
     settledOverride: input.state.thread.settledOverride,
     settledAt: input.state.thread.settledAt,
     unsettledAt: input.state.thread.unsettledAt ?? null,
@@ -8702,8 +8686,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, ProjectionStoreService
                 WHERE plan.thread_id = t.thread_id
                   AND plan.kind = 'proposed_plan'
                   AND plan.status = 'active'
-              ) AS has_actionable_proposed_plan,
-              ${forkLatestTodoListStepsColumn(sql, sql.literal("t.thread_id"))}
+              ) AS has_actionable_proposed_plan
             FROM orchestration_v2_projection_threads t
             LEFT JOIN orchestration_v2_projection_runs active ON active.run_id = (
               SELECT r.run_id
@@ -8732,7 +8715,10 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, ProjectionStoreService
               LIMIT 1
             ) AND blocked.status = 'failed'
             WHERE ${includeDeleted ? sql`1 = 1` : sql`t.deleted_at IS NULL`}${
-              listedOnly ? sql` AND ${listedThreadsFilter(sql)}` : sql``
+              listedOnly
+                ? sql` AND json_extract(t.payload_json, '$.lineage.relationshipToParent') IS NOT 'subagent'
+                    AND json_extract(t.payload_json, '$.lineage.sideChat') IS NOT 1`
+                : sql``
             }${threadId === undefined ? sql`` : sql` AND t.thread_id = ${threadId}`}${
               projectId === undefined ? sql`` : sql` AND t.project_id = ${projectId}`
             }${
@@ -9469,7 +9455,6 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, ProjectionStoreService
             providerThreadsByThreadId.get(thread.id) ?? [],
             thread.activeProviderThreadId,
           ),
-          forkPlanProgress: forkPlanProgressFromStepsJson(row.fork_todo_list_steps_json),
           itemCount: shellItemCountsByThreadId.get(thread.id)?.itemCount ?? 0,
           runlessItemCount: shellItemCountsByThreadId.get(thread.id)?.runlessItemCount ?? 0,
           updatedAt: thread.updatedAt,
@@ -9772,7 +9757,6 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, ProjectionStoreService
         readonly parent_thread_id: string | null;
         readonly root_thread_id: string;
         readonly side_chat: number | null;
-        readonly listed: number | null;
         readonly settled_override: string | null;
         readonly settled_at: string | null;
         readonly pinned_at: string | null;
@@ -9788,8 +9772,6 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, ProjectionStoreService
           ${indexedField("$.lineage.parentThreadId")} AS parent_thread_id,
           ${indexedField("$.lineage.rootThreadId")} AS root_thread_id,
           ${indexedField("$.lineage.sideChat")} AS side_chat,
-          CASE WHEN ${indexedField("$.lineage.parentThreadId")} IS NOT NULL
-            THEN ${indexedField("$.lineage.listed")} END AS listed,
           ${indexedField("$.settledOverride")} AS settled_override,
           ${indexedField("$.settledAt")} AS settled_at,
           ${indexedField("$.pinnedAt")} AS pinned_at,
@@ -9850,10 +9832,7 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, ProjectionStoreService
       return rows.map((row): ActiveShellIndexEntry => ({
         id: ThreadId.make(row.thread_id),
         projectId: ProjectId.make(row.project_id),
-        lineage: {
-          ...shellIndexLineage(row),
-          ...(row.listed === null ? {} : { listed: row.listed === 1 }),
-        },
+        lineage: shellIndexLineage(row),
         settledOverride:
           row.settled_override === "settled" || row.settled_override === "active"
             ? row.settled_override
@@ -9986,7 +9965,8 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, ProjectionStoreService
         FROM orchestration_v2_projection_threads t
         WHERE t.deleted_at IS NULL
           AND t.archived_at IS NULL
-          AND ${listedThreadsFilter(sql)}
+          AND json_extract(t.payload_json, '$.lineage.relationshipToParent') IS NOT 'subagent'
+          AND json_extract(t.payload_json, '$.lineage.sideChat') IS NOT 1
           AND json_extract(t.payload_json, '$.settledOverride') = 'settled'
           AND json_extract(t.payload_json, '$.settledAt') IS NOT NULL${
             projectIds === undefined ? sql`` : sql` AND t.project_id IN ${sql.in(projectIds)}`

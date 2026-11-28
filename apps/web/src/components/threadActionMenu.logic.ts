@@ -3,16 +3,7 @@ import type { SnoozePreset } from "@t3tools/client-runtime/state/thread-settled"
 import { msg } from "gt-react";
 
 import { m, type MessageResolver } from "../i18n/messages";
-import {
-  continueInNewThreadMenuItems,
-  type ContinueInNewThreadMenuId,
-} from "../fork/continueInNewThread";
-import {
-  compactAndContinueMenuItems,
-  type CompactAndContinueMenuId,
-} from "../fork/compactAndContinue";
 import { parkedThreadMenuItems, type ParkedThreadMenuId } from "../fork/parkedThreads.logic";
-import { FORK_COPY } from "../fork/forkCopy";
 
 export type ThreadActionMenuId =
   | "find"
@@ -33,8 +24,6 @@ export type ThreadActionMenuId =
   | "rename"
   | "regenerate-title"
   | "mark-unread"
-  | "hide-from-sidebar"
-  | "detach-to-top-level"
   | "share-guest"
   | "copy"
   | "copy-path"
@@ -43,8 +32,6 @@ export type ThreadActionMenuId =
   | "copy-thread-id"
   | "archive"
   | "delete"
-  | ContinueInNewThreadMenuId
-  | CompactAndContinueMenuId
   | ParkedThreadMenuId;
 
 export type DraftActionMenuId =
@@ -142,9 +129,6 @@ export interface ThreadActionMenuState {
   readonly canShareWithGuest?: boolean;
   /** A No project thread with its own folder, on a server that can promote it. */
   readonly canTurnIntoProject?: boolean;
-  readonly canHideFromSidebar?: boolean;
-  readonly canContinueInNewThread?: boolean;
-  readonly canCompactAndContinue?: boolean;
   readonly parked?: boolean | null;
 }
 
@@ -201,8 +185,6 @@ export function buildThreadActionMenuItems(
           },
         ]
       : []),
-    ...continueInNewThreadMenuItems(state.canContinueInNewThread === true),
-    ...compactAndContinueMenuItems(state.canCompactAndContinue === true),
     ...(state.supports.pinning
       ? [
           state.isPinned
@@ -267,12 +249,6 @@ export function buildThreadActionMenuItems(
       : []),
     ...(state.hasCompletedRun && !state.isRunning
       ? [{ id: "mark-unread" as const, label: resolve(msg("Mark unread")), icon: "mail-open" }]
-      : []),
-    ...(state.canHideFromSidebar
-      ? [
-          { id: "hide-from-sidebar" as const, label: FORK_COPY.hideFromSidebar },
-          { id: "detach-to-top-level" as const, label: FORK_COPY.detachToTopLevel },
-        ]
       : []),
     ...(state.canShareWithGuest
       ? [{ id: "share-guest" as const, label: resolve(msg("Share with guest")), icon: "user-plus" }]

@@ -17,7 +17,6 @@ import { useSettingsScope } from "./SettingsScopeContext";
 import { useThreadActions } from "../../hooks/useThreadActions";
 import { readLocalApi } from "../../localApi";
 import { useArchivedThreadSnapshots } from "../../lib/archivedThreadsState";
-import { archiveBatchMates, unarchiveWithBatch } from "../../fork/nestedThreadRemoval";
 import { RelativeTime } from "../RelativeTime";
 import { Button } from "../ui/button";
 import { stackedThreadToast, toastManager } from "../ui/toast";
@@ -225,7 +224,7 @@ export function ArchivedThreadsPanel() {
     setPendingKeys(new Set(pending));
     const result = await settlePromise(async () => {
       const result = await (action === "unarchive"
-        ? unarchiveWithBatch(target, archiveBatchMates(archivedSnapshots, target), unarchiveThread)
+        ? unarchiveThread(target)
         : confirmAndDeleteThread(target, thread.title));
       if (result._tag === "Success") refreshArchivedThreads();
       return result;

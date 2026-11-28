@@ -49,7 +49,6 @@ import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 import { useSidebarFooterItems } from "~/fork/sidebarFooterItems";
 import { observeResize } from "~/lib/observeResize";
 import { SharedTooltipTrigger } from "../ui/shared-tooltip";
-import { useStagePill } from "~/fork/forkPill";
 import { FORK_COPY } from "~/fork/forkCopy";
 
 export const SidebarChromeHeader = memo(function SidebarChromeHeader({
@@ -68,7 +67,6 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
     environmentIdentificationMode === "pill"
       ? resolveEnvironmentIdentificationPillLabel(stageLabel)
       : null;
-  const stagePill = useStagePill();
 
   return (
     <div
@@ -97,8 +95,8 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
         </div>
         {pillLabel ? (
           <div className="ml-1 flex h-7 items-center">
-            <Badge data-environment-identification="pill" size="sm" variant={stagePill.variant}>
-              {stagePill.label(pillLabel)}
+            <Badge data-environment-identification="pill" size="sm" variant="secondary">
+              {pillLabel}
             </Badge>
           </div>
         ) : null}

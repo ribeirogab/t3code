@@ -2,30 +2,10 @@ import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
 export type ForkServerFeature =
-  | "planProgress"
-  | "nestedThreads"
-  | "supervisedTurn"
   | "contextBreakdown"
-  | "sharedWorktree"
   | "publishedPorts"
-  | "continueInNewThread"
-  | "orchestrationRules"
-  | "quietParentWake"
-  | "holdRunningPrChecks"
-  | "stalePrWakes"
-  | "workflowRunWatch"
-  | "waitingDetail"
-  | "goalOnNewThreads"
   | "parkedThreads"
-  | "ownerFacingTasks"
-  | "quietThreadSend"
-  | "archiveAfterTurn"
-  | "goalStatus"
-  | "goalQuestionPause"
-  | "compactAndContinueTool"
-  | "requestAttention"
-  | "agentLanguage"
-  | "threadIdRepair";
+  | "agentLanguage";
 
 export const ForkFeatureSettings = Schema.Struct({
   master: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),

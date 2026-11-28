@@ -71,8 +71,12 @@ import {
   threadTriagePermitted,
   useOrchestrationCommand,
 } from "../../state/use-orchestration-command";
-import { backgroundWorkNowItem, childInputNowItem, runStopNowItem } from "./ThreadActivityBanners";
-import { useSupervisedTurnNowItem } from "../../fork/useSupervisedTurnNowItem";
+import {
+  backgroundWorkNowItem,
+  childInputNowItem,
+  goalNowItem,
+  runStopNowItem,
+} from "./ThreadActivityBanners";
 import { useForceStopThread } from "./useForceStopThread";
 import { useAtomValue } from "@effect/atom-react";
 import type { RunStopPresentation } from "@t3tools/client-runtime/state/thread-execution";
@@ -80,7 +84,6 @@ import { Atom } from "effect/reactivity";
 import { environmentThreadDetails } from "../../state/threads";
 import { type SideThreadOpenIntent, sideThreadKindOf } from "@t3tools/client-runtime/side-thread";
 import { openSideThread, resolveThreadOpenRoute } from "../../lib/sideChatPane";
-import { useThreadGoal } from "../../fork/useThreadGoal";
 import type { useLocalDispatchState } from "./useLocalDispatchState";
 const RELATED_THREAD_SHELL_WAIT_MS = 1_000;
 
@@ -540,9 +543,9 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
   );
 
   const sendStandaloneCommand = async (text: string, failureMessage: string) => {
-    if (!activeThread || !clientSettingsHydrated || sendInFlightRef.current) return false;
+    if (!activeThread || !clientSettingsHydrated || sendInFlightRef.current) return;
     const context = composerRef.current?.getSendContext();
-    if (!context?.providerAvailable) return false;
+    if (!context?.providerAvailable) return;
 
     const threadId = activeThread.id;
     const messageId = newMessageId();
@@ -598,18 +601,21 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
       clearUsageLimitsFor(routeThreadKey);
     }
     sendInFlightRef.current = false;
-    return result._tag !== "Failure";
   };
   const sendStandaloneCommandStable = useStableCallback(sendStandaloneCommand);
   const activeGoal = activeThreadShell?.goal ?? null;
-  const { now: goalNow, card: goalCard } = useThreadGoal({
-    threadKey: routeThreadKey,
-    threadId: activeThread?.id ?? null,
-    goal: activeGoal,
-    attention: activeThreadShell?.source.forkAttention,
-    isWorking,
-    onSendCommand: sendStandaloneCommandStable,
-  });
+  const goalNow =
+    activeThread && activeGoal !== null
+      ? goalNowItem(
+          {
+            threadId: activeThread.id,
+            goal: activeGoal,
+            isWorking,
+            onSendCommand: sendStandaloneCommandStable,
+          },
+          messages,
+        )
+      : null;
 
   const forceStop = useForceStopThread(environmentId);
   const anyRunStop = useAtomValue(
@@ -744,26 +750,15 @@ export function useThreadLifecycle(input: ThreadLifecycleInput) {
       });
     },
   } satisfies ChatShortcutCommands;
-  const supervisedTurnNow = useSupervisedTurnNowItem({
-    environmentId,
-    threadRef: activeThreadRef,
-    threadDetailRef,
-    threadShell: activeThreadShell,
-    runtimeMode,
-    isWorking,
-    turnItems,
-  });
   return {
     shortcuts,
     acknowledgeActiveThreadWoke,
     activeBranchMismatchKey,
     // A Stop that went unanswered needs the user; one in progress is the thread's work.
-    attentionNow:
-      supervisedTurnNow ?? (runStop?.state === "unresponsive" ? runStopNow : childInputNow),
+    attentionNow: runStop?.state === "unresponsive" ? runStopNow : childInputNow,
     workNow: runStop?.state === "stopping" ? runStopNow : backgroundWorkNow,
     childInputNow,
     goalNow,
-    goalCard,
     handleSwitchCheckoutToThread,
     handleSwitchCheckoutToThreadStable,
     isRestoringThreadBranch,

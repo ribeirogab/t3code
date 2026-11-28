@@ -37,13 +37,6 @@ import * as Stream from "effect/Stream";
 import type * as OrchestrationEventStore from "../persistence/OrchestrationEventStore.ts";
 import { bufferLatestLiveStream } from "./LiveStreamBudget.ts";
 import type { ActiveShellIndexEntry } from "./ProjectionStore.ts";
-import {
-  isNestedListedChild,
-  isUnlistedSubagentLineage,
-  skipsHiddenChildAncestors,
-} from "../fork/threadNesting.ts";
-import { wireThread, wireThreadLists, wireThreads } from "../fork/wireLineage.ts";
-import { forkRefusesShellResume } from "../fork/forkFeatureSettings.ts";
 
 type ShellDelta = Extract<OrchestrationV2ShellStreamItem, { readonly sequence: number }>;
 
@@ -66,7 +59,6 @@ export const canResumeShellFrom = Effect.fnUntraced(function* (
   afterSequence: number,
   headSequence: number,
 ) {
-  if (forkRefusesShellResume(afterSequence)) return false;
   // A cursor at the head missed nothing, even where pruning has passed the head.
   if (afterSequence === headSequence) return true;
   const replayGap = headSequence - afterSequence;
@@ -213,11 +205,9 @@ function shellTrimFacts(rows: ReadonlyArray<ShellTrimRow>): ShellTrimFacts {
   const settledTimes: Array<number> = [];
   for (const row of rows) {
     if (row.hasRemoteTasks === true) remoteTaskParentIds.add(row.id);
-    if (row.lineage.relationshipToParent === "subagent" && row.lineage.parentThreadId) {
-      subagentParentIds.add(row.lineage.parentThreadId);
-    }
-    if (isUnlistedSubagentLineage(row.lineage)) {
+    if (row.lineage.relationshipToParent === "subagent") {
       subagentThreadIds.add(row.id);
+      if (row.lineage.parentThreadId) subagentParentIds.add(row.lineage.parentThreadId);
     } else if (
       isListedThreadLineage(row.lineage) &&
       row.settledOverride === "settled" &&
@@ -251,7 +241,7 @@ function hiddenChildAncestorIds(
 ) {
   const ancestorIds = new Set<string>();
   for (const thread of threads) {
-    if (skipsHiddenChildAncestors(thread.lineage)) continue;
+    if (isListedThreadLineage(thread.lineage)) continue;
     if (thread.lineage.parentThreadId !== null) ancestorIds.add(thread.lineage.parentThreadId);
     ancestorIds.add(thread.lineage.rootThreadId);
   }
@@ -264,7 +254,7 @@ function omitIdleSubagentShellsWith(
 ): ReadonlyArray<OrchestrationV2ThreadShell> {
   return threads.filter(
     (thread) =>
-      !isUnlistedSubagentLineage(thread.lineage) ||
+      thread.lineage.relationshipToParent !== "subagent" ||
       isLiveSubagentShell(thread) ||
       facts.subagentParentIds.has(thread.id) ||
       facts.remoteTaskParentIds.has(thread.id),
@@ -386,7 +376,7 @@ function shellSubscriberThreadIds(
   const facts = shellTrimFacts(index);
   const subagents = index.filter(
     (entry) =>
-      isUnlistedSubagentLineage(entry.lineage) &&
+      entry.lineage.relationshipToParent === "subagent" &&
       (!options.omitIdleSubagents ||
         entry.mayBeLive ||
         entry.hasRemoteTasks ||
@@ -394,14 +384,12 @@ function shellSubscriberThreadIds(
   );
   const ancestorIds = hiddenChildAncestorIds([
     ...subagents,
-    ...index.filter(
-      (entry) => entry.lineage.sideChat === true || isNestedListedChild(entry.lineage),
-    ),
+    ...index.filter((entry) => entry.lineage.sideChat === true),
   ]);
   const keptSubagentIds = new Set(subagents.map((entry) => entry.id));
   const beforeMs = facts.olderSettledBeforeMs;
   return index.flatMap((entry) =>
-    isUnlistedSubagentLineage(entry.lineage)
+    entry.lineage.relationshipToParent === "subagent"
       ? keptSubagentIds.has(entry.id)
         ? [entry.id]
         : []
@@ -456,9 +444,7 @@ export const loadSubscriberShellSnapshot = Effect.fn("ShellStream.loadSubscriber
     });
     const facts = shellTrimFacts(read.index ?? base.threads);
     return {
-      snapshot: wireThreadLists(
-        trimShellSnapshot(base, facts, { ...input.options, now: yield* DateTime.now }),
-      ),
+      snapshot: trimShellSnapshot(base, facts, { ...input.options, now: yield* DateTime.now }),
       subagentThreadIds: facts.subagentThreadIds,
     };
   },
@@ -491,7 +477,7 @@ export const loadShellSnapshotParts = Effect.fn("ShellStream.loadShellSnapshotPa
     .pipe(NodeSqliteClient.readOnly);
   return {
     projects: read.projects,
-    threads: wireThreadLists(yield* read.decodeThreads),
+    threads: yield* read.decodeThreads,
     snapshotSequence: read.snapshotSequence,
   };
 });
@@ -525,8 +511,7 @@ export const loadOlderSettledThreadsPage = Effect.fn("ShellStream.loadOlderSettl
         }),
       )
       .pipe(NodeSqliteClient.readOnly);
-    const threads =
-      read.decodeThreads === null ? [] : wireThreads((yield* read.decodeThreads).threads);
+    const threads = read.decodeThreads === null ? [] : (yield* read.decodeThreads).threads;
     const order = new Map(read.listed.threadIds.map((threadId, index) => [threadId, index]));
     return {
       snapshotSequence: read.snapshotSequence,
@@ -823,7 +808,7 @@ export function shellStreamItemFromThreadShell(input: {
       kind: "thread.updated",
       sequence: input.stored.sequence,
       location: "active",
-      thread: wireThread(input.shell),
+      thread: input.shell,
     };
   }
 
